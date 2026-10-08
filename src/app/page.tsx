@@ -24,7 +24,7 @@ function DashboardContent() {
   const [showTelegram, setShowTelegram] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800 antialiased selection:bg-orange-500 selection:text-white">
+    <div className="min-h-screen bg-[#FBFDFD] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#2A5C5F] selection:text-white">
       {/* App Header with Live Telemetry */}
       <AppHeader onOpenTelegram={() => setShowTelegram(true)} />
 
