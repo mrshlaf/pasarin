@@ -5,6 +5,11 @@ import { useMarketSimulation } from "@/lib/simulationStore";
 import {
   Cpu,
   Terminal,
+  ShieldAlert,
+  Wallet,
+  CheckCircle2,
+  XCircle,
+  FileText,
 } from "lucide-react";
 
 interface FreeTierQuota {
@@ -65,8 +70,16 @@ const MULTI_AGENTS = [
 ];
 
 export function AdminDashboard() {
-  const { stageConfig } = useMarketSimulation();
+  const { stageConfig, transactions } = useMarketSimulation();
   const [selectedAgent, setSelectedAgent] = useState(MULTI_AGENTS[0].name);
+
+  // QualityGate Moral Hazard Playground state
+  const [testDecayScore, setTestDecayScore] = useState<number>(0.25);
+  const [testClaimedTier, setTestClaimedTier] = useState<string>("tier_3");
+
+  // Evaluate Quality Gate response
+  const isHumanConsumable = testDecayScore < 0.85;
+  const isMoralHazardBlocked = isHumanConsumable && testClaimedTier === "tier_3";
 
   return (
     <div className="space-y-6">
@@ -141,6 +154,139 @@ export function AdminDashboard() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Quality Gate Playground & Invariant Security Simulator */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+        <div className="flex items-center gap-2 mb-1">
+          <ShieldAlert className="w-4 h-4 text-[#075985]" />
+          <h3 className="text-sm font-bold text-slate-900">
+            Simulator Pertahanan Moral Hazard (Quality Gate Playground)
+          </h3>
+        </div>
+        <p className="text-xs text-slate-600 mb-4 font-medium">
+          Pengujian invariant gate: mencegah komoditas yang masih layak konsumsi manusia dialihkan secara manipulatif ke sentra pakan larva maggot (Tier 3)
+        </p>
+
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs text-slate-700 font-bold mb-1">
+              Simulasi Skor Pembusukan (Decay Score):
+            </label>
+            <input
+              type="range"
+              min="0.10"
+              max="0.95"
+              step="0.05"
+              value={testDecayScore}
+              onChange={(e) => setTestDecayScore(parseFloat(e.target.value))}
+              className="w-full accent-[#0369A1]"
+            />
+            <div className="flex justify-between text-[11px] font-mono mt-1 text-slate-600">
+              <span>0.10 (Segar)</span>
+              <span className="font-bold text-slate-900">{testDecayScore.toFixed(2)}</span>
+              <span>0.95 (Busuk)</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-slate-700 font-bold mb-1">
+              Pengajuan Kategori Redistribusi:
+            </label>
+            <select
+              value={testClaimedTier}
+              onChange={(e) => setTestClaimedTier(e.target.value)}
+              className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-lg p-2 text-slate-900"
+            >
+              <option value="tier_1">Tier 1: Komersial Warteg (Diskon 50-70%)</option>
+              <option value="tier_2">Tier 2: Dapur Sosial (Subisidi / Donasi)</option>
+              <option value="tier_3">Tier 3: Sentra Maggot BSF (Pakan Larva)</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col justify-center">
+            <span className="text-[11px] text-slate-500 font-bold mb-1 uppercase tracking-wider">
+              Keputusan Quality Gate:
+            </span>
+            {isMoralHazardBlocked ? (
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-[#BE123C] text-xs font-bold flex items-center gap-2">
+                <XCircle className="w-4 h-4 shrink-0" />
+                <span>BLOCKED: Moral hazard terdeteksi! Sayur masih layak pangan manusia.</span>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[#065F46] text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>PASSED: Alokasi memenuhi syarat biological threshold.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Escrow Ledger Table */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-[#2A5C5F]" />
+            <h3 className="text-sm font-bold text-slate-900">
+              Buku Besar Escrow & Log Audit Transaksi (Escrow Ledger)
+            </h3>
+          </div>
+          <span className="text-xs text-slate-500 font-mono font-medium">
+            {transactions.length} Entri Tercatat
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50">
+                <th className="py-2.5 px-3">ID Transaksi</th>
+                <th className="py-2.5 px-3">Waktu</th>
+                <th className="py-2.5 px-3">Pembeli</th>
+                <th className="py-2.5 px-3">Kios Pedagang</th>
+                <th className="py-2.5 px-3">Lot Komoditas</th>
+                <th className="py-2.5 px-3">Nominal (IDR)</th>
+                <th className="py-2.5 px-3">Status Settlement</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {transactions.map((tx) => (
+                <tr key={tx.id} className="hover:bg-slate-50/80 transition font-medium">
+                  <td className="py-2.5 px-3 font-mono font-bold text-slate-800">
+                    {tx.id}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600 font-mono">
+                    {tx.createdAt}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-900 font-bold">
+                    {tx.buyerName}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-700">
+                    {tx.vendorName}
+                  </td>
+                  <td className="py-2.5 px-3 text-slate-600">
+                    {tx.commodityName}
+                  </td>
+                  <td className="py-2.5 px-3 font-mono font-bold text-[#1E4345]">
+                    Rp {tx.amountIdr.toLocaleString("id-ID")}
+                  </td>
+                  <td className="py-2.5 px-3">
+                    <span
+                      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                        tx.status === "released"
+                          ? "bg-emerald-50 text-[#065F46] border-emerald-300"
+                          : "bg-sky-50 text-[#075985] border-sky-300"
+                      }`}
+                    >
+                      {tx.status === "released" ? "Cair ke Pedagang" : "Tertahan di Escrow"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
