@@ -16,6 +16,7 @@ interface RoleNavConfig {
   label: string;
   subLabel: string;
   icon: typeof Store;
+  activeColor: string;
   badgeCount?: (ctx: SimulationContextType) => number;
 }
 
@@ -25,6 +26,7 @@ const ROLES: RoleNavConfig[] = [
     label: "Pedagang Lapak",
     subLabel: "30 Kios Pasar Kramat Jati",
     icon: Store,
+    activeColor: "bg-[#2A5C5F] text-white",
     badgeCount: (ctx) =>
       ctx.offers.filter(
         (o) => o.vendorId === ctx.selectedVendorId && o.status === "pending_vendor"
@@ -35,6 +37,7 @@ const ROLES: RoleNavConfig[] = [
     label: "Pembeli Warteg",
     subLabel: "Surplus Terdiskon 50 - 70%",
     icon: ShoppingBag,
+    activeColor: "bg-[#0284C7] text-white",
     badgeCount: (ctx) =>
       ctx.offers.filter((o) => o.targetTier === "tier_1" && o.status === "active")
         .length,
@@ -44,6 +47,7 @@ const ROLES: RoleNavConfig[] = [
     label: "Dapur Sosial & Panti",
     subLabel: "Pangan Kemanusiaan Tier 2",
     icon: HeartHandshake,
+    activeColor: "bg-[#E11D48] text-white",
     badgeCount: (ctx) =>
       ctx.offers.filter((o) => o.targetTier === "tier_2" && o.status === "active")
         .length,
@@ -53,6 +57,7 @@ const ROLES: RoleNavConfig[] = [
     label: "Sentra Maggot BSF",
     subLabel: "Biokonversi & Kompos Tier 3",
     icon: Recycle,
+    activeColor: "bg-[#059669] text-white",
     badgeCount: (ctx) =>
       ctx.offers.filter((o) => o.targetTier === "tier_3" && o.status === "active")
         .length,
@@ -62,6 +67,7 @@ const ROLES: RoleNavConfig[] = [
     label: "Kurir Logistik",
     subLabel: "Armada & Handover PoD",
     icon: Truck,
+    activeColor: "bg-[#475569] text-white",
     badgeCount: (ctx) =>
       ctx.offers.filter(
         (o) => o.status === "claimed" && o.paymentStatus === "held_in_escrow"
@@ -72,12 +78,14 @@ const ROLES: RoleNavConfig[] = [
     label: "Pengelola Pasar",
     subLabel: "Perumda Pasar Jaya & DLH",
     icon: Building2,
+    activeColor: "bg-[#334155] text-white",
   },
   {
     id: "admin",
     label: "Administrator Sistem",
     subLabel: "Orkestrator & Infrastruktur",
     icon: Cpu,
+    activeColor: "bg-[#0F171A] text-white",
   },
 ];
 
@@ -103,7 +111,7 @@ export function AppSidebar() {
                 type="button"
                 className={`w-full flex items-center justify-between p-2.5 rounded-xl border text-left transition cursor-pointer ${
                   isActive
-                    ? "bg-[#F0F6F6] border-[#D1E1E2] text-slate-900 ring-1 ring-[#2A5C5F]/20"
+                    ? "bg-[#F0F6F6] border-[#D1E1E2] text-slate-900 shadow-2xs"
                     : "bg-white border-transparent hover:bg-slate-50 text-slate-600 hover:text-slate-900"
                 }`}
               >
@@ -111,7 +119,7 @@ export function AppSidebar() {
                   <div
                     className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border transition ${
                       isActive
-                        ? "bg-[#2A5C5F] text-white border-[#224C4E]"
+                        ? r.activeColor
                         : "bg-slate-50 text-slate-600 border-slate-200/80"
                     }`}
                   >
@@ -148,12 +156,12 @@ export function AppSidebar() {
         </div>
       </div>
 
-      {/* Modern Academic Credential Footer */}
+      {/* Academic Credential Footer */}
       <div className="p-4 mt-auto border-t border-slate-100 bg-slate-50/40">
         <div className="rounded-xl bg-white border border-slate-200/80 p-3 shadow-2xs">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 mb-1">
             <span>PASARIN Framework</span>
-            <span className="font-mono text-[#2A5C5F]">v3.0</span>
+            <span className="font-mono text-[#0284C7]">v3.0</span>
           </div>
           <p className="text-[11px] text-slate-500 leading-relaxed">
             Multi-Agent System & Arrhenius-Q10 Kinetika Biologis.

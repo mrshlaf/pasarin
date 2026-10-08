@@ -11,36 +11,48 @@ export function MarketClockController() {
     time: string;
     label: string;
     icon: typeof Sun;
+    activeBg: string;
+    iconColor: string;
   }[] = [
     {
       id: "subuh",
       time: "04:30 WIB",
-      label: "Subuh Pasokan",
+      label: "Penerimaan Pasokan",
       icon: Sparkles,
+      activeBg: "bg-[#2A5C5F] text-white border-[#224C4E]",
+      iconColor: "text-[#2A5C5F]",
     },
     {
       id: "terik",
       time: "12:00 WIB",
-      label: "Terik Siang",
+      label: "Puncak Suhu Los",
       icon: Sun,
+      activeBg: "bg-amber-600 text-white border-amber-700",
+      iconColor: "text-amber-500",
     },
     {
       id: "cron_sweep",
       time: "14:30 WIB",
-      label: "Evaluasi Mutu",
+      label: "Evaluasi Mutu Harian",
       icon: ShieldCheck,
+      activeBg: "bg-[#2A5C5F] text-white border-[#224C4E]",
+      iconColor: "text-[#0284C7]",
     },
     {
       id: "hujan_sore",
       time: "15:30 WIB",
       label: "Hujan Sore",
       icon: CloudRain,
+      activeBg: "bg-[#0284C7] text-white border-sky-700",
+      iconColor: "text-[#0284C7]",
     },
     {
       id: "handover",
       time: "17:30 WIB",
       label: "Distribusi Armada",
       icon: Truck,
+      activeBg: "bg-slate-700 text-white border-slate-800",
+      iconColor: "text-slate-600",
     },
   ];
 
@@ -53,16 +65,16 @@ export function MarketClockController() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Pengendali Siklus Sirkadian Pasar
+              Simulasi Waktu & Cuaca Pasar
             </h2>
             <p className="text-xs text-slate-500">
-              Simulasi mikroklimat tropis dan fluktuasi respirasi komoditas lapak
+              Perubahan mikroklimat tropis dan respon kinetika respirasi komoditas
             </p>
           </div>
         </div>
 
         <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg flex items-center gap-2">
-          <span className="text-slate-400">Dinamika:</span>
+          <span className="text-slate-400">Kondisi:</span>
           <span className="font-medium text-slate-700">{stageConfig.description}</span>
         </div>
       </div>
@@ -79,21 +91,21 @@ export function MarketClockController() {
               type="button"
               className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                 isActive
-                  ? "bg-[#2A5C5F] border-[#224C4E] text-white shadow-xs"
+                  ? `${stg.activeBg} shadow-xs ring-1 ring-black/5`
                   : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/70 text-slate-700"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span
                   className={`text-xs font-mono font-bold ${
-                    isActive ? "text-slate-100" : "text-slate-500"
+                    isActive ? "text-white/90" : "text-slate-500"
                   }`}
                 >
                   {stg.time}
                 </span>
                 <Icon
                   className={`w-3.5 h-3.5 ${
-                    isActive ? "text-white" : "text-slate-400"
+                    isActive ? "text-white" : stg.iconColor
                   }`}
                 />
               </div>

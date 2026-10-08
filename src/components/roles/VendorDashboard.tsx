@@ -11,7 +11,6 @@ import {
   Plus,
   Check,
   X,
-  Layers,
 } from "lucide-react";
 
 export function VendorDashboard() {
@@ -95,14 +94,14 @@ export function VendorDashboard() {
               <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-600">
                 <span>
                   Skor Kepatuhan:{" "}
-                  <strong className="text-[#2A5C5F] font-bold">
+                  <strong className="text-[#059669] font-bold">
                     {currentVendor.reputationScore}/100
                   </strong>
                 </span>
                 <span>·</span>
                 <span>
                   Kontribusi Sosial Tier 2:{" "}
-                  <strong>{currentVendor.tier2ContributionCount} Lot</strong>
+                  <strong className="text-slate-800">{currentVendor.tier2ContributionCount} Lot</strong>
                 </span>
               </div>
             </div>
@@ -137,7 +136,7 @@ export function VendorDashboard() {
                   <Wallet className="w-3.5 h-3.5" />
                   Saldo Dompet
                 </span>
-                <span className="text-[10px] bg-white px-1.5 py-0.2 rounded font-semibold text-[#2A5C5F]">
+                <span className="text-[10px] bg-white px-1.5 py-0.2 rounded font-semibold text-[#059669] border border-emerald-100">
                   Escrow Cair
                 </span>
               </div>
@@ -149,19 +148,19 @@ export function VendorDashboard() {
         </div>
       </div>
 
-      {/* Pending 1-Tap Approval Banner */}
+      {/* Pending Approval Banner */}
       {pendingOffers.length > 0 && (
-        <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-2xl p-5 shadow-2xs">
+        <div className="bg-sky-50/60 border border-sky-200 rounded-2xl p-5 shadow-2xs">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-[#2A5C5F]">
-              Persetujuan Penawaran Surplus Lapak
+            <h3 className="text-sm font-bold text-[#0284C7]">
+              Persetujuan Penjualan Surplus
             </h3>
             <span className="text-xs font-mono text-slate-500">
-              {pendingOffers.length} Menunggu Persetujuan
+              {pendingOffers.length} Menunggu Keputusan
             </span>
           </div>
           <p className="text-xs text-slate-600 mb-4">
-            Evaluasi laju respirasi los menyarankan pelepasan harga diskon untuk komoditas berikut sebelum terjadi kerusakan mutlak:
+            Laju respirasi komoditas los meningkat. Setujui harga terdiskon untuk segera dialokasikan ke warteg:
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -177,7 +176,7 @@ export function VendorDashboard() {
                       <span className="text-xs font-bold text-slate-900">
                         {comm?.localName || ofr.commodityId}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-[#0284C7] border border-sky-200">
                         Diskon {ofr.discountPercentage}%
                       </span>
                     </div>
@@ -188,18 +187,18 @@ export function VendorDashboard() {
                         <strong className="text-slate-900 font-mono">{ofr.quantityKg} kg</strong>
                       </div>
                       <div className="flex justify-between">
-                        <span>Harga Normal:</span>
+                        <span>Harga Eceran:</span>
                         <span className="line-through text-slate-400 font-mono">
                           Rp {ofr.originalPricePerKg.toLocaleString("id-ID")}/kg
                         </span>
                       </div>
-                      <div className="flex justify-between text-[#2A5C5F] font-semibold">
+                      <div className="flex justify-between text-[#0284C7] font-semibold">
                         <span>Harga Penyelamatan:</span>
                         <span className="font-mono">Rp {ofr.salvagePricePerKg.toLocaleString("id-ID")}/kg</span>
                       </div>
                       <div className="flex justify-between text-slate-900 font-bold border-t border-slate-100 pt-1">
-                        <span>Total Nilai Terlindungi:</span>
-                        <span className="text-[#2A5C5F] font-mono text-sm">
+                        <span>Nilai Terlindungi:</span>
+                        <span className="text-[#059669] font-mono text-sm">
                           Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}
                         </span>
                       </div>
@@ -210,7 +209,7 @@ export function VendorDashboard() {
                     <button
                       onClick={() => approveOfferByVendor(ofr.id)}
                       type="button"
-                      className="flex-1 py-2 rounded-lg bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                      className="flex-1 py-2 rounded-lg bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
                       <Check className="w-4 h-4" />
                       Setuju Jual
@@ -236,13 +235,13 @@ export function VendorDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>Inventaris Aktif Los Kios</span>
+              <span>Katalog Stok Los</span>
               <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
                 {vendorStocks.length} Komoditas
               </span>
             </h3>
             <p className="text-xs text-slate-500">
-              Evaluasi kondisi fisik waktu nyata berbasis kinetika termal Arrhenius-Q10
+              Evaluasi mutu fisik waktu nyata berbasis kinetika termal Arrhenius-Q10
             </p>
           </div>
 
@@ -263,7 +262,7 @@ export function VendorDashboard() {
             className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4"
           >
             <h4 className="text-xs font-bold uppercase text-slate-700 mb-3">
-              Catat Bongkar Muatan Subuh Baru
+              Catat Bongkar Muatan Baru
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <div>
@@ -333,14 +332,18 @@ export function VendorDashboard() {
                   const evalResult = getEvaluationForStock(stk);
                   const decayPercent = Math.round(evalResult.decayScore * 100);
 
-                  let decayColor = "bg-[#2A5C5F]";
-                  let badgeBadge = "bg-[#F0F6F6] text-[#2A5C5F] border-[#D1E1E2]";
+                  // Nuanced color per decay state
+                  let decayColor = "bg-[#059669]";
+                  let badgeBadge = "bg-emerald-50 text-[#059669] border-emerald-200";
                   if (evalResult.decayScore >= 0.85) {
-                    decayColor = "bg-rose-500";
-                    badgeBadge = "bg-rose-50 text-rose-800 border-rose-200";
+                    decayColor = "bg-[#E11D48]";
+                    badgeBadge = "bg-rose-50 text-[#E11D48] border-rose-200";
                   } else if (evalResult.decayScore >= 0.65) {
-                    decayColor = "bg-amber-500";
-                    badgeBadge = "bg-amber-50 text-amber-800 border-amber-200";
+                    decayColor = "bg-[#D97706]";
+                    badgeBadge = "bg-amber-50 text-[#D97706] border-amber-200";
+                  } else if (evalResult.decayScore >= 0.35) {
+                    decayColor = "bg-[#0284C7]";
+                    badgeBadge = "bg-sky-50 text-[#0284C7] border-sky-200";
                   }
 
                   return (
