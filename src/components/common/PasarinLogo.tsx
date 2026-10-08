@@ -25,19 +25,19 @@ export function PasarinLogo({
   }[size];
 
   const titleSize = {
-    sm: "text-base tracking-wider",
-    md: "text-lg tracking-wider",
+    sm: "text-base tracking-widest",
+    md: "text-lg tracking-widest",
     lg: "text-2xl tracking-widest",
   }[size];
 
   const subtitleSize = {
-    sm: "text-[9px] tracking-widest",
-    md: "text-[10px] tracking-wider",
-    lg: "text-xs tracking-wider",
+    sm: "text-[9px] tracking-[0.16em]",
+    md: "text-[10px] tracking-[0.18em]",
+    lg: "text-xs tracking-[0.2em]",
   }[size];
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-3.5 ${className}`}>
       <div className="relative shrink-0 flex items-center justify-center">
         <Image
           src={iconSrc}
@@ -50,20 +50,23 @@ export function PasarinLogo({
       </div>
 
       <div className="flex flex-col">
-        <span
-          className={`font-black uppercase leading-none font-sans ${titleSize} ${
-            variant === "white" ? "text-white" : "text-[#2A5C5F]"
-          }`}
-        >
-          PASARIN
-        </span>
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`font-black uppercase leading-none font-sans ${titleSize} ${
+              variant === "white" ? "text-white" : "text-[#2A5C5F]"
+            }`}
+          >
+            PASARIN
+          </span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#0284C7] shrink-0" />
+        </div>
         {showSubtitle && (
           <span
             className={`font-semibold uppercase leading-none mt-1 ${subtitleSize} ${
               variant === "white" ? "text-slate-200" : "text-slate-500"
             }`}
           >
-            Proactive Agent for Market Surplus Redistribution
+            Proactive Market Surplus Redistribution
           </span>
         )}
       </div>

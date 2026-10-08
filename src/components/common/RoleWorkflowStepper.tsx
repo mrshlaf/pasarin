@@ -1,7 +1,7 @@
 "use client";
 
 import { useMarketSimulation } from "@/lib/simulationStore";
-import { Check, ArrowRight, Activity, Clock, ShieldCheck, Truck } from "lucide-react";
+import { Check, ArrowRight } from "lucide-react";
 
 interface WorkflowStep {
   step: number;
@@ -13,26 +13,26 @@ interface WorkflowStep {
 const STEPS: WorkflowStep[] = [
   {
     step: 1,
-    title: "1. Pencatatan Stok & Telemetri",
-    subtitle: "Kinetika respirasi Arrhenius-Q10 los pasar",
+    title: "1. Pencatatan Stok",
+    subtitle: "Kinetika respirasi mikroklimat los",
     agentLabel: "Biological Kinetics",
   },
   {
     step: 2,
-    title: "2. Evaluasi Mutu 14:30 WIB",
-    subtitle: "Penyusunan harga dinamis & batas modal aman",
+    title: "2. Evaluasi Mutu Harian",
+    subtitle: "Perhitungan harga terdiskon aman",
     agentLabel: "Dynamic Pricing",
   },
   {
     step: 3,
-    title: "3. Klaim Pembeli & Escrow",
-    subtitle: "Distribusi penawaran & pembayaran QRIS BI",
+    title: "3. Klaim & Escrow",
+    subtitle: "Pengamanan pembayaran QRIS BI",
     agentLabel: "Matchmaking & Escrow",
   },
   {
     step: 4,
-    title: "4. Serah Terima & Validasi",
-    subtitle: "Verifikasi kurir geofence 50m & reduksi emisi",
+    title: "4. Serah Terima PoD",
+    subtitle: "Verifikasi lokasi kurir 50m & emisi",
     agentLabel: "Logistics & Audit",
   },
 ];
@@ -51,14 +51,14 @@ export function RoleWorkflowStepper() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-            Alur Penyelamatan Surplus Pangan
+            Siklus Penyelamatan Pangan
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Tahapan koordinasi otonom dari penerimaan komoditas hingga serah terima fisik
+            Tahapan orkestrasi multi-agen dari inspeksi awal hingga validasi serah terima fisik
           </p>
         </div>
-        <span className="text-xs font-semibold text-[#2A5C5F] bg-[#F0F6F6] px-2.5 py-1 rounded-lg border border-[#D1E1E2] self-start sm:self-auto">
-          Fase Aktif: Tahap {activeStep} dari 4
+        <span className="text-xs font-semibold text-[#0284C7] bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200 self-start sm:self-auto">
+          Tahap {activeStep} dari 4 Aktif
         </span>
       </div>
 
@@ -72,9 +72,9 @@ export function RoleWorkflowStepper() {
               key={s.step}
               className={`p-3.5 rounded-xl border transition flex flex-col justify-between ${
                 isCurrent
-                  ? "bg-[#F0F6F6]/60 border-[#2A5C5F]/40 shadow-xs"
+                  ? "bg-sky-50/50 border-[#0284C7]/40 ring-1 ring-[#0284C7]/20 shadow-xs"
                   : isDone
-                  ? "bg-slate-50 border-slate-200/70 text-slate-700"
+                  ? "bg-slate-50/70 border-slate-200/80 text-slate-700"
                   : "bg-white border-slate-200/60 text-slate-400 opacity-60"
               }`}
             >
@@ -83,16 +83,24 @@ export function RoleWorkflowStepper() {
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition ${
                       isDone
-                        ? "bg-[#2A5C5F] text-white"
+                        ? "bg-[#059669] text-white"
                         : isCurrent
-                        ? "bg-[#2A5C5F] text-white shadow-xs"
+                        ? "bg-[#0284C7] text-white shadow-xs"
                         : "bg-slate-200 text-slate-600"
                     }`}
                   >
                     {isDone ? <Check className="w-3.5 h-3.5" /> : s.step}
                   </span>
 
-                  <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-md ${
+                      isCurrent
+                        ? "text-[#0284C7] bg-sky-100 font-semibold"
+                        : isDone
+                        ? "text-[#059669] bg-emerald-50"
+                        : "text-slate-500 bg-slate-100"
+                    }`}
+                  >
                     {s.agentLabel}
                   </span>
                 </div>
@@ -100,7 +108,7 @@ export function RoleWorkflowStepper() {
                 <h3
                   className={`text-xs font-bold ${
                     isCurrent
-                      ? "text-[#2A5C5F]"
+                      ? "text-slate-900 font-extrabold"
                       : isDone
                       ? "text-slate-800"
                       : "text-slate-500"
@@ -114,7 +122,7 @@ export function RoleWorkflowStepper() {
               </div>
 
               {isCurrent && (
-                <div className="mt-3 pt-2 border-t border-[#D1E1E2] flex items-center justify-between text-[10px] text-[#2A5C5F] font-semibold">
+                <div className="mt-3 pt-2 border-t border-sky-200 flex items-center justify-between text-[10px] text-[#0284C7] font-semibold">
                   <span>Proses Berjalan</span>
                   <ArrowRight className="w-3 h-3" />
                 </div>
