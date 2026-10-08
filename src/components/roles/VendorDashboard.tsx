@@ -229,6 +229,30 @@ export function VendorDashboard() {
           </div>
         </div>
       )}
+      {/* Visual Inspection Card (MobileNetV3) */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white border border-slate-300 flex items-center justify-center text-[#2A5C5F] shrink-0">
+            <ShieldCheck className="w-5 h-5 text-[#047857]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-bold text-slate-900">
+                Inspeksi Citra Digital Los (MobileNetV3 Edge Inference)
+              </h4>
+              <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-emerald-50 text-[#065F46] border border-emerald-300">
+                Confidence 94.8%
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+              Indeks Klorosis: 14.2% (Turgor sel terjaga) · Analisis visual kamera los membuktikan sayuran segar prima tanpa bercak nekrotik.
+            </p>
+          </div>
+        </div>
+        <span className="text-[10px] font-mono text-slate-600 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shrink-0 self-start sm:self-auto font-medium">
+          Model: MobileNetV3-Small
+        </span>
+      </div>
 
       {/* Stock Matrix Table */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
