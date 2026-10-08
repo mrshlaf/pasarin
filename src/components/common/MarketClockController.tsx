@@ -19,7 +19,7 @@ export function MarketClockController() {
       time: "04:30 WIB",
       label: "Penerimaan Pasokan",
       icon: Sparkles,
-      activeBg: "bg-[#2A5C5F] text-white border-[#224C4E]",
+      activeBg: "bg-[#2A5C5F] text-white border-[#1E4345]",
       iconColor: "text-[#2A5C5F]",
     },
     {
@@ -27,37 +27,37 @@ export function MarketClockController() {
       time: "12:00 WIB",
       label: "Puncak Suhu Los",
       icon: Sun,
-      activeBg: "bg-amber-600 text-white border-amber-700",
-      iconColor: "text-amber-500",
+      activeBg: "bg-[#B45309] text-white border-[#92400E]",
+      iconColor: "text-[#B45309]",
     },
     {
       id: "cron_sweep",
       time: "14:30 WIB",
       label: "Evaluasi Mutu Harian",
       icon: ShieldCheck,
-      activeBg: "bg-[#2A5C5F] text-white border-[#224C4E]",
-      iconColor: "text-[#0284C7]",
+      activeBg: "bg-[#2A5C5F] text-white border-[#1E4345]",
+      iconColor: "text-[#0369A1]",
     },
     {
       id: "hujan_sore",
       time: "15:30 WIB",
       label: "Hujan Sore",
       icon: CloudRain,
-      activeBg: "bg-[#0284C7] text-white border-sky-700",
-      iconColor: "text-[#0284C7]",
+      activeBg: "bg-[#0369A1] text-white border-[#075985]",
+      iconColor: "text-[#0369A1]",
     },
     {
       id: "handover",
       time: "17:30 WIB",
       label: "Distribusi Armada",
       icon: Truck,
-      activeBg: "bg-slate-700 text-white border-slate-800",
+      activeBg: "bg-[#334155] text-white border-[#1E293B]",
       iconColor: "text-slate-600",
     },
   ];
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs mb-6">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-[#F0F6F6] text-[#2A5C5F] flex items-center justify-center border border-[#D1E1E2]">
@@ -67,15 +67,15 @@ export function MarketClockController() {
             <h2 className="text-sm font-bold text-slate-900">
               Simulasi Waktu & Cuaca Pasar
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-600 font-medium">
               Perubahan mikroklimat tropis dan respon kinetika respirasi komoditas
             </p>
           </div>
         </div>
 
-        <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-lg flex items-center gap-2">
-          <span className="text-slate-400">Kondisi:</span>
-          <span className="font-medium text-slate-700">{stageConfig.description}</span>
+        <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium">
+          <span className="text-slate-500">Kondisi:</span>
+          <span className="text-slate-800">{stageConfig.description}</span>
         </div>
       </div>
 
@@ -91,14 +91,14 @@ export function MarketClockController() {
               type="button"
               className={`p-3 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
                 isActive
-                  ? `${stg.activeBg} shadow-xs ring-1 ring-black/5`
-                  : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/70 text-slate-700"
+                  ? `${stg.activeBg} shadow-xs ring-1 ring-black/10`
+                  : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <span
                   className={`text-xs font-mono font-bold ${
-                    isActive ? "text-white/90" : "text-slate-500"
+                    isActive ? "text-white" : "text-slate-600"
                   }`}
                 >
                   {stg.time}
@@ -113,13 +113,13 @@ export function MarketClockController() {
               <div>
                 <p
                   className={`text-xs font-bold leading-tight ${
-                    isActive ? "text-white" : "text-slate-800"
+                    isActive ? "text-white" : "text-slate-900"
                   }`}
                 >
                   {stg.label}
                 </p>
                 {isActive && (
-                  <span className="inline-block mt-1 text-[10px] bg-white/20 px-1.5 py-0.2 rounded text-white font-medium">
+                  <span className="inline-block mt-1 text-[10px] bg-white/25 px-1.5 py-0.2 rounded text-white font-bold">
                     Fase Aktif
                   </span>
                 )}

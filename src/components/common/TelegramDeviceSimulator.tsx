@@ -65,8 +65,8 @@ export function TelegramDeviceSimulator({
             <button
               onClick={() => setChatFilter("all")}
               type="button"
-              className={`px-2.5 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                chatFilter === "all" ? "bg-[#2A5C5F] text-white" : "text-slate-500 hover:bg-slate-100"
+              className={`px-2.5 py-0.5 rounded-full font-bold transition cursor-pointer ${
+                chatFilter === "all" ? "bg-[#2A5C5F] text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Semua
@@ -74,8 +74,8 @@ export function TelegramDeviceSimulator({
             <button
               onClick={() => setChatFilter("vendor")}
               type="button"
-              className={`px-2.5 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                chatFilter === "vendor" ? "bg-[#2A5C5F] text-white" : "text-slate-500 hover:bg-slate-100"
+              className={`px-2.5 py-0.5 rounded-full font-bold transition cursor-pointer ${
+                chatFilter === "vendor" ? "bg-[#2A5C5F] text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Kios Pedagang
@@ -83,8 +83,8 @@ export function TelegramDeviceSimulator({
             <button
               onClick={() => setChatFilter("warteg")}
               type="button"
-              className={`px-2.5 py-0.5 rounded-full font-semibold transition cursor-pointer ${
-                chatFilter === "warteg" ? "bg-[#2A5C5F] text-white" : "text-slate-500 hover:bg-slate-100"
+              className={`px-2.5 py-0.5 rounded-full font-bold transition cursor-pointer ${
+                chatFilter === "warteg" ? "bg-[#2A5C5F] text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Grup Warteg
@@ -94,18 +94,18 @@ export function TelegramDeviceSimulator({
           {/* Messages list */}
           <div className="flex-1 p-3 overflow-y-auto space-y-2.5 bg-[#E8EEF0]/60">
             {filteredNotifs.length === 0 ? (
-              <div className="text-center py-12 text-slate-400 text-xs">
+              <div className="text-center py-12 text-slate-500 text-xs font-medium">
                 Belum ada pesan siaran untuk filter ini.
               </div>
             ) : (
               filteredNotifs.map((n) => (
-                <div key={n.id} className="bg-white rounded-2xl p-3 shadow-2xs text-xs space-y-2 border border-slate-200/50">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-semibold text-[#2A5C5F]">{n.recipient}</span>
-                    <span>{n.timestamp}</span>
+                <div key={n.id} className="bg-white rounded-2xl p-3 shadow-2xs text-xs space-y-2 border border-slate-200">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-bold text-[#075985]">{n.recipient}</span>
+                    <span className="text-slate-500 font-medium">{n.timestamp}</span>
                   </div>
 
-                  <p className="text-slate-700 leading-snug">{n.message}</p>
+                  <p className="text-slate-800 leading-snug font-medium">{n.message}</p>
 
                   {/* Inline 1-tap buttons */}
                   {n.actionRequired && n.offerId && (
@@ -113,7 +113,7 @@ export function TelegramDeviceSimulator({
                       <button
                         onClick={() => approveOfferByVendor(n.offerId!)}
                         type="button"
-                        className="flex-1 py-1.5 rounded-lg bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer shadow-2xs"
+                        className="flex-1 py-1.5 rounded-lg bg-[#0369A1] hover:bg-[#075985] text-white font-bold text-[11px] flex items-center justify-center gap-1 transition cursor-pointer shadow-xs"
                       >
                         <Check className="w-3.5 h-3.5" />
                         Setuju Jual
@@ -121,7 +121,7 @@ export function TelegramDeviceSimulator({
                       <button
                         onClick={() => rejectOfferByVendor(n.offerId!)}
                         type="button"
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-[11px] border border-slate-200 transition cursor-pointer"
                       >
                         Lewati
                       </button>
@@ -138,7 +138,7 @@ export function TelegramDeviceSimulator({
               type="text"
               readOnly
               placeholder="Sistem gateway terotomatisasi..."
-              className="flex-1 bg-slate-100 text-slate-400 rounded-full px-3 py-1.5 text-xs outline-hidden"
+              className="flex-1 bg-slate-100 text-slate-500 rounded-full px-3 py-1.5 text-xs outline-hidden font-medium"
             />
             <div className="w-8 h-8 rounded-full bg-[#2A5C5F] text-white flex items-center justify-center shrink-0">
               <Send className="w-3.5 h-3.5" />
