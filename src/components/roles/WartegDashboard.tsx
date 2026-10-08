@@ -7,15 +7,11 @@ import { KIOSKS } from "@/data/kiosks";
 import {
   ShoppingBag,
   Clock,
-  Sparkles,
   QrCode,
   CheckCircle2,
   MapPin,
-  TrendingDown,
-  ShieldCheck,
   Check,
   ArrowRight,
-  Filter,
 } from "lucide-react";
 
 export function WartegDashboard() {
@@ -26,15 +22,12 @@ export function WartegDashboard() {
   } = useMarketSimulation();
 
   const [activeTab, setActiveTab] = useState<"katalog" | "pesanan_saya">("katalog");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedOfferForQris, setSelectedOfferForQris] = useState<RescueOffer | null>(null);
 
-  // Active Tier 1 offers available to claim
   const availableOffers = offers.filter(
     (o) => o.targetTier === "tier_1" && o.status === "active"
   );
 
-  // My claimed offers
   const myClaimedOffers = offers.filter(
     (o) => o.claimantRole === "warteg" || (o.status === "claimed" && o.targetTier === "tier_1")
   );
@@ -54,47 +47,47 @@ export function WartegDashboard() {
   return (
     <div className="space-y-6">
       {/* Buyer Header Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl font-bold shadow-sm shrink-0">
-              <ShoppingBag className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-xl bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0">
+              <ShoppingBag className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-base font-bold text-slate-900">
                   Warteg Kharisma Bahari Condet
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                  Pembeli Tier 1
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                  Mitra Pembeli Tier 1
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                Jl. Raya Condet No. 42 (Radius 1.8 km dari Pasar Induk Kramat Jati)
+                Jl. Raya Condet No. 42 (Radius 1.8 km dari Pasar Induk)
               </p>
             </div>
           </div>
 
           {/* Navigation tabs */}
-          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl self-start sm:self-center">
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl self-start sm:self-center">
             <button
               onClick={() => setActiveTab("katalog")}
               type="button"
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === "katalog"
-                  ? "bg-white text-orange-700 shadow-xs"
+                  ? "bg-white text-[#2A5C5F] shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
-              Katalog Flash Sale ({availableOffers.length})
+              Katalog Surplus ({availableOffers.length})
             </button>
             <button
               onClick={() => setActiveTab("pesanan_saya")}
               type="button"
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeTab === "pesanan_saya"
-                  ? "bg-white text-orange-700 shadow-xs"
+                  ? "bg-white text-[#2A5C5F] shadow-2xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -107,37 +100,14 @@ export function WartegDashboard() {
       {/* Tab: Katalog Flash Sale */}
       {activeTab === "katalog" && (
         <div className="space-y-4">
-          {/* Discount Headline Banner */}
-          <div className="bg-linear-to-r from-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-5 h-5 text-amber-200" />
-                <h3 className="font-extrabold text-base tracking-wide">
-                  PENYELAMATAN SURPLUS SAYUR SEGAR (DISKON 50% - 70%)
-                </h3>
-              </div>
-              <p className="text-xs text-orange-100 max-w-xl leading-relaxed">
-                Lot sayuran segar hasil evaluasi Autonomous Cron 14:30 WIB. Masih sangat layak konsumsi
-                untuk kebutuhan olahan menu warteg dan katering hari ini.
-              </p>
-            </div>
-            <div className="bg-white/20 backdrop-blur-xs px-3.5 py-2 rounded-xl text-center shrink-0">
-              <span className="text-[10px] uppercase font-semibold text-orange-100 tracking-wider block">
-                Hemat Pengeluaran
-              </span>
-              <span className="text-xl font-black font-mono">50 - 70%</span>
-            </div>
+          <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+            <span>Menampilkan sayuran surplus segar dengan potongan harga 50% - 70%</span>
+            <span>{availableOffers.length} Lot Tersedia</span>
           </div>
 
-          {/* Catalog Grid */}
           {availableOffers.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-400">
-              <p className="text-sm font-semibold">
-                Saat ini belum ada tiket penawaran aktif di Tier 1.
-              </p>
-              <p className="text-xs mt-1">
-                Pindah jam ke <strong>14:30 WIB (Cron Sweep)</strong> pada pengendali sirkadian di atas untuk memicu penawaran baru.
-              </p>
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-10 text-center text-slate-400 text-xs">
+              Belum ada lot penawaran aktif di Tier 1 saat ini. Gunakan pengendali sirkadian untuk simulasi jam 14:30 WIB.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -148,66 +118,61 @@ export function WartegDashboard() {
                 return (
                   <div
                     key={ofr.id}
-                    className="bg-white border border-slate-200 hover:border-orange-300 rounded-2xl p-4 shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                    className="bg-white border border-slate-200/80 hover:border-[#2A5C5F]/40 rounded-2xl p-5 shadow-2xs hover:shadow-sm transition flex flex-col justify-between"
                   >
                     <div>
-                      {/* Badge & Expiry */}
                       <div className="flex items-center justify-between mb-3">
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-red-600 text-white shadow-2xs">
-                          HEMAT {ofr.discountPercentage}%
+                        <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                          Diskon {ofr.discountPercentage}%
                         </span>
-                        <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                          <Clock className="w-3 h-3 text-amber-600" />
-                          {ofr.expiresInMinutes} menit lagi
+                        <span className="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {ofr.expiresInMinutes}m tersisa
                         </span>
                       </div>
 
-                      {/* Commodity Name & Stall Origin */}
                       <h4 className="text-base font-bold text-slate-900">
                         {comm?.localName || ofr.commodityId}
                       </h4>
                       <p className="text-xs text-slate-500 font-medium">
-                        Kios {vendor?.stallNumber} · {vendor?.name} (Blok {vendor?.block})
+                        Kios {vendor?.stallNumber} · {vendor?.name}
                       </p>
 
-                      {/* Quantity Lot */}
                       <div className="my-3 py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
                         <span className="text-slate-500">Kuantitas Lot:</span>
-                        <strong className="text-slate-900 font-bold font-mono">
+                        <strong className="text-slate-900 font-mono">
                           {ofr.quantityKg} kg
                         </strong>
                       </div>
 
-                      {/* Pricing Comparison */}
-                      <div className="space-y-1 mb-4">
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>Harga Normal Eceran:</span>
+                      <div className="space-y-1 mb-4 text-xs">
+                        <div className="flex items-center justify-between text-slate-400 font-mono">
+                          <span>Harga Eceran:</span>
                           <span className="line-through">
                             Rp {ofr.originalPricePerKg.toLocaleString("id-ID")}/kg
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-orange-600 font-bold">
-                          <span>Harga Surplus PASARIN:</span>
-                          <span className="text-sm">
+                        <div className="flex items-center justify-between text-[#2A5C5F] font-semibold font-mono">
+                          <span>Harga Surplus:</span>
+                          <span>
                             Rp {ofr.salvagePricePerKg.toLocaleString("id-ID")}/kg
                           </span>
                         </div>
-                        <div className="flex items-center justify-between text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between font-bold text-slate-900 pt-1.5 border-t border-slate-100">
                           <span>Total Tagihan:</span>
-                          <span className="text-emerald-700 font-mono text-base">
+                          <span className="text-[#2A5C5F] font-mono text-base">
                             Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Claim Button */}
                     <button
                       onClick={() => handleClaim(ofr)}
                       type="button"
-                      className="w-full py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
+                      className="w-full py-2.5 rounded-xl bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
                     >
-                      <span>Klaim Lot Ini (Amankan Harga)</span>
+                      <span>Klaim Lot Ini</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -218,19 +183,19 @@ export function WartegDashboard() {
         </div>
       )}
 
-      {/* Tab: Pesanan Saya & Status Escrow */}
+      {/* Tab: Pesanan Saya */}
       {activeTab === "pesanan_saya" && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-          <h3 className="text-base font-bold text-slate-900 mb-1">
-            Status Pembelian & Pengamanan Dana Escrow QRIS
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+          <h3 className="text-sm font-bold text-slate-900 mb-1">
+            Status Pesanan & Rekening Escrow QRIS
           </h3>
           <p className="text-xs text-slate-500 mb-4">
-            Dana ditahan aman di Escrow Bank Indonesia sampai Anda/kurir mengonfirmasi serah terima fisik di los pedagang.
+            Dana ditahan aman di escrow sampai verifikasi serah terima fisik kurir di los pedagang
           </p>
 
           {myClaimedOffers.length === 0 ? (
             <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
-              Belum ada lot yang Anda klaim. Buka tab Katalog Flash Sale untuk mulai mengklaim.
+              Belum ada pesanan aktif.
             </div>
           ) : (
             <div className="space-y-3">
@@ -251,25 +216,24 @@ export function WartegDashboard() {
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                             ofr.paymentStatus === "released_to_vendor"
-                              ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                               : ofr.paymentStatus === "held_in_escrow"
-                              ? "bg-sky-100 text-sky-800 border-sky-200"
-                              : "bg-amber-100 text-amber-800 border-amber-200"
+                              ? "bg-[#F0F6F6] text-[#2A5C5F] border-[#D1E1E2]"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
                           }`}
                         >
                           {ofr.paymentStatus === "released_to_vendor"
-                            ? "Selesai (Dana Cair)"
+                            ? "Selesai (Cair)"
                             : ofr.paymentStatus === "held_in_escrow"
-                            ? "Dana Diamankan di Escrow BI"
-                            : "Menunggu Pembayaran QRIS"}
+                            ? "Dana di Escrow BI"
+                            : "Menunggu Pembayaran"}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500">
-                        Kios {vendor?.stallNumber} · {vendor?.name} · Driver:{" "}
-                        <strong>{ofr.allocatedDriver || "Menunggu penugasan"}</strong>
+                        Kios {vendor?.stallNumber} · {vendor?.name} · Driver: {ofr.allocatedDriver || "Menunggu armada"}
                       </p>
                       {ofr.podToken && (
-                        <p className="text-[11px] font-mono text-purple-700 font-semibold mt-1">
+                        <p className="text-[11px] font-mono text-[#2A5C5F] font-semibold mt-1">
                           Token PoD: {ofr.podToken}
                         </p>
                       )}
@@ -277,8 +241,8 @@ export function WartegDashboard() {
 
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="text-xs text-slate-400 block">Total Biaya:</span>
-                        <span className="text-base font-extrabold text-slate-900 font-mono">
+                        <span className="text-xs text-slate-400 block">Total:</span>
+                        <span className="text-sm font-bold text-slate-900 font-mono">
                           Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}
                         </span>
                       </div>
@@ -287,15 +251,15 @@ export function WartegDashboard() {
                         <button
                           onClick={() => setSelectedOfferForQris(ofr)}
                           type="button"
-                          className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                          className="px-3.5 py-2 rounded-xl bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                         >
                           <QrCode className="w-4 h-4" />
-                          Bayar QRIS BI
+                          Bayar QRIS
                         </button>
                       ) : (
-                        <div className="flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          Escrow Terbayar
+                        <div className="flex items-center gap-1 text-xs text-[#2A5C5F] font-semibold bg-[#F0F6F6] px-3 py-1.5 rounded-xl border border-[#D1E1E2]">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Terverifikasi
                         </div>
                       )}
                     </div>
@@ -307,25 +271,24 @@ export function WartegDashboard() {
         </div>
       )}
 
-      {/* Modal QRIS Dinamis Bank Indonesia */}
+      {/* Modal QRIS Dinamis BI */}
       {selectedOfferForQris && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-slate-100 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mx-auto mb-3">
-              <QrCode className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl bg-[#F0F6F6] text-[#2A5C5F] flex items-center justify-center mx-auto mb-3 border border-[#D1E1E2]">
+              <QrCode className="w-5 h-5" />
             </div>
 
-            <h4 className="text-base font-extrabold text-slate-900">
-              Pembayaran QRIS Dinamis BI
+            <h4 className="text-base font-bold text-slate-900">
+              Pembayaran QRIS Escrow
             </h4>
-            <p className="text-xs text-slate-500 mt-1 mb-4">
-              Standar National Merchant Identifier (NMID) Escrow PASARIN
+            <p className="text-xs text-slate-500 mt-0.5 mb-4">
+              NMID: ID102026PASARIN01 · Standar Bank Indonesia
             </p>
 
-            {/* QR Code Graphic Box */}
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 mb-4 mx-auto w-48 h-48 flex flex-col items-center justify-center relative">
-              <div className="w-36 h-36 bg-white p-2 rounded-xl border border-slate-300 flex items-center justify-center">
-                <div className="w-full h-full bg-slate-900 rounded-sm flex items-center justify-center text-white text-[11px] font-mono text-center p-2 leading-tight">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-4 mx-auto w-44 h-44 flex flex-col items-center justify-center">
+              <div className="w-32 h-32 bg-white p-2 rounded-xl border border-slate-300 flex items-center justify-center">
+                <div className="w-full h-full bg-slate-900 rounded-sm flex items-center justify-center text-white text-[10px] font-mono text-center p-2">
                   [QRIS BI PASARIN DYNAMIC QR]
                 </div>
               </div>
@@ -333,14 +296,12 @@ export function WartegDashboard() {
 
             <div className="text-xs space-y-1 text-slate-600 mb-5">
               <div className="flex justify-between">
-                <span>Lot Penyelamatan:</span>
-                <strong className="text-slate-900">
-                  {selectedOfferForQris.quantityKg} kg
-                </strong>
+                <span>Lot:</span>
+                <strong className="text-slate-900">{selectedOfferForQris.quantityKg} kg</strong>
               </div>
               <div className="flex justify-between border-t border-slate-100 pt-1 text-sm font-bold">
-                <span>Total Nominal:</span>
-                <span className="text-emerald-700 font-mono">
+                <span>Total:</span>
+                <span className="text-[#2A5C5F] font-mono">
                   Rp {selectedOfferForQris.totalAmountIdr.toLocaleString("id-ID")}
                 </span>
               </div>
@@ -350,7 +311,7 @@ export function WartegDashboard() {
               <button
                 onClick={handlePaySuccess}
                 type="button"
-                className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                className="w-full py-2.5 rounded-xl bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
               >
                 <Check className="w-4 h-4" />
                 Simulasikan Pembayaran Berhasil
@@ -360,7 +321,7 @@ export function WartegDashboard() {
                 type="button"
                 className="w-full py-2 rounded-xl text-slate-500 hover:bg-slate-100 text-xs font-medium transition cursor-pointer"
               >
-                Tutup / Batalkan
+                Tutup
               </button>
             </div>
           </div>

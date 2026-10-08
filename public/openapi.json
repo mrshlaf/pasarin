@@ -1,0 +1,102 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PASARIN API (Proactive Agent for Market Surplus Redistribution)",
+    "description": "API RESTful Multi-Agen untuk deteksi, penetapan harga dinamis, matchmaking, dan penyelamatan surplus sayur & buah pasar tradisional.",
+    "version": "1.1.0",
+    "contact": {
+      "name": "Tim PASARIN (Marshal Aufa & Zahir)",
+      "email": "pasarin@ui.ac.id"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Pemeriksaan kesehatan sistem dan daftar tools agen",
+        "responses": {
+          "200": { "description": "Sistem sehat dan beroperasi normal" }
+        }
+      }
+    },
+    "/api/orchestrator/run": {
+      "post": {
+        "summary": "Memicu siklus otonom terjadwal harian (Cron 14:30 WIB)",
+        "responses": {
+          "200": { "description": "Siklus otonom selesai dieksekusi" }
+        }
+      }
+    },
+    "/api/orchestrator/query": {
+      "post": {
+        "summary": "Kueri dinamis goal-driven (ReAct multi-agen)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": { "type": "string", "example": "Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?" }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Jawaban dan rencana alokasi multi-agen" }
+        }
+      }
+    },
+    "/api/stocks": {
+      "get": { "summary": "Audit seluruh stok aktif dan tingkat kelayuan" },
+      "post": { "summary": "Menambahkan lot stok komoditas baru" }
+    },
+    "/api/surplus/predict": {
+      "post": { "summary": "Kalkulasi proyeksi surplus kuantitatif per tier" }
+    },
+    "/api/matchmaking": {
+      "post": { "summary": "Pencocokan pembeli dengan verifikasi Quality Gate" }
+    },
+    "/api/dispatch": {
+      "get": { "summary": "Daftar penawaran surplus" },
+      "post": { "summary": "Klaim atau pengiriman penawaran ke Telegram" }
+    },
+    "/api/logistics/fleet": {
+      "post": { "summary": "Perhitungan alokasi armada pickup vs truk bak" }
+    },
+    "/api/pricing/negotiate": {
+      "post": { "summary": "Mesin tawar-menawar otomatis warteg" }
+    },
+    "/api/payments/qris": {
+      "post": { "summary": "Pembuatan QRIS, penahanan escrow, dan pencairan" }
+    },
+    "/api/delivery/handover": {
+      "post": { "summary": "Verifikasi serah terima digital QR (Proof-of-Delivery)" }
+    },
+    "/api/sensors/ingest": {
+      "post": { "summary": "Ingest data sensor IoT suhu, kelembapan, dan etilen kios" }
+    },
+    "/api/vision/inspect": {
+      "post": { "summary": "Inspeksi visual foto sayuran via AI Vision" }
+    },
+    "/api/analytics/impact": {
+      "get": { "summary": "Metrik agregat sampah dialihkan dan emisi metana terhindar" }
+    },
+    "/api/analytics/leaderboard": {
+      "get": { "summary": "Klasemen reputasi sosial pedagang dan lencana hijau" }
+    },
+    "/api/analytics/export": {
+      "get": { "summary": "Ekspor berkas CSV/JSON audit resmi DLH DKI Jakarta" }
+    },
+    "/api/simulation/benchmark": {
+      "get": { "summary": "Suite pengujian otomatis 5 skenario ekstrem" }
+    }
+  }
+}

@@ -6,19 +6,14 @@ import { KIOSKS } from "@/data/kiosks";
 import {
   HeartHandshake,
   Clock,
-  Sparkles,
-  Utensils,
   MapPin,
-  CheckCircle2,
-  AlertTriangle,
+  Utensils,
   Gift,
-  ArrowRight,
 } from "lucide-react";
 
 export function SocialKitchenDashboard() {
   const { offers, claimOfferByBuyer } = useMarketSimulation();
 
-  // Tier 2 offers
   const tier2Offers = offers.filter(
     (o) => o.targetTier === "tier_2" && o.status === "active"
   );
@@ -27,15 +22,14 @@ export function SocialKitchenDashboard() {
     (o) => o.claimantRole === "social_kitchen" || (o.status === "claimed" && o.targetTier === "tier_2")
   );
 
-  const handleClaim = (offer: RescueOffer, isFreeDonation: boolean) => {
+  const handleClaim = (offer: RescueOffer) => {
     claimOfferByBuyer(
       offer.id,
-      "Dapur Sosial & Panti Asuhan Al-Hidayah Kramat Jati",
+      "Dapur Sosial & Panti Asuhan Al-Hidayah",
       "social_kitchen"
     );
   };
 
-  // Hitung total porsi makanan terselamatkan (1 kg sayur = ~4 porsi makan)
   const totalKgRescued = claimedSocialOffers.reduce(
     (acc, o) => acc + o.quantityKg,
     40
@@ -45,72 +39,67 @@ export function SocialKitchenDashboard() {
   return (
     <div className="space-y-6">
       {/* Header Profile */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-rose-600 text-white flex items-center justify-center text-xl font-bold shadow-sm shrink-0">
-              <HeartHandshake className="w-7 h-7" />
+            <div className="w-12 h-12 rounded-xl bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-base font-bold text-slate-900">
                   Dapur Sosial & Panti Asuhan Al-Hidayah
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800 border border-rose-200">
-                  Mitra Sosial Terakreditasi (Tier 2)
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                  Penyelamatan Pangan Tier 2
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                Jl. Dukuh V No. 18, Kramat Jati · Kapasitas: 250 Anak Yatim & Lansia
+                Jl. Dukuh V No. 18, Kramat Jati · Kapasitas 250 Penerima Manfaat
               </p>
             </div>
           </div>
 
-          <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 shrink-0">
-            <span className="text-[10px] text-rose-700 uppercase font-bold tracking-wider block">
-              Dampak Sosial Terakumulasi
+          <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-xl p-3 shrink-0">
+            <span className="text-[10px] text-[#2A5C5F] uppercase font-bold tracking-wider block">
+              Dampak Terakumulasi
             </span>
-            <p className="text-lg font-extrabold text-rose-950 font-mono">
+            <p className="text-base font-bold text-slate-900 font-mono">
               {totalPortionsNutritious} Porsi Makanan
             </p>
-            <span className="text-[11px] text-rose-600">
+            <span className="text-[11px] text-slate-500">
               dari {totalKgRescued} kg sayur surplus
             </span>
           </div>
         </div>
       </div>
 
-      {/* 30-Minute Priority Alert */}
-      <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 lg:p-5 shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-amber-950">
-              Jendela Reservasi Prioritas 30 Menit Dapur Sosial
-            </h3>
-            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-              Sesuai UC-06 pada PRD, Dapur Sosial memiliki hak tebus prioritas selama 30 menit sebelum sistem
-              secara otomatis melakukan <em>Auto-Cascade</em> menurunkan status komoditas ke Tier 3 (Pakan Maggot BSF).
-            </p>
-          </div>
+      {/* 30-Minute Priority Window Note */}
+      <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-2xl p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-white text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0">
+          <Clock className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-xs font-bold text-[#2A5C5F]">
+            Jendela Reservasi Prioritas 30 Menit
+          </h3>
+          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+            Mitra sosial memiliki hak klaim pertama selama 30 menit sebelum sistem secara otomatis mengalihkan komoditas ke Tier 3 (Biokonversi Maggot).
+          </p>
         </div>
       </div>
 
       {/* Available Tier 2 Offers */}
       <div className="space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <span>Surplus Tersedia untuk Penebusan Subsidi / Donasi</span>
-          <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
-            {tier2Offers.length} Lot
-          </span>
-        </h3>
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+          <span>Surplus Tersedia untuk Subsidi & Donasi Pangan</span>
+          <span>{tier2Offers.length} Lot</span>
+        </div>
 
         {tier2Offers.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-400 text-xs">
-            Tidak ada lot yang menunggu klaim Tier 2 saat ini. Semua surplus telah diselamatkan atau belum mencapai ambang kelayuan sosial (Decay 0.65 - 0.85).
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-8 text-center text-slate-400 text-xs">
+            Tidak ada lot yang menunggu klaim Tier 2 saat ini.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,16 +111,16 @@ export function SocialKitchenDashboard() {
               return (
                 <div
                   key={ofr.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between"
+                  className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                        Tier 2 Kemanusiaan
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                        Tier 2 Sosial
                       </span>
-                      <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Sisa Prioritas: {ofr.expiresInMinutes}m
+                      <span className="text-xs font-mono text-slate-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        {ofr.expiresInMinutes}m tersisa
                       </span>
                     </div>
 
@@ -139,25 +128,25 @@ export function SocialKitchenDashboard() {
                       {comm?.localName || ofr.commodityId}
                     </h4>
                     <p className="text-xs text-slate-500">
-                      Asal: Kios {vendor?.stallNumber} · {vendor?.name} (Blok {vendor?.block})
+                      Asal: Kios {vendor?.stallNumber} · {vendor?.name}
                     </p>
 
                     <div className="my-3 p-3 rounded-xl bg-slate-50 space-y-1.5 text-xs">
                       <div className="flex justify-between">
                         <span className="text-slate-500">Kuantitas Lot:</span>
-                        <strong className="text-slate-900">{ofr.quantityKg} kg</strong>
+                        <strong className="text-slate-900 font-mono">{ofr.quantityKg} kg</strong>
                       </div>
-                      <div className="flex justify-between text-rose-700 font-semibold">
-                        <span>Potensi Porsi Gizi:</span>
-                        <span>{estPortions} Porsi Makanan</span>
+                      <div className="flex justify-between text-[#2A5C5F] font-semibold">
+                        <span>Estimasi Porsi:</span>
+                        <span>{estPortions} Porsi Bergizi</span>
                       </div>
-                      <div className="flex justify-between text-slate-400 line-through">
-                        <span>Harga Grosir Asal:</span>
+                      <div className="flex justify-between text-slate-400 line-through font-mono">
+                        <span>Harga Asal:</span>
                         <span>Rp {ofr.originalPricePerKg.toLocaleString("id-ID")}/kg</span>
                       </div>
                       <div className="flex justify-between text-slate-900 font-bold border-t border-slate-200 pt-1.5">
-                        <span>Biaya Tebus Murah (Subsidi):</span>
-                        <span className="text-emerald-700 font-mono text-sm">
+                        <span>Biaya Subsidi:</span>
+                        <span className="text-[#2A5C5F] font-mono text-sm">
                           Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}
                         </span>
                       </div>
@@ -166,20 +155,20 @@ export function SocialKitchenDashboard() {
 
                   <div className="grid grid-cols-2 gap-2 pt-2">
                     <button
-                      onClick={() => handleClaim(ofr, false)}
+                      onClick={() => handleClaim(ofr)}
                       type="button"
-                      className="py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                      className="py-2.5 rounded-xl bg-[#2A5C5F] hover:bg-[#224C4E] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
                       <Utensils className="w-3.5 h-3.5" />
-                      Tebus Murah Subsidi
+                      Tebus Subsidi
                     </button>
                     <button
-                      onClick={() => handleClaim(ofr, true)}
+                      onClick={() => handleClaim(ofr)}
                       type="button"
-                      className="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                      className="py-2.5 rounded-xl border border-[#2A5C5F] hover:bg-[#F0F6F6] text-[#2A5C5F] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
                       <Gift className="w-3.5 h-3.5" />
-                      Klaim Donasi Pangan
+                      Klaim Donasi
                     </button>
                   </div>
                 </div>
