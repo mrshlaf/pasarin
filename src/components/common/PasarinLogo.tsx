@@ -19,9 +19,9 @@ export function PasarinLogo({
       : "/brand/pasarin_icon_teal.png";
 
   const iconDimensions = {
-    sm: { w: 26, h: 24 },
-    md: { w: 34, h: 31 },
-    lg: { w: 46, h: 42 },
+    sm: { w: 32, h: 27 },
+    md: { w: 44, h: 37 },
+    lg: { w: 58, h: 49 },
   }[size];
 
   const titleSize = {
@@ -31,13 +31,13 @@ export function PasarinLogo({
   }[size];
 
   const subtitleSize = {
-    sm: "text-[9px] tracking-[0.16em]",
-    md: "text-[10px] tracking-[0.18em]",
-    lg: "text-xs tracking-[0.2em]",
+    sm: "text-[9px] tracking-wider",
+    md: "text-[10px] tracking-wider",
+    lg: "text-xs tracking-wider",
   }[size];
 
   return (
-    <div className={`flex items-center gap-3.5 ${className}`}>
+    <div className={`flex items-center gap-3.5 select-none ${className}`}>
       <div className="relative shrink-0 flex items-center justify-center">
         <Image
           src={iconSrc}
@@ -45,11 +45,12 @@ export function PasarinLogo({
           width={iconDimensions.w}
           height={iconDimensions.h}
           className="object-contain"
+          unoptimized
           priority
         />
       </div>
 
-      <div className="flex flex-col">
+      <div className="flex flex-col justify-center">
         <div className="flex items-center gap-1.5">
           <span
             className={`font-black uppercase leading-none font-sans ${titleSize} ${
@@ -62,7 +63,7 @@ export function PasarinLogo({
         </div>
         {showSubtitle && (
           <span
-            className={`font-semibold uppercase leading-none mt-1 ${subtitleSize} ${
+            className={`font-semibold uppercase leading-none mt-1.5 whitespace-nowrap ${subtitleSize} ${
               variant === "white" ? "text-slate-200" : "text-slate-500"
             }`}
           >
