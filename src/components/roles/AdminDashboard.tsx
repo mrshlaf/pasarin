@@ -71,7 +71,7 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header Profile */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0">
@@ -82,22 +82,22 @@ export function AdminDashboard() {
                 <h2 className="text-base font-bold text-slate-900">
                   Pengawasan Sistem Multi-Agen & Kuota Cloud
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#F0F6F6] text-[#2A5C5F] border border-[#D1E1E2]">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#F0F6F6] text-[#1E4345] border border-[#D1E1E2]">
                   17 Spesialis Agen Aktif
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-slate-600 mt-0.5 font-medium">
                 Arsitektur Efisiensi Serverless (100% Free-Tier Architecture Compliant)
               </p>
             </div>
           </div>
 
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 shrink-0 text-center min-w-32">
-            <span className="text-[10px] text-emerald-700 uppercase font-bold tracking-wider block">
+          <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 shrink-0 text-center min-w-32">
+            <span className="text-[10px] text-[#065F46] uppercase font-bold tracking-wider block">
               Status Server
             </span>
-            <p className="text-sm font-bold text-emerald-950 flex items-center justify-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            <p className="text-sm font-bold text-[#065F46] flex items-center justify-center gap-1.5 mt-0.5">
+              <span className="w-2 h-2 rounded-full bg-[#047857] animate-ping" />
               100% Operasional
             </p>
           </div>
@@ -105,11 +105,11 @@ export function AdminDashboard() {
       </div>
 
       {/* Free-Tier Quota Monitor */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <h3 className="text-sm font-bold text-slate-900 mb-1">
           Monitor Batas Kuota Layanan Cloud (Free-Tier Efficiency)
         </h3>
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-slate-600 mb-4 font-medium">
           Pemakaian kuota terdistribusi yang diproteksi caching & bounded worker
         </p>
 
@@ -117,16 +117,16 @@ export function AdminDashboard() {
           {QUOTAS.map((q, idx) => (
             <div
               key={idx}
-              className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/60 flex flex-col justify-between"
+              className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-xs font-bold text-slate-900">{q.service}</span>
-                  <span className="text-[10px] font-semibold text-[#2A5C5F] bg-[#F0F6F6] px-2 py-0.2 rounded-full border border-[#D1E1E2]">
+                  <span className="text-[10px] font-bold text-[#075985] bg-sky-100 px-2 py-0.2 rounded-full border border-sky-300">
                     {q.usagePercent}%
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mb-2">{q.component}</p>
+                <p className="text-[11px] text-slate-600 mb-2 font-medium">{q.component}</p>
                 <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mb-2">
                   <div
                     className="h-full bg-[#2A5C5F] rounded-full"
@@ -135,7 +135,7 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 font-mono">
+              <div className="flex justify-between text-[11px] text-slate-700 pt-1 border-t border-slate-200 font-mono font-medium">
                 <span>{q.currentUsage}</span>
                 <span>Batas: {q.quotaLimit}</span>
               </div>
@@ -145,11 +145,11 @@ export function AdminDashboard() {
       </div>
 
       {/* Multi-Agent ReAct CoT Inspector */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <h3 className="text-sm font-bold text-slate-900 mb-1">
           Inspektor Penalaran Multi-Agen (Chain-of-Thought Trace)
         </h3>
-        <p className="text-xs text-slate-500 mb-4">
+        <p className="text-xs text-slate-600 mb-4 font-medium">
           Pelacakan alur observasi, pemikiran, dan aksi otonom ReAct per spesialis agen
         </p>
 
@@ -162,23 +162,23 @@ export function AdminDashboard() {
                 type="button"
                 className={`w-full text-left p-2.5 rounded-xl border text-xs transition cursor-pointer ${
                   selectedAgent === ag.name
-                    ? "bg-[#F0F6F6] border-[#D1E1E2] text-[#2A5C5F] font-bold"
-                    : "bg-white border-transparent hover:bg-slate-50 text-slate-600"
+                    ? "bg-[#F0F6F6] border-[#D1E1E2] text-[#1E4345] font-bold shadow-2xs"
+                    : "bg-white border-transparent hover:bg-slate-50 text-slate-700"
                 }`}
               >
-                <div className="font-mono text-xs">{ag.name}</div>
-                <div className="text-[11px] text-slate-400 font-normal">{ag.role}</div>
+                <div className="font-mono text-xs font-semibold">{ag.name}</div>
+                <div className="text-[11px] text-slate-500 font-medium">{ag.role}</div>
               </button>
             ))}
           </div>
 
-          <div className="lg:col-span-2 bg-[#0F171A] text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto">
+          <div className="lg:col-span-2 bg-[#0F171A] text-slate-200 p-4 rounded-xl font-mono text-xs overflow-x-auto shadow-inner">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2 mb-3 text-slate-400 text-[11px]">
               <span className="flex items-center gap-1.5">
                 <Terminal className="w-3.5 h-3.5 text-[#38BDF8]" />
                 Trace Log: {selectedAgent}
               </span>
-              <span className="text-emerald-400">[ONLINE]</span>
+              <span className="text-emerald-400 font-bold">[ONLINE]</span>
             </div>
 
             <div className="space-y-2 leading-relaxed text-[11px]">
@@ -194,7 +194,7 @@ export function AdminDashboard() {
               <p className="text-emerald-400">
                 [DISPATCH] Mengirimkan pesan penawaran ke los Kios A-12 via Telegram gateway.
               </p>
-              <p className="text-slate-500">
+              <p className="text-slate-400">
                 [METRIC] Estimasi pengalihan TPA: 35 kg sayur · Pencegahan emisi: 16.8 kg CO₂e.
               </p>
             </div>

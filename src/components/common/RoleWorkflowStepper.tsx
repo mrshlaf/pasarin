@@ -47,17 +47,17 @@ export function RoleWorkflowStepper() {
   else if (currentStage === "handover") activeStep = 4;
 
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs mb-6">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs mb-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
         <div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">
             Siklus Penyelamatan Pangan
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-600 mt-0.5 font-medium">
             Tahapan orkestrasi multi-agen dari inspeksi awal hingga validasi serah terima fisik
           </p>
         </div>
-        <span className="text-xs font-semibold text-[#0284C7] bg-sky-50 px-2.5 py-1 rounded-lg border border-sky-200 self-start sm:self-auto">
+        <span className="text-xs font-bold text-[#075985] bg-sky-100/80 px-2.5 py-1 rounded-lg border border-sky-300 self-start sm:self-auto">
           Tahap {activeStep} dari 4 Aktif
         </span>
       </div>
@@ -72,10 +72,10 @@ export function RoleWorkflowStepper() {
               key={s.step}
               className={`p-3.5 rounded-xl border transition flex flex-col justify-between ${
                 isCurrent
-                  ? "bg-sky-50/50 border-[#0284C7]/40 ring-1 ring-[#0284C7]/20 shadow-xs"
+                  ? "bg-sky-50/70 border-[#0369A1] ring-1 ring-[#0369A1]/30 shadow-xs"
                   : isDone
-                  ? "bg-slate-50/70 border-slate-200/80 text-slate-700"
-                  : "bg-white border-slate-200/60 text-slate-400 opacity-60"
+                  ? "bg-emerald-50/40 border-emerald-200 text-slate-800"
+                  : "bg-slate-50/60 border-slate-200 text-slate-700"
               }`}
             >
               <div>
@@ -83,22 +83,22 @@ export function RoleWorkflowStepper() {
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition ${
                       isDone
-                        ? "bg-[#059669] text-white"
+                        ? "bg-[#047857] text-white"
                         : isCurrent
-                        ? "bg-[#0284C7] text-white shadow-xs"
-                        : "bg-slate-200 text-slate-600"
+                        ? "bg-[#0369A1] text-white shadow-xs"
+                        : "bg-slate-200 text-slate-700"
                     }`}
                   >
                     {isDone ? <Check className="w-3.5 h-3.5" /> : s.step}
                   </span>
 
                   <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-md ${
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${
                       isCurrent
-                        ? "text-[#0284C7] bg-sky-100 font-semibold"
+                        ? "text-[#075985] bg-sky-100 border-sky-300 font-bold"
                         : isDone
-                        ? "text-[#059669] bg-emerald-50"
-                        : "text-slate-500 bg-slate-100"
+                        ? "text-[#065F46] bg-emerald-100/70 border-emerald-200 font-semibold"
+                        : "text-slate-600 bg-slate-100 border-slate-200 font-medium"
                     }`}
                   >
                     {s.agentLabel}
@@ -110,19 +110,19 @@ export function RoleWorkflowStepper() {
                     isCurrent
                       ? "text-slate-900 font-extrabold"
                       : isDone
-                      ? "text-slate-800"
-                      : "text-slate-500"
+                      ? "text-slate-900"
+                      : "text-slate-700"
                   }`}
                 >
                   {s.title}
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-1 leading-snug">
+                <p className="text-[11px] text-slate-600 mt-1 leading-snug font-normal">
                   {s.subtitle}
                 </p>
               </div>
 
               {isCurrent && (
-                <div className="mt-3 pt-2 border-t border-sky-200 flex items-center justify-between text-[10px] text-[#0284C7] font-semibold">
+                <div className="mt-3 pt-2 border-t border-sky-200 flex items-center justify-between text-[10px] text-[#0369A1] font-bold">
                   <span>Proses Berjalan</span>
                   <ArrowRight className="w-3 h-3" />
                 </div>
