@@ -4,6 +4,12 @@
   "buildCommand": "next build",
   "installCommand": "npm install",
   "cleanUrls": true,
+  "crons": [
+    {
+      "path": "/api/cron/afternoon-sweep",
+      "schedule": "30 7 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

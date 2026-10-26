@@ -1,9 +1,9 @@
 /**
  * PASARIN API Standard Type Definitions
- * Aligned with PRD_FIX_PASARIN.md Section 15.4 (Jira PSR-3)
+ * Aligned with PRD_FIX_PASARIN.md Section 15.4 (Jira PSR-3 & PSR-4)
  *
  * Provides standardized envelope for all autonomous sub-agent endpoints,
- * health probes, and client communication.
+ * scheduled cron runners, health probes, and audit logging.
  */
 
 export interface ApiResponse<T = unknown> {
@@ -44,4 +44,38 @@ export interface AgentSweepTriggerPayload {
   cronSecret?: string;
   forcedTrigger?: boolean;
   targetKiosksCount?: number;
+}
+
+export interface SystemAuditTrailRecord {
+  event_id: string;
+  subsystem: string;
+  action_type: string;
+  payload_json: Record<string, unknown>;
+  execution_duration_ms?: number;
+  occurred_at: string;
+}
+
+export interface AfternoonSweepResult {
+  eventId: string;
+  subsystem: string;
+  actionType: string;
+  schedule: string;
+  triggeredAt: string;
+  result: string;
+  executionDurationMs: number;
+  kiosksScanned: number;
+  surplusDetectedKg: number;
+  allocations: {
+    tier1WartegKg: number;
+    tier2SocialKg: number;
+    tier3MaggotKg: number;
+  };
+  financials: {
+    estimatedCapitalRecoveredIdr: number;
+    discountAveragePercent: number;
+  };
+  auditTrail: {
+    logged: boolean;
+    storage: 'supabase' | 'in_memory';
+  };
 }
