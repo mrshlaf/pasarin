@@ -49,3 +49,43 @@ next-env.d.ts
 /MoU_Page_*.png
 /Slide_*.png
 /.backup_local/
+
+# academic PRD documents & course notes
+*PRD*.md
+/PRD_MASTER_BUNDLE/
+/PITCH_DECK_PASARIN.md
+/Chapter_*.md
+/*UTS*.md
+/*MABIM*.md
+/*RINGKASAN*.md
+/*CHEATSHEET*.md
+/*LEMBAR_CATATAN*.md
+/CLAUDE.md
+/AGENTS.md
+/_archive_docs/
+/SUBMISSION_EMAS_PASARIN/
+
+# diagram exports
+/diagrams/
+/*.puml
+/*uml_*.png
+/*PASARIN_A4_*.png
+/*helicopter_view*.png
+
+# temporary and intermediate brand crop artifacts
+/public/brand/contours_vis.png
+/public/brand/cover*.png
+/public/brand/downloaded*.png
+/public/brand/footer*.png
+/public/brand/giant*.png
+/public/brand/header*.png
+/public/brand/logo_exact*.png
+/public/brand/logo_icon*.png
+/public/brand/lotus_master*.png
+/public/brand/lotus_raw*.png
+/public/brand/pasarin_center*.png
+/public/brand/pasarin_file*.png
+/public/brand/pasarin_png*.png
+/public/brand/text_pasarin*.png
+/public/brand/PASARIN.png
+/supabase/migrations/20260923000001_pasarin_schema.sql
