@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, ReactNode } from "react";
-import { COMMODITIES, Commodity } from "@/data/commodities";
-import { KIOSKS, Kiosk } from "@/data/kiosks";
+import { COMMODITIES } from "@/data/commodities";
+import { KIOSKS } from "@/data/kiosks";
 import { calculateDecay, DecayEvaluation } from "@/lib/decayEngine";
 
 export type AppRole =
@@ -187,7 +187,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("vendor");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("vendor_kramat_01");
   const [currentStage, setCurrentStage] = useState<TimeOfDayStage>("cron_sweep");
-  const [stockItems, setStockItems] = useState<StockItem[]>(INITIAL_STOCKS);
+  const [stockItems] = useState<StockItem[]>(INITIAL_STOCKS);
   const [vendorWalletBalanceIdr, setVendorWalletBalanceIdr] = useState<number>(345000);
 
   // Initial Offers

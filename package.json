@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test:db": "tsx scripts/test_supabase_connection.ts",
     "db:migrate": "tsx scripts/migrate_and_seed.ts"
   },

@@ -254,8 +254,8 @@ Terletak di bagian atas viewport (`sticky top-0 z-30`), dirancang dengan backgro
   - **Circadian Clock Pill:** Ikon `Clock` Sky 700 (`#0369A1`), format jam monospaced tegas, label tahap sirkadian aktif.
   - **IoT Microclimate Pill:** Latar belakang soft teal (`#F0F6F6`), border `#D1E1E2`, menampilkan suhu waktu nyata (misal: `32.5°C`) dan kelembapan relatif (`68% RH`).
   - **Rain & Muddy Pill:** Ikon `CloudRain`, status dinamis berubah menjadi `bg-sky-50 text-[#075985]` saat fase hujan lebat aktif.
-  - **Escrow Pool Pill:** Ikon `Wallet`, angka saldo penampung escrow Bank Indonesia terakumulasi secara monospaced.
-  - **Carbon Credit Pill:** Ikon `Leaf`, latar emerald lembut (`bg-emerald-50`), menghitung akumulasi reduksi gas metana dan $CO_2e$ standar IPCC 2006.
+  - **Escrow Pool Pill:** Ikon `Wallet`, angka saldo penampung escrow simulasi QRIS terakumulasi secara monospaced.
+  - **Waste Diversion Pill:** Ikon `Leaf`, latar emerald lembut (`bg-emerald-50`), menghitung akumulasi tonase sayur yang berhasil dialihkan dari pembuangan sampah.
   - **Telegram Simulator Trigger:** Tombol pemicu modal ponsel pintar `@pasarin_bot` lengkap dengan lencana bulat merah penanda pesan yang butuh tindakan.
   - **Trigger Simulasi 14:30:** Tombol aksi langsung untuk memicu Autonomous Sweep jam rawan pasar.
 
@@ -290,14 +290,14 @@ Menyajikan 5 tombol simulasi waktu sirkadian pasar:
 - **Profil Kios & Switcher:** Dropdown interaktif pemilih 30 kios Pasar Kramat Jati lengkap dengan nomor los, nama pemilik, dan status izin PD Pasar Jaya terverifikasi.
 - **Kartu Saldo Escrow:** Widget saldo dompet pedagang yang otomatis bertambah saat Proof-of-Delivery tervalidasi.
 - **Banner Persetujuan 1-Ketuk:** Muncul otomatis saat ada stok yang terancam rusak dengan tombol **Setuju Jual** (Sky 700 `#0369A1`) dan **Lewati**.
-- **VisualInspectionCard (MobileNetV3):** Kartu evaluasi citra kamera los yang menyajikan skor *Confidence* ($94.8\%$) dan *Indeks Klorosis Daun* ($14.2\%$).
+- **DecayEvaluationCard (Arrhenius-Q10):** Kartu evaluasi kinetika respirasi biologis los yang menyajikan skor *Decay Score* dan jam simpan aman secara matematis murni tanpa kamera fisik.
 - **StockMatrixTable:** Tabel matriks inventaris komoditas dengan visual bar persentase *Decay Score*, jam simpan aman, dan rekomendasi tingkatan alokasi.
 - **Form Bongkar Muatan Baru:** Modal form input komoditas subuh dan kuantitas kilogram.
 
 ### 7.2 WartegDashboard (Shopee Buyer App Pembeli Warteg)
 - **Tab Navigasi:** Berpindah antara *Katalog Lot Surplus* dan *Pesanan & Escrow*.
 - **Kartu Katalog Flash Sale:** Kartu penawaran terdiskon 50%-70% dengan lencana diskon tegas, hitung mundur kedaluwarsa tiket, komparasi harga grosir vs harga penyelamatan, dan tombol **Klaim Lot Ini**.
-- **Modal Pembayaran QRIS Dinamis BI:** Menampilkan QR code pembayaran berstandar NMID Bank Indonesia dengan simulasi konfirmasi instan untuk mengunci dana di rekening escrow.
+- **Modal Pembayaran QRIS Simulasi:** Menampilkan QR code pembayaran berstandar QRIS dengan simulasi konfirmasi instan untuk mengunci dana di rekening escrow aplikasi.
 
 ### 7.3 SocialKitchenDashboard (Penyelamatan Pangan Tier 2)
 - **Kalkulator Dampak Sosial:** Penghitung akumulasi porsi makan bergizi untuk dhuafa dan panti asuhan (1 kg sayur $\approx 4$ porsi).
@@ -311,7 +311,7 @@ Menyajikan 5 tombol simulasi waktu sirkadian pasar:
 
 ### 7.5 LogisticsDashboard (Armada Logistik & Handover PoD)
 - **Klasifikasi Armada:** Motor Viar Roda 3 ($\le 300\text{ kg}$), Daihatsu GranMax ($301 - 1000\text{ kg}$), Truk Bak ($> 1000\text{ kg}$).
-- **Modal Validasi Serah Terima PoD:** Slider simulasi radius koordinat GPS geofence ($\le 50\text{ meter}$) dari los pedagang dipadu token kriptografi HMAC-SHA256. Jika kurir berada di luar batas 50m, sistem menolak pencairan escrow secara otomatis.
+- **Modal Validasi Serah Terima PoD:** Konfirmasi serah terima digital satu ketuk antara kurir dan pedagang kios tanpa memerlukan verifikasi GPS geofence yang rentan terganggu di bawah atap seng los basah.
 
 ### 7.6 ManagerDashboard (Pengelola Pasar Jaya & Pelaporan DLH)
 - **Monitoring Mikroklimat Lorong:** Telemetri IoT suhu dan kelembapan per lorong los (Blok A, Blok B, Blok C).
@@ -321,12 +321,12 @@ Menyajikan 5 tombol simulasi waktu sirkadian pasar:
 ### 7.7 AdminDashboard (Infrastruktur & Kuota Free-Tier)
 - **Monitor Kuota Cloud Free-Tier:** Visualisasi persentase pemakaian kuota gratis Vercel (100 GB), Supabase (500 MB), Gemini 2.0 Flash (15 RPM / 1.500 RPD), OpenWeather (1.000 Call), dan Telegram API.
 - **QualityGatePlayground:** Simulator uji pertahanan sistem gerbang mutu terhadap manipulasi moral hazard (menolak pengalihan sayuran konsumsi manusia ke pakan maggot).
-- **EscrowLedgerTable:** Buku besar pencatatan riwayat transaksi pembayaran QRIS dinamis BI dan status settlement dana escrow.
+- **EscrowLedgerTable:** Buku besar pencatatan riwayat transaksi pembayaran simulasi QRIS dan status settlement dana escrow.
 - **Chain-of-Thought (CoT) Explorer:** Konsol terminal pelacakan alur observasi, pemikiran, dan aksi otonom ReAct untuk 17 spesialis agen.
 
 ---
 
-## 8. SIMULATOR BOT TELEGRAM (@PASARIN_BOT) & VERIFIKASI POD GEOFENCE
+## 8. SIMULATOR BOT TELEGRAM (@PASARIN_BOT) & SERAH TERIMA DIGITAL
 
 ### 8.1 Smartphone Frame Simulator (`TelegramDeviceSimulator.tsx`)
 - Meniru wujud fisik smartphone modern (`rounded-[2.5rem] bg-[#0F171A] border-4 border-slate-700/80`) dengan notch speaker atas.
@@ -334,13 +334,11 @@ Menyajikan 5 tombol simulasi waktu sirkadian pasar:
 - Filter obrolan: *Semua*, *Kios Pedagang*, *Grup Warteg*.
 - Pesan penawaran dilengkapi tombol inline callback **Setuju Jual** dan **Lewati** yang terhubung langsung ke state reaktif.
 
-### 8.2 Protokol Proof-of-Delivery (PoD) Zero-Trust
-1. Pembeli mengunci dana di rekening penampung escrow QRIS (`status: 'held_in_escrow'`).
-2. Sistem menerbitkan token unik berformat `POD-HMAC-XXXXXX`.
-3. Kurir tiba di titik fisik los pedagang dan memicu validasi.
-4. Sistem memeriksa koordinat geofencing HTML5 Geolocation. Jarak wajib $\le 50.0\text{ meter}$ dari titik los.
-5. Jika valid, dana escrow dilepaskan ke saldo pedagang (`status: 'released_to_vendor'`), status tiket berubah menjadi *settled*, dan audit emisi karbon IPCC 2006 dicatat permanen.
-
+### 8.2 Protokol Proof-of-Delivery (PoD) Digital Sederhana
+1. Pembeli mengunci dana di rekening penampung escrow simulasi QRIS (`status: 'held_in_escrow'`).
+2. Sistem menerbitkan kode unik serah terima barang.
+3. Kurir tiba di titik fisik los pedagang dan mengonfirmasi serah terima muatan.
+4. Dana escrow otomatis dilepaskan ke saldo dompet pedagang (`status: 'released_to_vendor'`) dan status tiket berubah menjadi *settled*.
 ---
 
 ## 9. INTEGRASI DIKSI EDITORIAL (ANTI-AI CLUTTER & ANTI-SLOP)
@@ -349,7 +347,7 @@ Untuk menjamin estetika antarmuka berstandar karya rekayasa manusia murni tanpa 
 1. **0 Emotikon Dekoratif Berlebih:** Seluruh emotikon visual diganti dengan ikon vektor monokromatik presisi dari pustaka *Lucide React*.
 2. **Eliminasi AI Jargon:** Istilah-istilah artifisial seperti *"Autonomous Sweep Jam Rawan"* diganti menjadi *"Evaluasi Mutu Harian"*, *"Bursa Flash Sale AI"* diganti menjadi *"Katalog Lot Surplus"*.
 3. **Tipografi Humanis:** Menggunakan hierarki font Geist Sans/Arial dengan kontras bobot tegas antara label, angka monospaced, dan paragraf deskripsi.
-
+4. **Dokumentasi Kode Sumber Bahasa Indonesia Anti-Slop:** Seluruh komponen React (`.tsx`), custom hook, dan fungsi utilitas wajib memuat blok JSDoc dalam Bahasa Indonesia yang lugas dan faktual, berfokus pada peran antarmuka, relasi state reaktif, efek samping DOM, serta penanganan kondisi batas tanpa kata-kata sanjungan generik khas AI.
 ---
 
 ## 10. PANDUAN REKONSTRUKSI PROYEK DARI NOL (STEP-BY-STEP REPRODUCIBILITY)

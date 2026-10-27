@@ -73,8 +73,9 @@ async function runMigrationAndSeed() {
     console.log(`• Offers Aktif: ${countOffers.rows[0].count} penawaran`);
 
     console.log("\n🎉 SELURUH TAHAPAN MIGRASI & SEEDING SELESAI 100%!");
-  } catch (err: any) {
-    console.error("❌ Terjadi kesalahan saat migrasi/seeding:", err.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("❌ Terjadi kesalahan saat migrasi/seeding:", msg);
   } finally {
     await client.end();
   }
