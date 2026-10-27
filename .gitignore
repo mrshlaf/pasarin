@@ -40,3 +40,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local office exports and submissions
+/*.docx
+/*.pdf
+/*.pptx
+/MoU_PASARIN_Page_*.png
+/MoU_Page_*.png
+/Slide_*.png
+/.backup_local/

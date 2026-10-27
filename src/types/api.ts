@@ -79,3 +79,33 @@ export interface AfternoonSweepResult {
     storage: 'supabase' | 'in_memory';
   };
 }
+
+/**
+ * Kontrak data telemetri cuaca mikro Pasar Induk Kramat Jati
+ * @see Jira Ticket PSR-5 (Hyperlocal Climate Telemetry Agent)
+ * @see PRD Section 4.3 & 15.4
+ */
+export interface WeatherTelemetryData {
+  /** Suhu udara aktual dalam derajat Celsius */
+  temperatureC: number;
+  /** Kelembapan relatif udara dalam persen (0 - 100%) */
+  humidityPercent: number;
+  /** Estimasi curah hujan per jam dalam satuan milimeter (mm) */
+  rainfallMm: number;
+  /** Deskripsi kondisi cuaca teks singkat (misal: 'Clouds', 'Rain', 'Clear') */
+  weatherCondition: string;
+  /** Penanda boolean apakah kondisi cuaca saat ini hujan (memicu redaman pembeli PSR-15) */
+  isRaining: boolean;
+  /** Koordinat geografis stasiun pengamatan mikro */
+  coordinates: {
+    latitude: number;
+    longitude: number;
+    locationName: string;
+  };
+  /** Status pemenuhan data telemetri: HIT (dari cache memori), MISS (panggilan API baru), atau FALLBACK (darurat offline) */
+  source: 'CACHE' | 'LIVE_API' | 'FALLBACK';
+  /** Stempel waktu ISO-8601 saat data direkam atau dicache */
+  recordedAt: string;
+  /** Waktu kedaluwarsa cache dalam ISO-8601 (15 menit pasca perekaman) */
+  cacheExpiresAt: string;
+}

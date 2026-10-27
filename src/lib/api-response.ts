@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { ZodSchema, ZodError } from "zod";
+import { ZodSchema } from "zod";
 import { ApiResponse } from "@/types/api";
 
 /**

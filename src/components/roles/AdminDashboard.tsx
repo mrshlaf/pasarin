@@ -9,7 +9,6 @@ import {
   Wallet,
   CheckCircle2,
   XCircle,
-  FileText,
 } from "lucide-react";
 
 interface FreeTierQuota {
@@ -335,7 +334,7 @@ export function AdminDashboard() {
                 [THINK] Kinetika Arrhenius mendeteksi laju respirasi komoditas daun meningkat pada los Blok A.
               </p>
               <p className="text-amber-300">
-                [ACTION] QualityGate memverifikasi Decay Score: 0.58. Klasifikasi: 'Tier 1 Warteg'. Menerbitkan tiket penawaran surplus terdiskon.
+                [ACTION] QualityGate memverifikasi Decay Score: 0.58. Klasifikasi: &apos;Tier 1 Warteg&apos;. Menerbitkan tiket penawaran surplus terdiskon.
               </p>
               <p className="text-emerald-400">
                 [DISPATCH] Mengirimkan pesan penawaran ke los Kios A-12 via Telegram gateway.
