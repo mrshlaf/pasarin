@@ -1,10 +1,4 @@
-/**
- * System Audit Trail Logger
- * Aligned with PRD_FIX_PASARIN.md Section 7.1 (Table 12 system_audit_trail) & Jira PSR-4
- *
- * Records cryptographic transaction security events, cron sweep triggers,
- * and multi-agent reasoning steps into Supabase with in-memory resilient buffering.
- */
+// System audit logger dengan Supabase persistence & in-memory fallback buffer (PSR-4)
 
 import { supabase } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
@@ -19,10 +13,7 @@ interface RecordAuditParams {
   durationMs?: number;
 }
 
-/**
- * Persists an audit log entry to Supabase system_audit_trail table
- * and caches it in memory for instant dashboard retrieval.
- */
+// Simpan event audit ke Supabase atau ring buffer in-memory
 export async function recordAuditLog(params: RecordAuditParams): Promise<{
   success: boolean;
   eventId: string;
@@ -43,13 +34,13 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
     occurred_at: occurredAt,
   };
 
-  // Prepend to ring buffer
+  // Simpan ke ring buffer
   inMemoryAuditRingBuffer.unshift(record);
   if (inMemoryAuditRingBuffer.length > MAX_RING_BUFFER_SIZE) {
     inMemoryAuditRingBuffer.pop();
   }
 
-  // Attempt Supabase persistence if database URL is configured
+  // Coba persist ke Supabase jika URL sudah diset
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isSupabaseLive = Boolean(supabaseUrl) && !supabaseUrl?.includes("placeholder");
 
@@ -61,6 +52,7 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
           subsystem: record.subsystem,
           action_type: record.action_type,
           payload_json: record.payload_json,
+          execution_duration_ms: record.execution_duration_ms ?? 0,
           occurred_at: record.occurred_at,
         },
       ]);
@@ -68,18 +60,16 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
       if (!error) {
         return { success: true, eventId, storage: "supabase" };
       }
-      console.warn("[Audit Logger] Supabase insert failed, retained in memory:", error.message);
+      console.warn("[recordAuditLog] Gagal insert Supabase, fallback ke buffer lokal:", error.message);
     } catch (err) {
-      console.warn("[Audit Logger] Network error persisting audit log, retained in memory:", err);
+      console.warn("[recordAuditLog] Supabase offline, fallback ke buffer lokal:", err);
     }
   }
 
   return { success: true, eventId, storage: "in_memory" };
 }
 
-/**
- * Retrieves the latest recorded audit logs from memory buffer
- */
+// Ambil riwayat audit log terbaru
 export function getRecentAuditLogs(limit = 20): SystemAuditTrailRecord[] {
-  return inMemoryAuditRingBuffer.slice(0, Math.max(1, limit));
+  return inMemoryAuditRingBuffer.slice(0, limit);
 }

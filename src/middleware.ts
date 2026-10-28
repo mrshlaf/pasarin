@@ -1,22 +1,18 @@
+// Global Edge Middleware: security & CORS headers
+
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/**
- * PASARIN Global Edge Middleware
- * Aligned with PRD_FIX_PASARIN.md Section 15.4 (Jira PSR-3)
- *
- * Enforces security headers and handles API routing preflight.
- */
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
-  // Standard Security Headers
+  // Header keamanan standar
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Service-Identity", "PASARIN-Engine-v0.1.0");
 
-  // CORS headers for API routes
+  // CORS headers untuk route /api
   if (request.nextUrl.pathname.startsWith("/api")) {
     response.headers.set("Access-Control-Allow-Origin", "*");
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");

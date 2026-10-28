@@ -1,16 +1,6 @@
 /**
- * Endpoint Evaluasi Kinetika Peluruhan Biologis Arrhenius-Q10
- *
- * Rute: GET /api/kinetics/decay
- * Rute: POST /api/kinetics/decay
- *
- * @see Jira Ticket PSR-14 (Biological Shelf-Life Decay Engine)
- * @see PRD_FIX_PASARIN.md Bagian 5.1 & Bagian 15.4.1
- *
- * Kriteria Penerimaan (DoD) yang Dipenuhi:
- * [x] Laju penurunan mutu daun terbukti meningkat dua kali lipat lebih cepat pada suhu terik pasar (Arrhenius-Q10).
- * [x] Sayuran dengan masa pajang melebihi batas waktu aman otomatis masuk kategori penyelamatan tingkat pertama (Tier 1).
- * [x] Perhitungan berjalan murni berbasis formula matematika tanpa ketergantungan perangkat keras kamera.
+ * GET /api/kinetics/decay: hitung peluruhan kinetika komoditas (single / batch 30 komoditas)
+ * POST /api/kinetics/decay: evaluasi dinamis batch item inventaris lapak
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -23,18 +13,7 @@ import { DecayEvaluationResult } from "@/types/api";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Menangani permintaan HTTP GET untuk evaluasi kinetika pembusukan sayuran.
- *
- * Parameter Kueri URL (Opsional):
- * - `commodityId`: String ID komoditas (misal: 'kangkung', 'bayam', 'sawi_hijau'). Jika tidak disertakan, sistem mengevaluasi seluruh 30 komoditas.
- * - `hoursElapsed`: Angka jam pajang sejak subuh (default: 10.5 jam jika tidak diisi).
- * - `temperatureC`: Angka suhu lingkungan los pasar (°C, default: 32.5°C).
- * - `humidityPercent`: Angka kelembapan relatif los pasar (%, default: 75%).
- *
- * @param req - Objek NextRequest yang memuat parameter kueri URL.
- * @returns NextResponse berisi ApiResponse dengan objek DecayEvaluationResult tunggal atau array.
- */
+// Evaluasi via query params (?commodityId=kangkung&hoursElapsed=8.5)
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -58,7 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
       if (!singleEvaluation) {
         return errorResponse(
-          `Komoditas dengan ID '${commodityId}' tidak ditemukan di dalam katalog pasar`,
+          `Komoditas dengan ID '${commodityId}' tidak ditemukan dalam katalog 30 komoditas pasar`,
           404
         );
       }
@@ -66,7 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return successResponse(singleEvaluation, 200);
     }
 
-    // Jika commodityId tidak ditentukan, evaluasi seluruh 30 komoditas pasar secara batch
+    // Default: evaluasi batch seluruh 30 komoditas
     const batchEvaluations: DecayEvaluationResult[] = getAllCommodityEvaluations(
       hoursElapsed,
       temperatureC,
@@ -75,54 +54,54 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     return successResponse(batchEvaluations, 200);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Terjadi kesalahan internal saat mengevaluasi kinetika peluruhan";
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan internal kalkulasi kinetika";
     console.error("[GET /api/kinetics/decay Error]:", error);
     return errorResponse(message, 500);
   }
 }
 
-/**
- * Menangani permintaan HTTP POST untuk evaluasi kinetika dengan badan JSON terstruktur.
- *
- * @param req - Objek NextRequest yang membawa badan JSON CalculateDecayRequestPayload.
- * @returns NextResponse berisi hasil evaluasi kinetika berformat standar.
- */
+// Evaluasi batch via POST body JSON
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await req.json().catch(() => null);
+    const body = await req.json();
+    const { items, hoursElapsed = 10.5, temperatureC = 32.5, humidityPercent = 75 } = body;
 
-    if (!body || typeof body !== "object") {
-      return errorResponse("Request body wajib berupa objek JSON yang valid", 400);
+    if (!Array.isArray(items) || items.length === 0) {
+      return errorResponse("Body request wajib memuat array 'items' non-kosong", 400);
     }
 
-    const { commodityId, hoursElapsed, temperatureC = 32.5, humidityPercent = 75 } = body;
+    const results: DecayEvaluationResult[] = [];
+    const notFoundIds: string[] = [];
 
-    if (!commodityId || typeof commodityId !== "string") {
-      return errorResponse("Field 'commodityId' bertipe string wajib disertakan", 400);
+    for (const item of items) {
+      const commId = typeof item === "string" ? item : item.commodityId;
+      const itemHours = typeof item === "object" && item.hoursElapsed !== undefined ? item.hoursElapsed : hoursElapsed;
+
+      const evalResult = evaluateProduceById(commId, itemHours, temperatureC, humidityPercent);
+      if (evalResult) {
+        results.push(evalResult);
+      } else {
+        notFoundIds.push(commId);
+      }
     }
 
-    const numericHours = Number(hoursElapsed);
-    if (isNaN(numericHours) || numericHours < 0) {
-      return errorResponse("Field 'hoursElapsed' wajib berupa angka bernilai positif", 400);
-    }
-
-    const evaluation = evaluateProduceById(
-      commodityId,
-      numericHours,
-      Number(temperatureC),
-      Number(humidityPercent)
+    return successResponse(
+      {
+        totalEvaluated: results.length,
+        notFoundCount: notFoundIds.length,
+        notFoundIds,
+        evaluations: results,
+      },
+      200
     );
-
-    if (!evaluation) {
-      return errorResponse(`Komoditas dengan ID '${commodityId}' tidak terdaftar di katalog pasar`, 404);
-    }
-
-    return successResponse(evaluation, 200);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Terjadi kesalahan internal saat memproses evaluasi kinetika";
+    const message = error instanceof Error ? error.message : "Gagal memproses payload POST peluruhan";
     console.error("[POST /api/kinetics/decay Error]:", error);
     return errorResponse(message, 500);
   }
+}
+
+// Health probe tanpa payload
+export async function HEAD(): Promise<NextResponse> {
+  return new NextResponse(null, { status: 200 });
 }

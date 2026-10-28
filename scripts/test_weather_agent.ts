@@ -1,12 +1,4 @@
-/**
- * Unit & Integration Test Suite for Task PSR-5: Hyperlocal Climate Telemetry Agent
- * 
- * Verifies Acceptance Criteria:
- * [x] Modul cuaca berhasil membaca suhu udara, kelembapan, dan curah hujan aktual secara stabil.
- * [x] Panggilan data dalam rentang waktu singkat dilayani langsung dari memori tanpa membebani kuota API.
- * [x] Simulasi putus koneksi membuktikan sistem tetap beroperasi normal menggunakan profil cadangan.
- * [x] Rute pembacaan telemetri cuaca terhubung dengan modul peluruhan biologis.
- */
+// Integration test: Hyperlocal climate telemetry agent (PSR-5)
 
 import { weatherAgent } from "../src/lib/weatherAgent";
 import { COMMODITIES } from "../src/data/commodities";
@@ -25,15 +17,11 @@ function assert(condition: boolean, testName: string, detail?: string) {
 }
 
 async function runWeatherTests() {
-  console.log("================================================================================");
-  console.log("     PASARIN PSR-5 HYPERLOCAL WEATHER TELEMETRY AGENT TEST SUITE               ");
-  console.log("================================================================================");
+  console.log("\n--- PASARIN PSR-5 WEATHER TELEMETRY TEST SUITE ---");
 
   weatherAgent.clearCache();
 
-  // --------------------------------------------------------------------------
-  // TEST 1: Membaca telemetri cuaca mikro di koordinat Pasar Induk Kramat Jati
-  // --------------------------------------------------------------------------
+  // Test 1: Baca telemetri cuaca mikro di koordinat Kramat Jati
   console.log("\n[Test 1] Pengujian Pembacaan Telemetri Cuaca Aktual (Kramat Jati)");
   const weather1 = await weatherAgent.getMarketWeather({ forceRefresh: true });
 
@@ -58,12 +46,10 @@ async function runWeatherTests() {
     `${weather1.rainfallMm} mm`
   );
 
-  // --------------------------------------------------------------------------
-  // TEST 2: In-Memory Caching (15 Menit) untuk menghemat batas kuota gratis
-  // --------------------------------------------------------------------------
+  // Test 2: In-memory cache 15 menit untuk hemat kuota gratis
   console.log("\n[Test 2] Pengujian In-Memory Cache (15 Menit / 900.000 ms)");
   
-  // Panggilan kedua tanpa forceRefresh harus dilayani langsung dari cache memori
+  // Panggilan kedua tanpa forceRefresh dilayani langsung dari cache
   const weather2 = await weatherAgent.getMarketWeather();
 
   assert(
@@ -79,9 +65,7 @@ async function runWeatherTests() {
     `Sisa TTL: ${metrics.expiresInSeconds} detik`
   );
 
-  // --------------------------------------------------------------------------
-  // TEST 3: Mekanisme Pengalihan Otomatis ke Profil Cadangan (Offline Fallback)
-  // --------------------------------------------------------------------------
+  // Test 3: Pengalihan otomatis ke profil cadangan saat offline
   console.log("\n[Test 3] Pengujian Simulasi Putus Jaringan & Profil Cadangan");
   
   weatherAgent.clearCache();
@@ -103,9 +87,7 @@ async function runWeatherTests() {
     `${fallbackWeather.relativeHumidityPercent}% RH`
   );
 
-  // --------------------------------------------------------------------------
-  // TEST 4: Integrasi Langsung dengan Modul Peluruhan Biologis (decayEngine.ts)
-  // --------------------------------------------------------------------------
+  // Test 4: Integrasi langsung cuaca mikro dengan modul peluruhan biologis
   console.log("\n[Test 4] Pengujian Integrasi Cuaca Mikro dengan Modul Peluruhan Biologis");
   
   const kangkung = COMMODITIES.find((c) => c.id === "kangkung");
@@ -132,12 +114,8 @@ async function runWeatherTests() {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // HASIL AKHIR
-  // --------------------------------------------------------------------------
-  console.log("\n================================================================================");
-  console.log(`🎉 HASIL PENGUJIAN AKHIR PSR-5: ${passedCount} LULUS, ${failedCount} GAGAL`);
-  console.log("================================================================================");
+  // Ringkasan hasil test
+  console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-5: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;
