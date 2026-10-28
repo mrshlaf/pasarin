@@ -108,6 +108,9 @@ export interface WeatherTelemetryData {
   recordedAt: string;
   /** Waktu kedaluwarsa cache dalam ISO-8601 (15 menit pasca perekaman) */
   cacheExpiresAt: string;
+  temperatureCelsius: number;
+  relativeHumidityPercent: number;
+  location: { latitude: number; longitude: number; name?: string };
 }
 
 /**
