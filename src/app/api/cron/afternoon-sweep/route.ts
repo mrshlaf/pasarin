@@ -1,11 +1,5 @@
 /**
- * Automated Afternoon Sweep Cron Trigger (14:30 WIB / 07:30 UTC)
- * Route: GET & POST /api/cron/afternoon-sweep
- *
- * Fulfills Acceptance Criteria for Jira Ticket PSR-4:
- * "[x] Penjadwal cron terbukti memicu rute target tepat pada jam yang ditentukan secara konsisten."
- * "[x] Permintaan jaringan tanpa token otentikasi resmi langsung ditolak dengan kode akses terlarang (HTTP 401)."
- * "[x] Catatan eksekusi audit tersimpan lengkap pada tabel pencatatan sistem (system_audit_trail)."
+ * GET & POST /api/cron/afternoon-sweep: pemicu sweep surplus harian 14:30 WIB (PSR-4)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,9 +11,7 @@ import { KIOSKS } from "@/data/kiosks";
 
 export const dynamic = "force-dynamic";
 
-/**
- * Validates request authorization token against CRON_SECRET_KEY
- */
+// Validasi otentikasi Bearer CRON_SECRET_KEY atau header Vercel cron
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const authHeader = req.headers.get("authorization");
   const env = getEnv();
@@ -32,7 +24,7 @@ function isAuthorizedCronRequest(req: NextRequest): boolean {
     }
   }
 
-  // Also verify Vercel internal cron signature header if present in production
+  // Header bawaan vercel cron saat running di produksi
   const vercelCronHeader = req.headers.get("x-vercel-cron");
   if (vercelCronHeader === "1" && process.env.NODE_ENV === "production") {
     return true;
@@ -41,17 +33,15 @@ function isAuthorizedCronRequest(req: NextRequest): boolean {
   return false;
 }
 
-/**
- * Core business execution logic for the 14:30 WIB market sweep
- */
+// Logika eksekusi sweep surplus pasar jam 14:30 WIB
 async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   const startTime = Date.now();
   const triggeredAt = new Date().toISOString();
 
-  // Scan 30 registered kiosks in Pasar Induk Kramat Jati
+  // Scan 30 kios terdaftar di Pasar Induk Kramat Jati
   const kiosksScanned = KIOSKS.length;
 
-  // Calculate surplus distribution across circular tiers
+  // Distribusi surplus komposit sirkular
   const surplusDetectedKg = 1240.0;
   const tier1WartegKg = 750.0;
   const tier2SocialKg = 350.0;
@@ -59,38 +49,32 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   const estimatedCapitalRecoveredIdr = 3750000;
   const discountAveragePercent = 52.5;
 
-  const executionDurationMs = Date.now() - startTime;
+  const durationMs = Date.now() - startTime;
 
-  // Persist execution record to system_audit_trail
+  // Catat audit log transaksi
   const auditResult = await recordAuditLog({
-    subsystem: "CRON_SCHEDULER",
-    action_type: "AFTERNOON_SWEEP_EXECUTED",
-    durationMs: executionDurationMs,
+    subsystem: "autonomous_cron_sweeper",
+    action_type: "AFTERNOON_MARKET_SWEEP_EXECUTION",
     payload: {
-      schedule: "14:30 WIB (07:30 UTC)",
+      schedule: "14:30_WIB_DAILY",
       kiosksScanned,
       surplusDetectedKg,
-      allocations: {
-        tier1WartegKg,
-        tier2SocialKg,
-        tier3MaggotKg,
-      },
-      financials: {
-        estimatedCapitalRecoveredIdr,
-        discountAveragePercent,
-      },
-      triggeredAt,
+      tier1WartegKg,
+      tier2SocialKg,
+      tier3MaggotKg,
+      estimatedCapitalRecoveredIdr,
     },
+    durationMs,
   });
 
   return {
     eventId: auditResult.eventId,
-    subsystem: "CRON_SCHEDULER",
-    actionType: "AFTERNOON_SWEEP_EXECUTED",
-    schedule: "14:30 WIB (07:30 UTC)",
+    subsystem: "autonomous_cron_sweeper",
+    actionType: "AFTERNOON_MARKET_SWEEP_EXECUTION",
+    schedule: "14:30_WIB_DAILY",
     triggeredAt,
-    result: "Autonomous sweep completed: 1,240 kg surplus processed across 3 tiers.",
-    executionDurationMs,
+    result: "SUCCESS",
+    executionDurationMs: durationMs,
     kiosksScanned,
     surplusDetectedKg,
     allocations: {
@@ -111,18 +95,30 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
-    return errorResponse("Unauthorized: Invalid or missing Bearer authorization token", 401);
+    return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
   }
 
-  const result = await executeAfternoonSweep();
-  return successResponse(result, 200);
+  try {
+    const sweepResult = await executeAfternoonSweep();
+    return successResponse(sweepResult, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Eksekusi afternoon sweep gagal";
+    console.error("[Afternoon Sweep Cron Error]:", error);
+    return errorResponse(message, 500);
+  }
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
-    return errorResponse("Unauthorized: Invalid or missing Bearer authorization token", 401);
+    return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
   }
 
-  const result = await executeAfternoonSweep();
-  return successResponse(result, 200);
+  try {
+    const sweepResult = await executeAfternoonSweep();
+    return successResponse(sweepResult, 200);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Eksekusi afternoon sweep gagal";
+    console.error("[Afternoon Sweep Cron Error]:", error);
+    return errorResponse(message, 500);
+  }
 }

@@ -1,18 +1,10 @@
-/**
- * PASARIN API Response Helpers & Runtime Zod Request Body Validator
- * Aligned with PRD_FIX_PASARIN.md Section 15.4 (Jira PSR-3)
- *
- * Provides typed standard envelope constructors and runtime schema validation
- * for all Next.js 14 App Router API endpoints.
- */
+// Response helper & validator untuk Next.js App Router
 
 import { NextResponse } from "next/server";
 import { ZodSchema } from "zod";
 import { ApiResponse } from "@/types/api";
 
-/**
- * Constructs a standardized HTTP success response envelope
- */
+// Standard success response envelope
 export function successResponse<T>(data: T, status = 200): NextResponse<ApiResponse<T>> {
   const payload: ApiResponse<T> = {
     success: true,
@@ -22,9 +14,7 @@ export function successResponse<T>(data: T, status = 200): NextResponse<ApiRespo
   return NextResponse.json(payload, { status });
 }
 
-/**
- * Constructs a standardized HTTP error response envelope
- */
+// Standard error response envelope
 export function errorResponse(
   error: string,
   status = 400,
@@ -43,10 +33,7 @@ export type ValidationResult<T> =
   | { success: true; data: T; errorResponse: null }
   | { success: false; data: null; errorResponse: NextResponse<ApiResponse<null>> };
 
-/**
- * Parses and validates an incoming JSON request body against a Zod schema.
- * Returns either validated typed data or a ready-to-return 400 Bad Request response.
- */
+// Validasi body JSON dengan Zod schema
 export async function validateJsonBody<T>(
   req: Request,
   schema: ZodSchema<T>
@@ -58,26 +45,26 @@ export async function validateJsonBody<T>(
     return {
       success: false,
       data: null,
-      errorResponse: errorResponse("Invalid JSON format in request body", 400),
+      errorResponse: errorResponse("Format JSON body permintaan tidak valid", 400),
     };
   }
 
-  const result = schema.safeParse(rawBody);
-  if (!result.success) {
-    const errorDetails = result.error.issues.map((issue) => ({
-      path: issue.path.join("."),
-      message: issue.message,
-    }));
+  const parseResult = schema.safeParse(rawBody);
+  if (!parseResult.success) {
     return {
       success: false,
       data: null,
-      errorResponse: errorResponse("Request body validation failed", 422, errorDetails),
+      errorResponse: errorResponse(
+        "Validasi skema payload gagal",
+        422,
+        parseResult.error.flatten()
+      ),
     };
   }
 
   return {
     success: true,
-    data: result.data,
+    data: parseResult.data,
     errorResponse: null,
   };
 }

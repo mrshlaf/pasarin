@@ -1,15 +1,8 @@
-/**
- * Environment Variables Schema & Runtime Validator
- * Aligned with PRD_FIX_PASARIN.md Section 15.4 (Jira PSR-3)
- *
- * Enforces strict runtime validation using Zod for all cloud credentials,
- * API keys, and autonomous cron secrets while permitting safe fallbacks.
- */
+// Validasi runtime environment variables via Zod
 
 import { z } from "zod";
 
 export const envSchema = z.object({
-  // Supabase PostgreSQL Credentials
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
     .url("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL")
@@ -23,18 +16,17 @@ export const envSchema = z.object({
     .min(1)
     .optional(),
 
-  // Free-Tier External Agents
+  // API pihak ketiga (free-tier)
   GEMINI_API_KEY: z.string().min(1).optional(),
   OPENWEATHER_API_KEY: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
 
-  // Automated Background Sweeper Security (PSR-4)
+  // Kunci pengaman cron sweeper (PSR-4)
   CRON_SECRET_KEY: z
     .string()
     .min(1)
     .default("pasarin-cron-secret-dev-2026"),
 
-  // Application Runtime
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -44,10 +36,7 @@ export type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;
 
-/**
- * Validates and returns parsed environment variables.
- * Caches validated result for subsequent sub-agent invocations.
- */
+// Parse dan cache environment variables
 export function getEnv(): Env {
   if (cachedEnv) {
     return cachedEnv;
@@ -68,11 +57,14 @@ export function getEnv(): Env {
 
   if (!parsed.success) {
     console.warn(
-      "[PASARIN Env Warning] Invalid or missing environment variables:",
-      parsed.error.format()
+      "[Env Warning] Ada variabel env yang belum lengkap:",
+      parsed.error.flatten().fieldErrors
     );
-    // In build or edge runtime without full env, return safe defaults
-    cachedEnv = envSchema.parse({});
+    // Gunakan fallback default agar proses tidak crash saat build
+    cachedEnv = envSchema.parse({
+      NEXT_PUBLIC_SUPABASE_URL: "https://cawsaaotwrqacqzyvhsl.supabase.co",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy",
+    });
     return cachedEnv;
   }
 
@@ -80,15 +72,7 @@ export function getEnv(): Env {
   return cachedEnv;
 }
 
-/**
- * Quick capability check for external service integration
- */
-export const hasConfigured = {
-  supabase: () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    return !!url && url.startsWith("https://") && !url.includes("placeholder");
-  },
-  gemini: () => !!process.env.GEMINI_API_KEY,
-  weather: () => !!process.env.OPENWEATHER_API_KEY,
-  telegram: () => !!process.env.TELEGRAM_BOT_TOKEN,
-};
+// Reset cache env untuk unit testing
+export function resetEnvCache(): void {
+  cachedEnv = null;
+}

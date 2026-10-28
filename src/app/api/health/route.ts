@@ -1,9 +1,6 @@
 /**
- * System Health Check Endpoint
- * Route: GET /api/health
- *
- * Fulfills Acceptance Criteria for Jira Ticket PSR-3:
- * "[x] Rute pemeriksaan kesehatan server mengembalikan status HTTP 200 dengan format JSON yang valid."
+ * GET /api/health: status operasional server & konektivitas database (PSR-3)
+ * HEAD /api/health: lightweight health probe
  */
 
 import { NextResponse } from "next/server";
