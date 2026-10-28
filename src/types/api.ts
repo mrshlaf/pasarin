@@ -109,3 +109,67 @@ export interface WeatherTelemetryData {
   /** Waktu kedaluwarsa cache dalam ISO-8601 (15 menit pasca perekaman) */
   cacheExpiresAt: string;
 }
+
+/**
+ * Klasifikasi kondisi fisik kesegaran komoditas hortikultura
+ * @see PRD Bagian 5.1 & Tiket Jira PSR-14
+ */
+export type ProduceCondition = 'segar_prima' | 'layu_ringan' | 'layu_sedang' | 'tidak_layak';
+
+/**
+ * Tingkatan alokasi penyelamatan pangan sirkular 3-Tier PASARIN
+ * @see PRD Bagian 3 & Tiket Jira PSR-14
+ */
+export type CircularRescueTier = 'fresh' | 'tier_1' | 'tier_2' | 'tier_3';
+
+/**
+ * Kontrak data hasil evaluasi kinetika peluruhan biologis komoditas
+ * @see Jira Ticket PSR-14 (Biological Shelf-Life Decay Engine)
+ * @see PRD Bagian 5.1 & Bagian 15.4.1
+ */
+export interface DecayEvaluationResult {
+  /** ID unik komoditas (misal: 'kangkung', 'bayam') */
+  commodityId: string;
+  /** Nama lokal komoditas pasar (misal: 'Kangkung Darat') */
+  commodityName: string;
+  /** Kategori taksonomi pangan */
+  category: string;
+  /** Suhu lingkungan los pasar yang dievaluasi (°C) */
+  temperatureC: number;
+  /** Kelembapan relatif los pasar yang dievaluasi (%) */
+  humidityPercent: number;
+  /** Durasi waktu komoditas terpapar di meja los pasar sejak subuh (jam) */
+  hoursElapsed: number;
+  /** Laju percepatan metabolisme respirasi seluler efektif (pengali terhadap baseline 20°C) */
+  accelerationFactor: number;
+  /** Nilai skor kebusukan fisik terakumulasi dalam rentang 0.0000 s/d 1.0000 */
+  decayScore: number;
+  /** Klasifikasi mutu fisik saat ini */
+  condition: ProduceCondition;
+  /** Rekomendasi tingkatan penyelamatan 3-Tier */
+  recommendedTier: CircularRescueTier;
+  /** Label deskripsi tingkatan penyelamatan untuk antarmuka pengguna */
+  tierLabel: string;
+  /** Estimasi sisa jam simpan aman sebelum komoditas membusuk total (jam) */
+  hoursRemaining: number;
+  /** Rekomendasi persentase potongan harga penyelamatan (0% - 95%) */
+  salvageDiscountPercent: number;
+  /** Estimasi harga tebusan penyelamatan per kilogram dengan proteksi Price Floor (Rp/kg) */
+  estimatedSalvagePriceIdr: number;
+  /** Harga modal kulakan subuh acuan (Rp/kg) */
+  baseWholesalePriceIdr: number;
+  /** Batas bawah harga tebus mutlak terlindungi (Rp/kg) */
+  priceFloorIdr: number;
+  /** Stempel waktu ISO-8601 kalkulasi kinetika dieksekusi */
+  calculatedAt: string;
+}
+
+/**
+ * Parameter masukan permintaan evaluasi kinetika peluruhan
+ */
+export interface CalculateDecayRequestPayload {
+  commodityId: string;
+  hoursElapsed: number;
+  temperatureC?: number;
+  humidityPercent?: number;
+}
