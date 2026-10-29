@@ -1,4 +1,11 @@
-// Integration test: Hyperlocal climate telemetry agent (PSR-5)
+/**
+ * Skrip Uji Integrasi Agen Telemetri Cuaca Mikro Kramat Jati (PSR-5).
+ * Memvalidasi 4 skenario kritis:
+ * 1. Akurasi pembacaan koordinat, suhu, kelembapan, dan curah hujan aktual.
+ * 2. Integritas in-memory cache 15 menit (900.000 ms) untuk efisiensi kuota.
+ * 3. Failover otomatis ke profil darurat saat terjadi simulasi putus jaringan.
+ * 4. Integrasi telemetri mikro dengan modul peluruhan biologis dan proteksi harga bawah.
+ */
 
 import { weatherAgent } from "../src/lib/weatherAgent";
 import { COMMODITIES } from "../src/data/commodities";
@@ -6,6 +13,13 @@ import { COMMODITIES } from "../src/data/commodities";
 let passedCount = 0;
 let failedCount = 0;
 
+/**
+ * Memeriksa kondisi kebenaran pengujian dan mencetak log hasil ke konsol.
+ *
+ * @param condition - Kondisi boolean yang diuji.
+ * @param testName - Label nama skenario pengujian.
+ * @param detail - Informasi rincian nilai hasil observasi.
+ */
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -16,6 +30,9 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
+/**
+ * Menjalankan rangkaian pengujian integrasi telemetri cuaca PSR-5 secara sekuensial.
+ */
 async function runWeatherTests() {
   console.log("\n--- PASARIN PSR-5 WEATHER TELEMETRY TEST SUITE ---");
 

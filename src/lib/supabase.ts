@@ -1,3 +1,8 @@
+/**
+ * Inisialisasi Klien Basis Data Supabase PostgreSQL (PSR-2).
+ * Menyediakan instans klien publik anonim untuk operasi frontend/App Router (terikat Row Level Security)
+ * serta pembuat klien service role berkemampuan penuh untuk background worker.
+ */
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl =
@@ -5,10 +10,18 @@ const supabaseUrl =
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy";
 
-// Client publik untuk browser & App Router
+/**
+ * Klien Supabase publik dengan kunci anonim.
+ * Seluruh kueri dibatasi oleh aturan Row Level Security (RLS) PostgreSQL.
+ */
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Client service role untuk background worker
+/**
+ * Menghasilkan klien Supabase berkemampuan administratif (Service Role).
+ * Digunakan secara eksklusif oleh cron sweeper dan background worker untuk melewati batasan RLS saat agregasi data.
+ *
+ * @returns Instans klien Supabase dengan sesi non-persisten dan auto-refresh dinonaktifkan.
+ */
 export function getServiceRoleClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
   return createClient(supabaseUrl, serviceKey, {

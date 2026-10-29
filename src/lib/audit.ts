@@ -1,4 +1,8 @@
-// System audit logger dengan Supabase persistence & in-memory fallback buffer (PSR-4)
+/**
+ * Modul Pencatatan Jejak Audit Sistem (System Audit Trail) (PSR-4).
+ * Mencatat seluruh mutasi dan peristiwa operasional penting ke tabel `system_audit_trail` Supabase.
+ * Mengimplementasikan buffer memori sirkular lokal (kapasitas 100 entri) sebagai fail-safe saat jaringan database terputus.
+ */
 
 import { supabase } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
@@ -6,6 +10,9 @@ import { SystemAuditTrailRecord } from "@/types/api";
 const inMemoryAuditRingBuffer: SystemAuditTrailRecord[] = [];
 const MAX_RING_BUFFER_SIZE = 100;
 
+/**
+ * Parameter masukan pencatatan peristiwa audit sistem.
+ */
 interface RecordAuditParams {
   subsystem: string;
   action_type: string;
@@ -13,7 +20,14 @@ interface RecordAuditParams {
   durationMs?: number;
 }
 
-// Simpan event audit ke Supabase atau ring buffer in-memory
+/**
+ * Merekam catatan audit sistem ke Supabase atau ring buffer memori lokal.
+ * Menjamin ketersediaan audit: jika koneksi basis data gagal, rekaman tetap tersimpan
+ * pada buffer in-memory sehingga sistem operasional pasar tidak mengalami pemblokiran (non-blocking failover).
+ *
+ * @param params - Parameter peristiwa audit mencakup subsistem asal, tipe aksi, payload rincian, dan durasi eksekusi (ms).
+ * @returns Status keberhasilan perekaman, ID unik peristiwa (eventId), dan media penyimpanan yang digunakan ("supabase" | "in_memory").
+ */
 export async function recordAuditLog(params: RecordAuditParams): Promise<{
   success: boolean;
   eventId: string;
@@ -69,7 +83,13 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
   return { success: true, eventId, storage: "in_memory" };
 }
 
-// Ambil riwayat audit log terbaru
+/**
+ * Mengambil riwayat peristiwa audit terbaru dari buffer memori lokal.
+ * Berguna untuk diagnostik cepat dashboard pengawas pasar tanpa membebani kuota kueri basis data.
+ *
+ * @param limit - Jumlah maksimal rekaman yang diambil (default: 20).
+ * @returns Larik rekaman jejak audit sistem terbaru terurut dari yang paling baru.
+ */
 export function getRecentAuditLogs(limit = 20): SystemAuditTrailRecord[] {
   return inMemoryAuditRingBuffer.slice(0, limit);
 }

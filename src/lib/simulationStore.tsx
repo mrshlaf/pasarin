@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * State Management Simulasi Pasar & Alur Penyelamatan Surplus 7-Role (PSR-7 & PSR-8).
+ * Mengelola transisi 5 fase waktu pasar (Subuh s/d Handover), simulasi saldo escrow QRIS,
+ * akuntansi emisi karbon (IPCC 2006: 0,48 kg CO2e/kg biomassa), serta notifikasi interaktif.
+ */
 import { createContext, useContext, useState, ReactNode } from "react";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
@@ -183,6 +188,13 @@ const INITIAL_STOCKS: StockItem[] = [
   { id: "stk_10", vendorId: "vendor_kramat_21", commodityId: "wortel", initialKg: 150, remainingKg: 80, arrivalClock: "04:30 WIB", lotNumber: "LOT-C04-01" },
 ];
 
+/**
+ * Komponen penyedia state global (React Context Provider) simulasi pasar PASARIN.
+ * Menginkorporasikan alur kerja 7 peran (Pedagang, Warteg, Dapur Sosial, Maggot, Logistik, Pengelola, Admin).
+ *
+ * @param props - Properti pembawa elemen anak (children: ReactNode).
+ * @returns Elemen penyedia konteks SimulationContext.Provider.
+ */
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("vendor");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("vendor_kramat_01");
@@ -316,12 +328,33 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  // Pembeli klaim penawaran
+  // Pembeli klaim penawaran dengan validasi gerbang mutu Invarian 1 (PSR-21)
   const claimOfferByBuyer = (
     offerId: string,
     buyerName: string,
     claimantRole: "warteg" | "social_kitchen" | "maggot"
   ) => {
+    const targetOffer = offers.find((o) => o.id === offerId);
+    if (!targetOffer) return;
+
+    // Invarian 1 (Zero Edible Food to Feed): Sentra maggot dilarang mengambil alokasi Tier 1 atau Tier 2
+    if (claimantRole === "maggot" && targetOffer.targetTier !== "tier_3") {
+      setNotifications((prev) => [
+        {
+          id: `notif_block_${Date.now()}`,
+          recipient: buyerName,
+          role: "maggot",
+          message: `KLAIM DITOLAK (Invarian 1): Lot #${offerId} berstatus layak pangan manusia (${targetOffer.targetTier.toUpperCase()}). Dilarang dialihkan ke pakan maggot!`,
+          timestamp: stageConfig.clockTime,
+          actionRequired: false,
+          offerId,
+          type: "vendor_alert",
+        },
+        ...prev,
+      ]);
+      return;
+    }
+
     setOffers((prev) =>
       prev.map((o) =>
         o.id === offerId
@@ -517,6 +550,12 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Kaitan React kustom (custom hook) untuk mengakses konteks simulasi pasar.
+ *
+ * @throws Error jika hook dipanggil di luar cakupan komponen SimulationProvider.
+ * @returns Objek konteks simulasi pasar bertipe SimulationContextType.
+ */
 export function useMarketSimulation() {
   const context = useContext(SimulationContext);
   if (!context) {

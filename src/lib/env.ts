@@ -1,7 +1,14 @@
-// Validasi runtime environment variables via Zod
+/**
+ * Modul Validasi Variabel Lingkungan Runtime (PSR-3).
+ * Memvalidasi kredensial Supabase, kunci API eksternal (OpenWeather, Gemini, Telegram),
+ * dan token rahasia pemicu cron melalui skema Zod dengan mekanisme fallback aman saat tahap build.
+ */
 
 import { z } from "zod";
 
+/**
+ * Skema validasi Zod untuk seluruh variabel lingkungan yang dibutuhkan sistem PASARIN.
+ */
 export const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
@@ -36,7 +43,12 @@ export type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;
 
-// Parse dan cache environment variables
+/**
+ * Membaca, memvalidasi, dan menyimpan variabel lingkungan ke dalam cache memori lokal.
+ * Mencegah kegagalan fatal saat proses build Next.js dengan menyediakan nilai default fallback yang aman.
+ *
+ * @returns Objek konfigurasi lingkungan runtime Env yang telah divalidasi.
+ */
 export function getEnv(): Env {
   if (cachedEnv) {
     return cachedEnv;
@@ -72,7 +84,10 @@ export function getEnv(): Env {
   return cachedEnv;
 }
 
-// Reset cache env untuk unit testing
+/**
+ * Mengosongkan cache variabel lingkungan lokal.
+ * Digunakan pada pengujian unit terisolasi saat menyimulasikan pergantian variabel environment.
+ */
 export function resetEnvCache(): void {
   cachedEnv = null;
 }

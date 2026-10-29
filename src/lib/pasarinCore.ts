@@ -1,4 +1,9 @@
-// Core domain engine: kinetika peluruhan biologis Arrhenius-Q10 (PSR-14)
+/**
+ * Modul Inti Kinetika Peluruhan Biologis Hortikultura Tropis (PSR-14).
+ * Menghitung laju degradasi respirasi seluler berbasis termodinamika Arrhenius dan koefisien kelipatan Q10.
+ * Menentukan skor kebusukan (decayScore 0.00 - 1.00), alokasi penyelamatan sirkular 3-Tier,
+ * serta kalkulasi harga salvaging adaptif dengan perlindungan batas bawah modal pedagang (Price Floor Protection).
+ */
 
 import { Commodity, COMMODITIES } from "@/data/commodities";
 import {
@@ -7,7 +12,9 @@ import {
   CircularRescueTier,
 } from "@/types/api";
 
-// Parameter fisik & kinetika respirasi sel daun hortikultura tropis (suhu acuan 25°C)
+/**
+ * Parameter fisik dan konstanta acuan kinetika respirasi sel daun hortikultura tropis (suhu acuan 25,0°C).
+ */
 export const UNIVERSAL_GAS_CONSTANT_R = 8.314; // J/(mol·K)
 export const ACTIVATION_ENERGY_EA_J_MOL = 48500.0; // J/mol (~48.5 kJ/mol)
 export const ARRHENIUS_FREQUENCY_FACTOR_A = 1.42e7; // 1/jam
@@ -15,7 +22,16 @@ export const BASELINE_STORAGE_TEMP_C = 25.0; // °C
 export const CRITICAL_RELATIVE_HUMIDITY_PERCENT = 80.0; // Ambang batas kelembapan (%)
 export const HUMIDITY_PENALTY_COEFFICIENT = 0.015;
 
-// Hitung laju respirasi k(T, RH) dan faktor percepatan relatif terhadap baseline 25°C
+/**
+ * Menghitung laju degradasi respirasi k(T, RH) dan faktor percepatan relatif terhadap suhu acuan 25°C.
+ * Memperhitungkan efek eksponensial suhu melalui model Q10 dan penalti defisit/kelebihan kelembapan udara.
+ *
+ * @param temperatureC - Suhu lingkungan los pasar dalam derajat Celsius (°C).
+ * @param humidityPercent - Kelembapan relatif udara dalam persen (0 - 100% RH).
+ * @param q10Coefficient - Koefisien pelipatgandaan metabolik komoditas per kenaikan 10°C (lazimnya 1,8 - 2,5).
+ * @param humiditySensitivity - Sensitivitas komoditas terhadap kekeringan atau kelembapan ekstrem (default: 1.9).
+ * @returns Objek berisi laju degradasi per jam (kRatePerHour) dan faktor percepatan komparatif (accelerationFactor).
+ */
 export function calculateArrheniusDecayRate(
   temperatureC: number,
   humidityPercent: number,
@@ -45,7 +61,16 @@ export function calculateArrheniusDecayRate(
   };
 }
 
-// Hitung skor akumulasi kebusukan biologis (0.0000 - 1.0000) berdasarkan jam pajang
+/**
+ * Menghitung akumulasi skor kebusukan biologis (0.0000 - 1.0000) dan estimasi sisa jam simpan aman.
+ * Mentransformasikan jam pajang riil ke dalam jam pajang ekuivalen berdasarkan faktor percepatan mikroklimat.
+ *
+ * @param commodity - Objek metadata komoditas dari katalog acuan pasar.
+ * @param temperatureC - Suhu aktual los pasar dalam derajat Celsius (°C).
+ * @param humidityPercent - Kelembapan relatif aktual dalam persen (% RH).
+ * @param hoursElapsed - Durasi waktu komoditas telah berada di los pasar sejak pembongkaran subuh (jam).
+ * @returns Objek berisi skor kebusukan (decayScore), faktor percepatan, dan sisa jam sebelum rusak (hoursRemaining).
+ */
 export function calculateDecayScore(
   commodity: Commodity,
   temperatureC: number,
@@ -99,7 +124,13 @@ export function calculateDecayScore(
   };
 }
 
-// Klasifikasi mutu fisik dan alokasi penyelamatan sirkular 3-Tier
+/**
+ * Mengklasifikasikan mutu fisik komoditas dan memetakan alokasi penyelamatan sirkular 3-Tier.
+ * Ambang batas: < 0.35 (Segar Prima), 0.35 - 0.65 (Tier 1 Warteg), 0.65 - 0.85 (Tier 2 Dapur Sosial), >= 0.85 (Tier 3 Maggot).
+ *
+ * @param decayScore - Skor akumulasi kebusukan biologis dalam rentang 0.0000 hingga 1.0000.
+ * @returns Objek status fisik, tingkatan alokasi penyelamatan, label representasi, dan persentase diskon dasar.
+ */
 export function classifyProduceCondition(decayScore: number): {
   condition: ProduceCondition;
   recommendedTier: CircularRescueTier;
@@ -144,7 +175,16 @@ export function classifyProduceCondition(decayScore: number): {
   };
 }
 
-// Evaluasi kinetika peluruhan komoditas dengan proteksi price floor
+/**
+ * Mengevaluasi kinetika peluruhan komoditas secara komprehensif serta menghitung harga salvaging dengan proteksi modal.
+ * Mencegah moral hazard dengan mengunci harga jual tidak boleh lebih rendah dari batas modal pedagang (Price Floor).
+ *
+ * @param commodity - Objek komoditas hortikultura yang dievaluasi.
+ * @param temperatureC - Suhu los pasar dalam derajat Celsius (°C).
+ * @param humidityPercent - Kelembapan relatif los pasar dalam persen (% RH).
+ * @param hoursElapsed - Lama waktu pajang di los pasar sejak tiba (jam).
+ * @returns Hasil evaluasi lengkap berisi skor biologis, tier alokasi sirkular, dan kalkulasi harga penyelamatan (IDR).
+ */
 export function evaluateProduceDecay(
   commodity: Commodity,
   temperatureC: number,
@@ -189,7 +229,15 @@ export function evaluateProduceDecay(
   };
 }
 
-// Cari komoditas berdasarkan ID dan hitung kinetika peluruhannya
+/**
+ * Mencari komoditas berdasarkan pengidentifikasi unik (ID) dan menghitung kinetika peluruhannya.
+ *
+ * @param commodityId - Pengidentifikasi unik komoditas (contoh: "bayam", "kangkung").
+ * @param hoursElapsed - Durasi waktu pajang di los pasar dalam satuan jam.
+ * @param temperatureC - Suhu los pasar (opsional, default: 32,5°C iklim siang Kramat Jati).
+ * @param humidityPercent - Kelembapan los pasar (opsional, default: 75% RH).
+ * @returns Objek evaluasi kinetika lengkap atau null jika komoditas tidak ditemukan dalam katalog.
+ */
 export function evaluateProduceById(
   commodityId: string,
   hoursElapsed: number,
@@ -206,7 +254,15 @@ export function evaluateProduceById(
   return evaluateProduceDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
 }
 
-// Evaluasi batch seluruh 30 komoditas katalog pasar
+/**
+ * Mengevaluasi status kinetika peluruhan untuk seluruh 30 komoditas terdaftar dalam katalog pasar secara serentak.
+ * Digunakan untuk menyusun matriks risiko surplus komposit pasar menjelang sapuan pukul 14.30 WIB.
+ *
+ * @param hoursElapsed - Waktu pajang komoditas sejak subuh dalam satuan jam.
+ * @param temperatureC - Suhu lingkungan pasar dalam derajat Celsius (°C).
+ * @param humidityPercent - Kelembapan lingkungan pasar dalam persen (% RH).
+ * @returns Larik hasil evaluasi kinetika peluruhan untuk 30 komoditas.
+ */
 export function getAllCommodityEvaluations(
   hoursElapsed: number,
   temperatureC = 32.5,
