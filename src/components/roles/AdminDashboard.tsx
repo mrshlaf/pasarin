@@ -76,10 +76,16 @@ export function AdminDashboard() {
   const [testDecayScore, setTestDecayScore] = useState<number>(0.25);
   const [testClaimedTier, setTestClaimedTier] = useState<string>("tier_3");
 
-  // Evaluate Quality Gate response
+  // Evaluasi Quality Gate anti-moral hazard (PSR-21 / Invarian 1)
   const isHumanConsumable = testDecayScore < 0.85;
   const isMoralHazardBlocked = isHumanConsumable && testClaimedTier === "tier_3";
-
+  const recommendedTierLabel = testDecayScore < 0.35
+    ? "Segar Prima (Eceran Normal)"
+    : testDecayScore < 0.65
+    ? "Tier 1: Warteg & UMKM Kuliner (Diskon 50% - 70%)"
+    : testDecayScore < 0.85
+    ? "Tier 2: Dapur Sosial (Subsidi 85% / Jendela Kunci 30m)"
+    : "Tier 3: Sentra Maggot BSF & Biokonversi";
   return (
     <div className="space-y-6">
       {/* Header Profile */}
@@ -206,17 +212,30 @@ export function AdminDashboard() {
 
           <div className="flex flex-col justify-center">
             <span className="text-[11px] text-slate-500 font-bold mb-1 uppercase tracking-wider">
-              Keputusan Quality Gate:
+              Keputusan Quality Gate (PSR-21):
             </span>
             {isMoralHazardBlocked ? (
-              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-[#BE123C] text-xs font-bold flex items-center gap-2">
-                <XCircle className="w-4 h-4 shrink-0" />
-                <span>BLOCKED: Moral hazard terdeteksi! Sayur masih layak pangan manusia.</span>
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-300 text-[#BE123C] text-xs font-bold space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <XCircle className="w-4 h-4 shrink-0" />
+                  <span>BLOCKED: Moral hazard terdeteksi!</span>
+                </div>
+                <p className="text-[11px] font-normal text-rose-800">
+                  Invarian 1 ditegakkan: Sayur layak makan (skor {testDecayScore.toFixed(2)} &lt; 0.85) dilarang dialihkan ke pakan maggot.
+                </p>
+                <p className="text-[11px] font-medium text-rose-900">
+                  Tindakan korektif: Wajib dialihkan ke {recommendedTierLabel}.
+                </p>
               </div>
             ) : (
-              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[#065F46] text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>PASSED: Alokasi memenuhi syarat biological threshold.</span>
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[#065F46] text-xs font-bold space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>PASSED: Memenuhi syarat etika sirkular.</span>
+                </div>
+                <p className="text-[11px] font-normal text-emerald-800">
+                  Rekomendasi alokasi: {recommendedTierLabel}.
+                </p>
               </div>
             )}
           </div>
@@ -327,21 +346,43 @@ export function AdminDashboard() {
             </div>
 
             <div className="space-y-2 leading-relaxed text-[11px]">
-              <p className="text-[#38BDF8]">
-                [OBSERVE] Jam Sirkadian: {stageConfig.clockTime} · Suhu Los: {stageConfig.temperatureC}°C · RH: {stageConfig.humidityPercent}%
-              </p>
-              <p className="text-slate-300">
-                [THINK] Kinetika Arrhenius mendeteksi laju respirasi komoditas daun meningkat pada los Blok A.
-              </p>
-              <p className="text-amber-300">
-                [ACTION] QualityGate memverifikasi Decay Score: 0.58. Klasifikasi: &apos;Tier 1 Warteg&apos;. Menerbitkan tiket penawaran surplus terdiskon.
-              </p>
-              <p className="text-emerald-400">
-                [DISPATCH] Mengirimkan pesan penawaran ke los Kios A-12 via Telegram gateway.
-              </p>
-              <p className="text-slate-400">
-                [METRIC] Estimasi pengalihan TPA: 35 kg sayur · Pencegahan emisi: 16.8 kg CO₂e.
-              </p>
+              {selectedAgent === "QualityGateAgent" ? (
+                <>
+                  <p className="text-[#38BDF8]">
+                    [OBSERVE] Kios A-05 mengajukan tiket alokasi &apos;tier_3&apos; (Maggot) untuk komoditas Bayam (jam pajang: 4 jam, suhu: 32°C).
+                  </p>
+                  <p className="text-slate-300">
+                    [THINK] Mengevaluasi Invarian 1 (Zero Edible Food to Feed). Memanggil tool verifyHumanGradeIntegrity(&apos;bayam&apos;, 4, &apos;tier_3&apos;).
+                  </p>
+                  <p className="text-rose-400 font-bold">
+                    [GATE_VERDICT] Skor peluruhan biologis: 0.18 (&lt; 0.85). Sayuran masih berstatus segar prima dan 100% layak konsumsi manusia.
+                  </p>
+                  <p className="text-amber-300">
+                    [ACTION] CLAIM BLOCKED: Pelanggaran moral hazard dicegah. Mencatat insiden ke system_audit_trail. Mengunci alokasi ke Tier 1 / Tier 2.
+                  </p>
+                  <p className="text-emerald-400">
+                    [METRIC] Integritas pangan terjaga · 0% makanan layak konsumsi manusia dibuang ke pakan ternak.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[#38BDF8]">
+                    [OBSERVE] Jam Sirkadian: {stageConfig.clockTime} · Suhu Los: {stageConfig.temperatureC}°C · RH: {stageConfig.humidityPercent}%
+                  </p>
+                  <p className="text-slate-300">
+                    [THINK] Kinetika Arrhenius mendeteksi laju respirasi komoditas daun meningkat pada los Blok A.
+                  </p>
+                  <p className="text-amber-300">
+                    [ACTION] QualityGate memverifikasi Decay Score: 0.58. Klasifikasi: &apos;Tier 1 Warteg&apos;. Menerbitkan tiket penawaran surplus terdiskon.
+                  </p>
+                  <p className="text-emerald-400">
+                    [DISPATCH] Mengirimkan pesan penawaran ke los Kios A-12 via Telegram gateway.
+                  </p>
+                  <p className="text-slate-400">
+                    [METRIC] Estimasi pengalihan TPA: 35 kg sayur · Pencegahan emisi: 16.8 kg CO₂e.
+                  </p>
+                </>
+              )}
             </div>
           </div>
         </div>

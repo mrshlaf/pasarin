@@ -1,3 +1,8 @@
+/**
+ * Master Katalog Komoditas Hortikultura Pasar Induk Kramat Jati (PSR-14).
+ * Memuat parameter biologis kinetika respirasi (Q10, laju respirasi dasar),
+ * batas waktu pajang layu (ringan, sedang, afkir), serta harga acuan dasar dan price floor pedagang.
+ */
 export interface Commodity {
   id: string;
   name: string;
@@ -16,6 +21,9 @@ export interface Commodity {
   storageAdvice: string;
 }
 
+/**
+ * Katalog acuan 30 komoditas sayur dan buah tropis Pasar Induk Kramat Jati.
+ */
 export const COMMODITIES: Commodity[] = [
   {
     id: "kangkung",

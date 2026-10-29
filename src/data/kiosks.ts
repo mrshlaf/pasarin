@@ -1,3 +1,8 @@
+/**
+ * Master Direktori Kios Pedagang Pasar Induk Kramat Jati (PSR-2).
+ * Memuat atribut spasial los basah/kering (Blok A, B, C), nomor lapak,
+ * spesialisasi komoditas, status verifikasi administrasi UPB Pasar Jaya, dan skor reputasi.
+ */
 export interface Kiosk {
   id: string;
   name: string;
@@ -14,6 +19,9 @@ export interface Kiosk {
   tier2ContributionCount: number;
 }
 
+/**
+ * Daftar direktori 30 kios pedagang binaan di Pasar Induk Kramat Jati.
+ */
 export const KIOSKS: Kiosk[] = [
   // Blok A: Sayuran Basah & Daun Cepat Layu (Kios A-01 s/d A-10)
   {

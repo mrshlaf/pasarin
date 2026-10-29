@@ -1,6 +1,7 @@
 /**
- * GET /api/kinetics/decay: hitung peluruhan kinetika komoditas (single / batch 30 komoditas)
- * POST /api/kinetics/decay: evaluasi dinamis batch item inventaris lapak
+ * Rute API Evaluasi Kinetika Peluruhan Biologis Hortikultura (PSR-14).
+ * Menyediakan endpoint HTTP GET (evaluasi tunggal/katalog lengkap via query params)
+ * dan POST (evaluasi muatan inventaris kustom kios pedagang).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,7 +14,14 @@ import { DecayEvaluationResult } from "@/types/api";
 
 export const dynamic = "force-dynamic";
 
-// Evaluasi via query params (?commodityId=kangkung&hoursElapsed=8.5)
+/**
+ * Menangani evaluasi peluruhan komoditas melalui parameter kueri URL.
+ * Jika parameter `commodityId` disertakan, sistem mengembalikan evaluasi tunggal komoditas tersebut.
+ * Jika tanpa `commodityId`, sistem mengevaluasi seluruh 30 komoditas katalog pasar secara serentak.
+ *
+ * @param req - Objek NextRequest pembawa parameter kueri (commodityId, hoursElapsed, temperatureC, humidityPercent).
+ * @returns Respons JSON berisi hasil evaluasi kinetika peluruhan atau pesan kesalahan validasi.
+ */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -60,7 +68,13 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Evaluasi batch via POST body JSON
+/**
+ * Menangani evaluasi peluruhan biologis untuk daftar inventaris komoditas kustom berbasis muatan JSON.
+ * Memproses setiap entri dalam larik `items` dengan jam pajang dan kondisi mikroklimat spesifik.
+ *
+ * @param req - Objek NextRequest pembawa body JSON dengan struktur { items, hoursElapsed, temperatureC, humidityPercent }.
+ * @returns Respons JSON berisi ringkasan kuantitatif dan rincian evaluasi per komoditas.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
@@ -101,7 +115,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Health probe tanpa payload
+/**
+ * Menangani pemeriksaan ketersediaan ringan (health probe) endpoint kinetika peluruhan.
+ *
+ * @returns Respons HTTP kosong dengan status 200 OK.
+ */
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

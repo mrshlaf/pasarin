@@ -1,5 +1,7 @@
 /**
- * GET & POST /api/cron/afternoon-sweep: pemicu sweep surplus harian 14:30 WIB (PSR-4)
+ * Rute Penjadwal Otonom Sapuan Surplus Pasar 14.30 WIB (PSR-4).
+ * Memicu pemindaian 30 kios pedagang los basah Kramat Jati pada titik kritis pergantian ritme pasar.
+ * Dilindungi oleh validasi Bearer secret token dan header internal x-vercel-cron.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -11,7 +13,15 @@ import { KIOSKS } from "@/data/kiosks";
 
 export const dynamic = "force-dynamic";
 
-// Validasi otentikasi Bearer CRON_SECRET_KEY atau header Vercel cron
+/**
+ * Memvalidasi keabsahan token otorisasi permintaan cron.
+ * Rasionale Keamanan: Rute pemicu sapuan sore mengeksekusi kalkulasi massal dan audit log.
+ * Akses wajib membawa Bearer token rahasia (CRON_SECRET_KEY) atau header internal
+ * x-vercel-cron untuk mencegah penyerang luar memicu audit palsu secara berulang.
+ *
+ * @param req - Objek NextRequest pembawa header otorisasi.
+ * @returns True jika permintaan memiliki kredensial valid, false jika tidak sah.
+ */
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const authHeader = req.headers.get("authorization");
   const env = getEnv();
@@ -33,7 +43,13 @@ function isAuthorizedCronRequest(req: NextRequest): boolean {
   return false;
 }
 
-// Logika eksekusi sweep surplus pasar jam 14:30 WIB
+/**
+ * Mengeksekusi siklus sapuan inventaris sore hari (Afternoon Sweep) pukul 14.30 WIB.
+ * Memindai katalog kios terdaftar di Pasar Kramat Jati, mengagregasi volume surplus terdeteksi,
+ * mendistribusikannya ke 3-Tier sirkular, dan mencatat transaksi ke audit trail.
+ *
+ * @returns Ringkasan hasil sapuan AfternoonSweepResult beserta verifikasi audit trail.
+ */
 async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   const startTime = Date.now();
   const triggeredAt = new Date().toISOString();
@@ -93,6 +109,12 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   };
 }
 
+/**
+ * Menangani pemicuan sapuan berkala via HTTP GET (standar Vercel Cron dan external cron trigger).
+ *
+ * @param req - Objek NextRequest pembawa header otorisasi Bearer token atau x-vercel-cron.
+ * @returns Respons JSON berisi AfternoonSweepResult jika terotorisasi, atau HTTP 401 jika ditolak.
+ */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
@@ -108,6 +130,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
+/**
+ * Menangani pemicuan sapuan manual via HTTP POST dari dashboard administrator sistem.
+ *
+ * @param req - Objek NextRequest pembawa header otorisasi Bearer token atau x-vercel-cron.
+ * @returns Respons JSON berisi AfternoonSweepResult jika terotorisasi, atau HTTP 401 jika ditolak.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
