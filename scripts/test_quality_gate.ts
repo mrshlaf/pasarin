@@ -169,6 +169,40 @@ async function runQualityGateTests() {
     `Threshold: ${qualityGateAgent.HUMAN_CONSUMABLE_DECAY_THRESHOLD}`
   );
 
+  // Test 7: Evaluasi klorofil visual MobileNetV3 (evaluateChlorophyllLoss)
+  console.log("\n[Test 7] Pengujian Evaluasi Kehilangan Klorofil Visual (MobileNetV3)");
+  const visualFresh = qualityGateAgent.evaluateChlorophyllLoss({ chlorophyllRatio: 0.92, commodityId: "bayam" });
+  assert(
+    visualFresh.isHumanConsumable === true && visualFresh.chlorophyllLossPercent === 8.0,
+    "Sayuran berklorofil 92% tervalidasi layak konsumsi manusia dengan kehilangan klorofil 8%",
+    `Loss: ${visualFresh.chlorophyllLossPercent}%, Condition: '${visualFresh.estimatedCondition}'`
+  );
+  const visualSpoiled = qualityGateAgent.evaluateChlorophyllLoss({ chlorophyllRatio: 0.10, commodityId: "kangkung" });
+  assert(
+    visualSpoiled.isHumanConsumable === false && visualSpoiled.gateStatus === "blocked",
+    "Sayuran dengan klorofil 10% (kuning kecokelatan) terdeteksi tidak layak pangan manusia",
+    `Loss: ${visualSpoiled.chlorophyllLossPercent}%, Condition: '${visualSpoiled.estimatedCondition}'`
+  );
+
+  // Test 8: Penalti reputasi pedagang saat terbukti melakukan moral hazard
+  console.log("\n[Test 8] Pengujian Penalti Reputasi Pedagang saat Moral Hazard");
+  const penaltyResult = await verifyHumanGradeIntegrity({
+    commodityId: "bayam",
+    hoursOnDisplay: 2.0,
+    requestedTier: "tier_3",
+    vendorId: "vendor_kramat_nakal",
+    chlorophyllRatio: 0.95,
+  });
+  assert(
+    penaltyResult.reputationPenaltyApplied === 5,
+    "Sistem menerapkan penalti pengurangan 5 poin reputasi bagi pedagang yang memicu moral hazard",
+    `reputationPenaltyApplied: ${penaltyResult.reputationPenaltyApplied}`
+  );
+  assert(
+    !!penaltyResult.visualVerification && penaltyResult.visualVerification.isHumanConsumable === true,
+    "Hasil inspeksi visual klorofil terlampir pada verifikasi gerbang mutu",
+    `Visual Loss: ${penaltyResult.visualVerification?.chlorophyllLossPercent}%`
+  );
   // Ringkasan hasil test
   console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-21: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
 

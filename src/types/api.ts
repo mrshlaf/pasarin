@@ -155,6 +155,19 @@ export interface CalculateDecayRequestPayload {
 }
 
 /**
+ * Hasil evaluasi kehilangan klorofil visual melalui MobileNetV3 visual classifier (PSR-21 / Agent 10).
+ */
+export interface ChlorophyllLossEvaluationResult {
+  chlorophyllLossPercent: number;
+  visualDecayScore: number;
+  estimatedCondition: ProduceCondition;
+  recommendedTier: CircularRescueTier;
+  isHumanConsumable: boolean;
+  visualConfidence: number;
+  gateStatus: "passed" | "blocked";
+}
+
+/**
  * Hasil verifikasi gerbang kendali mutu etis dan anti-moral hazard (PSR-21).
  */
 export interface QualityGateEvaluationResult {
@@ -168,6 +181,8 @@ export interface QualityGateEvaluationResult {
   violationReason?: string;
   correctiveAction?: string;
   socialReservationWindowMinutes?: number;
+  reputationPenaltyApplied?: number;
+  visualVerification?: ChlorophyllLossEvaluationResult;
   auditEventId?: string;
   evaluatedAt: string;
 }
@@ -182,4 +197,6 @@ export interface QualityGateRequestPayload {
   vendorId?: string;
   temperatureC?: number;
   humidityPercent?: number;
+  imageBase64?: string;
+  chlorophyllRatio?: number;
 }

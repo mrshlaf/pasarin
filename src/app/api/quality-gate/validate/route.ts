@@ -23,6 +23,8 @@ const qualityGatePayloadSchema = z.object({
   vendorId: z.string().optional(),
   temperatureC: z.number().optional(),
   humidityPercent: z.number().optional(),
+  imageBase64: z.string().optional(),
+  chlorophyllRatio: z.number().min(0).max(1).optional(),
 });
 
 /**
@@ -46,8 +48,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       vendorId: validation.data.vendorId,
       temperatureC: validation.data.temperatureC,
       humidityPercent: validation.data.humidityPercent,
+      imageBase64: validation.data.imageBase64,
+      chlorophyllRatio: validation.data.chlorophyllRatio,
     };
-
     const evaluationResult = await verifyHumanGradeIntegrity(payload);
 
     return successResponse(evaluationResult, 200);
@@ -79,6 +82,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const vendorId = searchParams.get("vendorId") ?? "vendor_kramat_01";
     const temperatureC = searchParams.has("temperatureC") ? Number(searchParams.get("temperatureC")) : undefined;
     const humidityPercent = searchParams.has("humidityPercent") ? Number(searchParams.get("humidityPercent")) : undefined;
+    const chlorophyllRatio = searchParams.has("chlorophyllRatio") ? Number(searchParams.get("chlorophyllRatio")) : undefined;
 
     if (isNaN(hoursOnDisplay) || hoursOnDisplay < 0) {
       return errorResponse("Parameter 'hoursOnDisplay' harus berupa angka positif", 400);
@@ -91,8 +95,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       vendorId,
       temperatureC,
       humidityPercent,
+      chlorophyllRatio,
     };
-
     const evaluationResult = await verifyHumanGradeIntegrity(payload);
 
     return successResponse(evaluationResult, 200);
