@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMarketSimulation } from "@/lib/simulationStore";
+import { useAuth } from "@/lib/authContext";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import {
   Thermometer,
@@ -10,8 +12,9 @@ import {
   Send,
   Leaf,
   Layers,
+  LogOut,
+  User,
 } from "lucide-react";
-
 interface AppHeaderProps {
   onOpenTelegram: () => void;
 }
@@ -25,9 +28,9 @@ export function AppHeader({ onOpenTelegram }: AppHeaderProps) {
     triggerCronSweepNow,
     currentStage,
   } = useMarketSimulation();
+  const { user, signOut } = useAuth();
 
   const pendingNotifsCount = notifications.filter((n) => n.actionRequired).length;
-
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-slate-200/90 px-5 lg:px-8 py-3 shadow-2xs">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 max-w-[1720px] mx-auto">
@@ -114,6 +117,37 @@ export function AppHeader({ onOpenTelegram }: AppHeaderProps) {
               <Layers className="w-3.5 h-3.5 text-sky-200" />
               <span>Simulasi 14:30</span>
             </button>
+          )}
+
+          {/* Profil Pengguna & Tombol Logout Supabase Auth (PSR-40) */}
+          {user ? (
+            <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div className="hidden sm:flex flex-col text-right">
+                <span className="text-[11px] font-bold text-slate-900 leading-tight truncate max-w-[140px]">
+                  {user.name}
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">
+                  {user.email}
+                </span>
+              </div>
+              <button
+                onClick={() => signOut()}
+                type="button"
+                title="Keluar dari sesi akun (Logout)"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold transition cursor-pointer text-xs shadow-2xs"
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-600" />
+                <span className="hidden md:inline">Keluar</span>
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2A5C5F] hover:bg-[#1E4345] text-white font-semibold text-xs shadow-xs transition"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Masuk</span>
+            </Link>
           )}
         </div>
       </div>
