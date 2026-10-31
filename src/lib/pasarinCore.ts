@@ -222,7 +222,9 @@ export function getAllCommodityEvaluations(
   );
 }
 
-// Parameter acuan kinetika termal Arrhenius-Q10 kurikulum (PSR-14)
+/**
+ * Parameter acuan kinetika termal Arrhenius-Q10 kurikulum (PSR-14).
+ */
 export const ARRHENIUS_CONSTANTS = {
   GAS_CONSTANT_R: UNIVERSAL_GAS_CONSTANT_R,
   ACTIVATION_ENERGY_EA: ACTIVATION_ENERGY_EA_J_MOL,
@@ -250,7 +252,14 @@ export interface ArrheniusDecayResult {
   isEdibleForHumans: boolean;
 }
 
-// Hitung konstanta laju peluruhan k(T, RH) dengan akselerasi Q10 (~2.2x pada 33°C vs 20°C) (PSR-14)
+/**
+ * Menghitung konstanta laju peluruhan k(T, RH) dengan akselerasi Q10 (~2.2x pada 33°C vs 20°C) (PSR-14).
+ *
+ * @param temperatureCelsius - Suhu lingkungan pasar dalam Celsius (°C).
+ * @param relativeHumidityPercent - Kelembapan relatif dalam % RH.
+ * @param q10 - Koefisien kelipatan termal biologis (default: 2.0).
+ * @returns Konstanta laju degradasi per jam.
+ */
 export function calculateArrheniusRateConstant(
   temperatureCelsius: number,
   relativeHumidityPercent: number,
@@ -266,7 +275,15 @@ export function calculateArrheniusRateConstant(
   return k_baseline * thermalRatio * humidityCorrection;
 }
 
-// Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan & laju respirasi (PSR-14)
+/**
+ * Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan & laju respirasi Arrhenius (PSR-14).
+ *
+ * @param commodity - Objek metadata komoditas yang dievaluasi.
+ * @param temperatureCelsius - Suhu aktual los pasar (°C).
+ * @param relativeHumidityPercent - Kelembapan relatif los pasar (% RH).
+ * @param hoursElapsed - Waktu pajang sejak subuh (jam).
+ * @returns Objek ArrheniusDecayResult dengan status kelayakan konsumsi manusia.
+ */
 export function evaluateArrheniusDecay(
   commodity: Commodity,
   temperatureCelsius: number,
@@ -344,7 +361,14 @@ export interface FootfallSimulationResult {
   aisleAccessibilityDescription: string;
 }
 
-// Model redaman pengunjung akibat hujan & lorong becek (curah hujan 10 mm menurunkan ~48% pembeli) (PSR-15)
+/**
+ * Model redaman pengunjung pasar akibat hujan lebat sore dan lorong becek (PSR-15).
+ * Curah hujan 10 mm menurunkan ~48% pembeli eceran sehingga meningkatkan surplus stok lapak.
+ *
+ * @param rainfallMm - Curah hujan terukur dalam milimeter (mm).
+ * @param isRainDetected - Penanda boolean apakah hujan sedang terdeteksi sensor cuaca.
+ * @returns Objek FootfallSimulationResult berisi persentase penurunan pengunjung dan pengali surplus.
+ */
 export function calculateRainFootfallAttenuation(
   rainfallMm: number,
   isRainDetected: boolean = false
@@ -403,7 +427,15 @@ export interface DynamicPricingResult {
   targetAudience: "Warteg & Katering UMKM" | "Dapur Sosial" | "Pakan Maggot BSF";
 }
 
-// Inverse surge pricing: diskon eksponensial sore (14.30-18.00) dengan proteksi price floor modal (PSR-20)
+/**
+ * Model penetapan harga dinamis inverse surge sore hari (14.30-18.00 WIB) dengan proteksi price floor modal (PSR-20).
+ * Diskon bertambah seiring bertambahnya waktu kritis namun terkunci aman di atas harga pakan maggot + margin pedagang.
+ *
+ * @param commodity - Objek metadata komoditas yang dijual.
+ * @param currentHourDecimal - Jam operasional pasar dalam format desimal (contoh: 14.5 untuk 14:30 WIB).
+ * @param rainfallMm - Curah hujan terukur saat penawaran dihitung (mm).
+ * @returns Objek DynamicPricingResult berisi harga tebus penyelamatan (IDR/kg) dan mekanisme penetapan harga.
+ */
 export function calculateInverseSurgePricing(
   commodity: Commodity,
   currentHourDecimal: number = 14.5,
