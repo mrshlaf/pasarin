@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import { useMarketSimulation, AppRole, SimulationContextType } from "@/lib/simulationStore";
+import { useAuth } from "@/lib/authContext";
 import {
   Store,
   ShoppingBag,
@@ -10,7 +12,6 @@ import {
   Building2,
   Cpu,
 } from "lucide-react";
-
 interface RoleNavConfig {
   id: AppRole;
   label: string;
@@ -91,15 +92,37 @@ const ROLES: RoleNavConfig[] = [
 
 export function AppSidebar() {
   const sim = useMarketSimulation();
+  const { user, isRoleAccessible } = useAuth();
+
+  // Kunci otomatis peran simulasi sesuai peran akun pengguna yang sedang login (Role Isolation)
+  useEffect(() => {
+    if (user && user.role !== "admin" && user.role !== "manager" && sim.role !== user.role) {
+      sim.setRole(user.role);
+    }
+  }, [user, sim]);
+
+  // Hanya tampilkan peran yang berhak diakses (peran yang tidak berhak otomatis dihilangkan)
+  const accessibleRoles = ROLES.filter((r) => isRoleAccessible(r.id));
+
+  // Jika pengguna hanya berwenang pada 1 peran, bilah pemilih peran tidak perlu ditampilkan (Role Isolation)
+  if (accessibleRoles.length <= 1) {
+    return null;
+  }
 
   return (
     <aside className="w-full lg:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
       <div className="p-4 border-b border-slate-100">
-        <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-2">
-          Peran Pengguna
-        </h2>
+        <div className="flex items-center justify-between mb-2 px-2">
+          <h2 className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+            Peran Pengguna
+          </h2>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+            {accessibleRoles.length} Peran
+          </span>
+        </div>
+
         <div className="space-y-1">
-          {ROLES.map((r) => {
+          {accessibleRoles.map((r) => {
             const Icon = r.icon;
             const isActive = sim.role === r.id;
             const count = r.badgeCount ? r.badgeCount(sim) : 0;

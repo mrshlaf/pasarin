@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/authContext";
 import {
   SimulationProvider,
   useMarketSimulation,
@@ -20,8 +22,16 @@ import { ManagerDashboard } from "@/components/roles/ManagerDashboard";
 import { AdminDashboard } from "@/components/roles/AdminDashboard";
 
 function DashboardContent() {
-  const { role } = useMarketSimulation();
+  const { role, setRole } = useMarketSimulation();
+  const { user } = useAuth();
   const [showTelegram, setShowTelegram] = useState(false);
+
+  // Kunci otomatis peran workspace sesuai peran akun pengguna yang login (Role Isolation)
+  useEffect(() => {
+    if (user && user.role !== "admin" && user.role !== "manager" && role !== user.role) {
+      setRole(user.role);
+    }
+  }, [user, role, setRole]);
 
   return (
     <div className="min-h-screen bg-[#FBFDFD] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#2A5C5F] selection:text-white">
@@ -58,8 +68,39 @@ function DashboardContent() {
     </div>
   );
 }
-
 export default function Home() {
+  const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Proteksi rute: arahkan pengguna yang belum terautentikasi ke halaman /login (PSR-40)
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace("/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FBFDFD] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-[#2A5C5F] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-600">Memuat sesi pengguna PASARIN...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#FBFDFD] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs font-semibold text-slate-600">Mengarahkan ke halaman login...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SimulationProvider>
       <DashboardContent />
