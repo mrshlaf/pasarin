@@ -9,8 +9,11 @@ import {
   Wallet,
   CheckCircle2,
   XCircle,
+  Sparkles,
+  Play,
+  Send,
 } from "lucide-react";
-
+import { ReActStep } from "@/types/api";
 interface FreeTierQuota {
   service: string;
   component: string;
@@ -72,11 +75,63 @@ export function AdminDashboard() {
   const { stageConfig, transactions } = useMarketSimulation();
   const [selectedAgent, setSelectedAgent] = useState(MULTI_AGENTS[0].name);
 
+  // State Kueri & Orkestrasi ReAct (PSR-17 / PSR-18)
+  const [queryInput, setQueryInput] = useState("Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?");
+  const [isQueryLoading, setIsQueryLoading] = useState(false);
+  const [orchestratorSummary, setOrchestratorSummary] = useState<string | null>(null);
+  const [dynamicReActSteps, setDynamicReActSteps] = useState<ReActStep[] | null>(null);
+
   // QualityGate Moral Hazard Playground state
   const [testDecayScore, setTestDecayScore] = useState<number>(0.25);
   const [testClaimedTier, setTestClaimedTier] = useState<string>("tier_3");
 
-  // Evaluasi Quality Gate anti-moral hazard (PSR-21 / Invarian 1)
+  // Pemicu eksekusi kueri manajerial bahasa alami ke API /api/orchestrator/query
+  const handleExecuteQuery = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!queryInput.trim()) return;
+    setIsQueryLoading(true);
+    setSelectedAgent("OrchestratorAgent");
+
+    try {
+      const res = await fetch("/api/orchestrator/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: queryInput }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setDynamicReActSteps(json.data.thoughtProcess || []);
+        setOrchestratorSummary(json.data.executiveSummary || "");
+      }
+    } catch (err) {
+      console.warn("Gagal mengeksekusi kueri orchestrator:", err);
+    } finally {
+      setIsQueryLoading(false);
+    }
+  };
+
+  // Pemicu siklus otonom 14:30 WIB ke API /api/orchestrator/run
+  const handleTriggerRun = async () => {
+    setIsQueryLoading(true);
+    setSelectedAgent("OrchestratorAgent");
+
+    try {
+      const res = await fetch("/api/orchestrator/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ executionMode: "manual_simulation" }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setDynamicReActSteps(json.data.thoughtProcess || []);
+        setOrchestratorSummary(json.data.executiveSummary || "");
+      }
+    } catch (err) {
+      console.warn("Gagal memicu siklus orkestrasi:", err);
+    } finally {
+      setIsQueryLoading(false);
+    }
+  };
   const isHumanConsumable = testDecayScore < 0.85;
   const isMoralHazardBlocked = isHumanConsumable && testClaimedTier === "tier_3";
   const recommendedTierLabel = testDecayScore < 0.35
@@ -313,9 +368,46 @@ export function AdminDashboard() {
         <h3 className="text-sm font-bold text-slate-900 mb-1">
           Inspektor Penalaran Multi-Agen (Chain-of-Thought Trace)
         </h3>
-        <p className="text-xs text-slate-600 mb-4 font-medium">
+        <p className="text-xs text-slate-600 mb-3 font-medium">
           Pelacakan alur observasi, pemikiran, dan aksi otonom ReAct per spesialis agen
         </p>
+
+        {/* ReAct Natural Query Interactive Console (PSR-17 / PSR-18) */}
+        <div className="mb-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+              <Sparkles className="w-4 h-4 text-[#0369A1]" />
+              <span>Konsol Kueri Bahasa Alami Gemini 2.0 Flash (PSR-17)</span>
+            </div>
+            <button
+              onClick={handleTriggerRun}
+              type="button"
+              disabled={isQueryLoading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#2A5C5F] hover:bg-[#1E4345] text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+            >
+              <Play className="w-3 h-3 text-sky-200" />
+              <span>Picu Alur Sapuan 14:30 WIB</span>
+            </button>
+          </div>
+
+          <form onSubmit={handleExecuteQuery} className="flex gap-2">
+            <input
+              type="text"
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder="Ketik pertanyaan manajerial (contoh: Lusa perlu berapa mobil armada?)"
+              className="flex-1 text-xs font-medium px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:border-[#2A5C5F] outline-none transition"
+            />
+            <button
+              type="submit"
+              disabled={isQueryLoading}
+              className="px-4 py-2 bg-[#0369A1] hover:bg-[#075985] text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs"
+            >
+              <span>{isQueryLoading ? "Menalar..." : "Tanya ReAct"}</span>
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="space-y-1 lg:border-r lg:border-slate-100 lg:pr-3">
@@ -346,7 +438,56 @@ export function AdminDashboard() {
             </div>
 
             <div className="space-y-2 leading-relaxed text-[11px]">
-              {selectedAgent === "QualityGateAgent" ? (
+              {selectedAgent === "OrchestratorAgent" ? (
+                dynamicReActSteps && dynamicReActSteps.length > 0 ? (
+                  <>
+                    {dynamicReActSteps.map((step) => (
+                      <div key={step.step} className="space-y-1 pb-2 border-b border-slate-800/80">
+                        <p className="text-[#38BDF8]">
+                          [STEP {step.step}] {step.agent || "OrchestratorAgent"}
+                        </p>
+                        <p className="text-slate-300">
+                          <strong className="text-slate-100">[THINK]</strong> {step.thought}
+                        </p>
+                        {step.action && (
+                          <p className="text-amber-300">
+                            <strong>[ACTION]</strong> {step.action}
+                          </p>
+                        )}
+                        {step.observation && (
+                          <p className="text-emerald-400">
+                            <strong>[OBSERVE]</strong> {step.observation}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {orchestratorSummary && (
+                      <div className="mt-2 p-2 rounded bg-slate-900/90 border border-slate-700 text-slate-200">
+                        <span className="text-cyan-300 font-bold block mb-1">[FINAL ANSWER / SYNTHESIS]</span>
+                        <p className="leading-relaxed">{orchestratorSummary}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[#38BDF8]">
+                      [OBSERVE] Jam Sirkadian: {stageConfig.clockTime} · Suhu Los: {stageConfig.temperatureC}°C · RH: {stageConfig.humidityPercent}%
+                    </p>
+                    <p className="text-slate-300">
+                      [THINK] Menjadwalkan pemicuan sapuan otonom pada jam kritis 14:30 WIB. Kinetika respirasi komoditas daun meningkat.
+                    </p>
+                    <p className="text-amber-300">
+                      [ACTION] invokeSubAgent(WeatherAgent, {`{marketId: "kramat_jati"}`}) & modelArrheniusDecay(30 kiosks)
+                    </p>
+                    <p className="text-emerald-400">
+                      [OBSERVE] Estimasi surplus 1.240 kg teridentifikasi: 750 kg Tier 1 Warteg, 350 kg Tier 2 Sosial, 140 kg Maggot.
+                    </p>
+                    <p className="text-slate-400">
+                      [FINAL ANSWER] Siklus sapuan 14:30 WIB siap dieksekusi. Klik tombol &apos;Picu Alur Sapuan 14:30 WIB&apos; di atas untuk live run.
+                    </p>
+                  </>
+                )
+              ) : selectedAgent === "QualityGateAgent" ? (
                 <>
                   <p className="text-[#38BDF8]">
                     [OBSERVE] Kios A-05 mengajukan tiket alokasi &apos;tier_3&apos; (Maggot) untuk komoditas Bayam (jam pajang: 4 jam, suhu: 32°C).
