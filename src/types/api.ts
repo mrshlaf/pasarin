@@ -241,6 +241,50 @@ export interface OrchestratorQueryResult {
   query: string;
   executiveSummary: string;
   thoughtProcess: ReActStep[];
+  toolsInvoked?: string[];
   recommendations?: string[];
+  executionDurationMs?: number;
   generatedAt: string;
+}
+
+/**
+ * Deklarasi skema alat fungsi Gemini Function Calling (PSR-18).
+ */
+export interface ToolFunctionDeclaration {
+  name: string;
+  description: string;
+  agentId: string;
+  parameters: {
+    type: string;
+    properties: Record<string, { type: string; description?: string; enum?: string[]; default?: unknown }>;
+    required?: string[];
+  };
+}
+
+/**
+ * Hasil eksekusi sebuah alat sub-agen yang terdaftar (PSR-18).
+ */
+export interface ToolExecutionResult<T = unknown> {
+  toolName: string;
+  agentId: string;
+  success: boolean;
+  data?: T;
+  error?: string;
+  durationMs: number;
+  executedAt: string;
+}
+
+/**
+ * Rencana dekomposisi kueri bahasa alami manajerial (PSR-18).
+ */
+export interface QueryDecompositionPlan {
+  originalQuery: string;
+  detectedIntent: "logistics_fleet" | "climate_microclimate" | "pricing_and_floor" | "quality_and_ethics" | "market_overview";
+  requiredTools: string[];
+  executionSteps: Array<{
+    step: number;
+    toolName: string;
+    purpose: string;
+    arguments: Record<string, unknown>;
+  }>;
 }
