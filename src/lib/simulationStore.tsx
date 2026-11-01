@@ -9,6 +9,7 @@ import { createContext, useContext, useState, ReactNode } from "react";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 import { calculateDecay, DecayEvaluation } from "@/lib/decayEngine";
+import { calculateRainFootfallAttenuation, FootfallSimulationResult } from "@/lib/pasarinCore";
 
 export type AppRole =
   | "vendor"
@@ -99,6 +100,7 @@ export interface StockItem {
   remainingKg: number;
   arrivalClock: string;
   lotNumber: string;
+  hoursOffset?: number;
 }
 
 export interface RescueOffer {
@@ -156,6 +158,8 @@ export interface SimulationContextType {
   setStage: (stage: TimeOfDayStage) => void;
   stageConfig: TimeStageConfig;
   stockItems: StockItem[];
+  addStockItem: (item: StockItem) => void;
+  footfallSimulation: FootfallSimulationResult;
   offers: RescueOffer[];
   transactions: EscrowTransaction[];
   notifications: TelegramNotification[];
@@ -178,7 +182,7 @@ const SimulationContext = createContext<SimulationContextType | undefined>(undef
 const INITIAL_STOCKS: StockItem[] = [
   { id: "stk_01", vendorId: "vendor_kramat_01", commodityId: "kangkung", initialKg: 80, remainingKg: 45, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-01" },
   { id: "stk_02", vendorId: "vendor_kramat_01", commodityId: "bayam", initialKg: 60, remainingKg: 35, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-02" },
-  { id: "stk_03", vendorId: "vendor_kramat_01", commodityId: "sawi_hijau", initialKg: 90, remainingKg: 50, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-03" },
+  { id: "stk_03", vendorId: "vendor_kramat_01", commodityId: "sawi_hijau", initialKg: 50, remainingKg: 30, arrivalClock: "Kemarin 17:00 (Inap)", lotNumber: "LOT-A12-AFKIR", hoursOffset: 10 },
   { id: "stk_04", vendorId: "vendor_kramat_02", commodityId: "pakcoy", initialKg: 100, remainingKg: 40, arrivalClock: "04:30 WIB", lotNumber: "LOT-A18-01" },
   { id: "stk_05", vendorId: "vendor_kramat_02", commodityId: "buncis", initialKg: 50, remainingKg: 25, arrivalClock: "04:30 WIB", lotNumber: "LOT-A18-02" },
   { id: "stk_06", vendorId: "vendor_kramat_03", commodityId: "selada", initialKg: 40, remainingKg: 20, arrivalClock: "04:30 WIB", lotNumber: "LOT-A24-01" },
@@ -199,8 +203,12 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole>("vendor");
   const [selectedVendorId, setSelectedVendorId] = useState<string>("vendor_kramat_01");
   const [currentStage, setCurrentStage] = useState<TimeOfDayStage>("cron_sweep");
-  const [stockItems] = useState<StockItem[]>(INITIAL_STOCKS);
+  const [stockItems, setStockItems] = useState<StockItem[]>(INITIAL_STOCKS);
   const [vendorWalletBalanceIdr, setVendorWalletBalanceIdr] = useState<number>(345000);
+
+  const addStockItem = (newStock: StockItem) => {
+    setStockItems((prev) => [newStock, ...prev]);
+  };
 
   // Initial Offers
   const [offers, setOffers] = useState<RescueOffer[]>([
@@ -212,9 +220,9 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       targetTier: "tier_1",
       quantityKg: 45,
       originalPricePerKg: 6000,
-      salvagePricePerKg: 2400,
-      discountPercentage: 60,
-      totalAmountIdr: 108000,
+      salvagePricePerKg: 2500,
+      discountPercentage: 58,
+      totalAmountIdr: 112500,
       expiresInMinutes: 45,
       status: "active",
       paymentStatus: "unpaid",
@@ -246,6 +254,21 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       discountPercentage: 85,
       totalAmountIdr: 48000,
       expiresInMinutes: 25,
+      status: "active",
+      paymentStatus: "unpaid",
+    },
+    {
+      id: "ofr_04",
+      stockId: "stk_03",
+      vendorId: "vendor_kramat_01",
+      commodityId: "sawi_hijau",
+      targetTier: "tier_3",
+      quantityKg: 30,
+      originalPricePerKg: 6500,
+      salvagePricePerKg: 500,
+      discountPercentage: 92,
+      totalAmountIdr: 15000,
+      expiresInMinutes: 120,
       status: "active",
       paymentStatus: "unpaid",
     },
@@ -290,15 +313,20 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   ]);
 
   const stageConfig = TIME_STAGES[currentStage];
+  const footfallSimulation = calculateRainFootfallAttenuation(
+    stageConfig.rainMm,
+    stageConfig.isRaining
+  );
 
   // Hitung evaluasi decay untuk item stok berdasarkan stage cuaca saat ini
   const getEvaluationForStock = (stock: StockItem): DecayEvaluation => {
     const comm = COMMODITIES.find((c) => c.id === stock.commodityId) || COMMODITIES[0];
+    const effectiveHours = stageConfig.hoursElapsedSinceArrival + (stock.hoursOffset ?? 0);
     return calculateDecay(
       comm,
       stageConfig.temperatureC,
       stageConfig.humidityPercent,
-      stageConfig.hoursElapsedSinceArrival
+      effectiveHours
     );
   };
 
@@ -493,7 +521,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
           quantityKg: stk.remainingKg,
           originalPricePerKg: comm.baseWholesalePricePerKg,
           salvagePricePerKg: evalResult.estimatedSalvagePrice,
-          discountPercentage: evalResult.salvageDiscount,
+          discountPercentage: Math.round(evalResult.salvageDiscount * 100),
           totalAmountIdr: evalResult.estimatedSalvagePrice * stk.remainingKg,
           expiresInMinutes: 30,
           status: "pending_vendor",
@@ -529,6 +557,8 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         setStage: setCurrentStage,
         stageConfig,
         stockItems,
+        addStockItem,
+        footfallSimulation,
         offers,
         transactions,
         notifications,

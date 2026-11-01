@@ -149,27 +149,27 @@ export function classifyProduceCondition(decayScore: number): {
   };
 }
 
-// Evaluasi kinetika peluruhan komoditas dengan proteksi price floor
+// Evaluasi kinetika peluruhan komoditas dengan kinetika Arrhenius dan proteksi price floor (PSR-14)
 export function evaluateProduceDecay(
   commodity: Commodity,
   temperatureC: number,
   humidityPercent: number,
   hoursElapsed: number
 ): DecayEvaluationResult {
-  const { decayScore, accelerationFactor, hoursRemaining } = calculateDecayScore(
-    commodity,
-    temperatureC,
-    humidityPercent,
-    hoursElapsed
-  );
-
-  const { condition, recommendedTier, tierLabel, baseDiscountPercent } =
-    classifyProduceCondition(decayScore);
-
+  const arrhenius = evaluateArrheniusDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
   const basePrice = commodity.baseWholesalePricePerKg;
-  const floorPrice = commodity.minimumSalvagePricePerKg;
+  const floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
 
-  // Proteksi modal pedagang: harga tebus dikunci minimal seharga floor
+  let baseDiscountPercent = 0;
+  if (arrhenius.condition === 'layu_ringan') {
+    const surgeStep = (arrhenius.decayScore - 0.35) / 0.3;
+    baseDiscountPercent = 50 + Math.round(surgeStep * 20);
+  } else if (arrhenius.condition === 'layu_sedang') {
+    baseDiscountPercent = 85;
+  } else if (arrhenius.condition === 'tidak_layak') {
+    baseDiscountPercent = 95;
+  }
+
   const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
   const estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
 
@@ -180,12 +180,12 @@ export function evaluateProduceDecay(
     temperatureC,
     humidityPercent,
     hoursElapsed,
-    accelerationFactor,
-    decayScore,
-    condition,
-    recommendedTier,
-    tierLabel,
-    hoursRemaining,
+    accelerationFactor: Number((arrhenius.rateConstantK / 0.045).toFixed(3)),
+    decayScore: arrhenius.decayScore,
+    condition: arrhenius.condition,
+    recommendedTier: arrhenius.recommendedTier,
+    tierLabel: arrhenius.tierLabel,
+    hoursRemaining: arrhenius.hoursRemaining,
     salvageDiscountPercent: baseDiscountPercent,
     estimatedSalvagePriceIdr,
     baseWholesalePriceIdr: basePrice,
@@ -302,7 +302,7 @@ export function evaluateArrheniusDecay(
 
   const safeHorizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
   const normalizedExposure = hoursElapsed / safeHorizonHours;
-  const thermalScaling = Math.pow(accelerationRatio / 2.2, 0.4);
+  const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
   const rawScore = Math.pow(normalizedExposure, 1.15) * 0.82 * thermalScaling;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
 
@@ -328,10 +328,17 @@ export function evaluateArrheniusDecay(
     tierLabel = "Tier 3: Sentra Budidaya Maggot BSF & Kompos Organik";
   }
 
-  const hoursRemaining = Math.max(
-    0,
-    Number(((1.0 - decayScore) * (commodity.standardShelfLifeHours / accelerationRatio)).toFixed(1))
-  );
+  // Sisa jam aman sebelum memasuki batas afkir / tidak layak (decayScore >= 0.85).
+  // Mengikuti hukum waktu: jam aman monoton berkurang dan tidak bertambah saat suhu mendingin.
+  let hoursRemaining = 0;
+  if (decayScore < 0.85) {
+    const remainingFraction = (0.85 - decayScore) / 0.85;
+    const physicalHoursLeft = Math.max(0, safeHorizonHours - hoursElapsed);
+    hoursRemaining = Math.max(
+      0,
+      Number((remainingFraction * physicalHoursLeft).toFixed(1))
+    );
+  }
 
   const isEdibleForHumans = decayScore < 0.85;
 
