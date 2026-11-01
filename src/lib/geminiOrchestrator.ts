@@ -22,6 +22,11 @@ import {
   KioskStockInput,
   StallSurplusPrediction,
 } from "@/lib/pasarinCore";
+import {
+  toolCallingRegistry,
+  executeDecomposedManagerialQuery,
+  PASARIN_TOOL_DECLARATIONS,
+} from "@/lib/toolCallingRegistry";
 import { KIOSKS } from "@/data/kiosks";
 import { COMMODITIES } from "@/data/commodities";
 import { recordAuditLog } from "@/lib/audit";
@@ -315,111 +320,8 @@ export async function processManagerialNaturalQuery(
       console.warn("[GeminiOrchestrator] Gagal menghubungi Gemini 2.0 Flash API, beralih ke mesin heuristik:", apiError);
     }
   }
-
-  // 2. Mesin Penalaran ReAct Heuristik Deterministik (Fail-Safe Engine / Offline-Ready)
-  const lowerQuery = cleanQuery.toLowerCase();
-  const thoughtProcess: ReActStep[] = [];
-  let executiveSummary = "";
-  const recommendations: string[] = [];
-
-  if (lowerQuery.includes("armada") || lowerQuery.includes("mobil") || lowerQuery.includes("kendaraan") || lowerQuery.includes("truk")) {
-    thoughtProcess.push({
-      step: 1,
-      agent: "OrchestratorAgent",
-      thought: `Menganalisis pertanyaan logistik pengelola pasar: "${cleanQuery}".`,
-      action: "queryFleetAvailability()",
-      observation: "Tersedia 2 unit armada Viar Roda Tiga (kapasitas 300 kg) dan 1 unit Daihatsu GranMax Bak (kapasitas 800 kg).",
-    });
-
-    thoughtProcess.push({
-      step: 2,
-      agent: "WeatherAgent",
-      thought: "Memeriksa perkiraan cuaca dan potensi genangan lorong los yang mempengaruhi tonase surplus.",
-      action: "getMarketWeather()",
-      observation: "Suhu siang 32°C. Curah hujan sore diproyeksikan 12.5 mm (redaman retail ~48%).",
-    });
-
-    thoughtProcess.push({
-      step: 3,
-      agent: "SpoilagePredictiveEngine",
-      thought: "Menghitung proyeksi surplus volume: 526 kg untuk Warteg UMKM (Tier 1) dan 429 kg untuk Sentra Maggot (Tier 3).",
-      action: "computeProjectedSurplus()",
-      observation: "Total surplus terproyeksi sebesar 955 kg melintasi 30 kios pedagang.",
-    });
-
-    thoughtProcess.push({
-      step: 4,
-      agent: "FleetAndMatchingAgent",
-      thought: "Mengoptimasi penugasan rute angkut berdasarkan ambang batas berat muatan.",
-      action: "assignVehiclesToTiers()",
-      observation: "1 unit GranMax Bak ditugaskan untuk rute Warteg (526 kg), 1 unit Viar Roda Tiga untuk Sentra Maggot (429 kg).",
-    });
-
-    executiveSummary =
-      "Berdasarkan proyeksi susut surplus pasar sebesar 955 kg, dibutuhkan 1 unit Daihatsu GranMax Bak " +
-      "(kapasitas 800 kg) untuk mendistribusikan 526 kg ke rute Warteg UMKM (Tier 1), serta 1 unit Viar Roda Tiga " +
-      "(kapasitas 300 kg) dengan 2 ritasi untuk mengangkut 429 kg afkir ke Sentra Budidaya Maggot BSF (Tier 3).";
-
-    recommendations.push(
-      "Berangkatkan armada GranMax pukul 15:30 WIB agar pasokan tiba sebelum jam masak sore Warteg.",
-      "Kunci koordinat geofencing 50 meter pada saat serah terima di gerbang los Blok A."
-    );
-  } else if (lowerQuery.includes("cuaca") || lowerQuery.includes("hujan") || lowerQuery.includes("suhu")) {
-    const w = await weatherAgent.getMarketWeather();
-    thoughtProcess.push({
-      step: 1,
-      agent: "WeatherAgent",
-      thought: "Mengevaluasi data telemetri stasiun cuaca mikro Pasar Kramat Jati.",
-      action: "getHyperlocalMarketWeather()",
-      observation: `Suhu aktual ${w.temperatureCelsius}°C, Kelembapan ${w.relativeHumidityPercent}% RH, Status: ${w.weatherCondition}.`,
-    });
-
-    thoughtProcess.push({
-      step: 2,
-      agent: "SpoilagePredictiveEngine",
-      thought: "Menghitung akselerasi peluruhan biologis Q10 akibat suhu siang hari.",
-      action: "calculateArrheniusDecayRate()",
-      observation: `Faktor percepatan termal 2.01x lipat terhadap baseline sejuk 20°C.`,
-    });
-
-    executiveSummary =
-      `Kondisi mikroklimat Pasar Kramat Jati saat ini bersuhu ${w.temperatureCelsius}°C dengan kelembapan relatif ${w.relativeHumidityPercent}% RH. ` +
-      `Suhu terik meningkatkan laju respirasi jaringan sayuran daun hingga 2.0x lipat lebih cepat. Disarankan memajukan jadwal penawaran diskon surplus 30 menit lebih awal.`;
-
-    recommendations.push("Semprotkan kabut air berkala pada komoditas kangkung dan bayam di los Blok A.");
-  } else {
-    // Kueri umum evaluasi surplus dan status pedagang
-    thoughtProcess.push({
-      step: 1,
-      agent: "OrchestratorAgent",
-      thought: `Mendekomposisi kueri manajerial: "${cleanQuery}".`,
-      action: "synthesizeMarketOverview()",
-      observation: "30 kios pedagang binaan aktif beroperasi dengan tingkat kepatuhan rata-rata 92%.",
-    });
-
-    thoughtProcess.push({
-      step: 2,
-      agent: "QualityGateAgent",
-      thought: "Memverifikasi integritas mutu dan pencegahan moral hazard.",
-      action: "auditQualityMetrics()",
-      observation: "0% sayuran konsumsi manusia dialihkan ke pakan ternak. Penegakan Invarian 1 berjalan 100% konsisten.",
-    });
-
-    executiveSummary =
-      `Sistem PASARIN saat ini mengawasi 30 kios pedagang di Pasar Induk Kramat Jati dengan estimasi perputaran harian ` +
-      `1.240 kg surplus pangan terselamatkan. Seluruh alokasi terdistribusi adil ke Warteg (Tier 1), Dapur Sosial (Tier 2), ` +
-      `dan Sentra Maggot (Tier 3) dengan kepatuhan penuh terhadap batas bawah harga modal pedagang.`;
-
-    recommendations.push("Pantau jadwal sapuan berkala pada pukul 14:30 WIB setiap sore.");
-  }
-
-  const queryResult: OrchestratorQueryResult = {
-    query: cleanQuery,
-    executiveSummary,
-    thoughtProcess,
-    recommendations,
-    generatedAt,
-  };
+  // 2. Mesin Penalaran ReAct Dekomposisi Terstruktur via Tool Calling Registry (PSR-18)
+  const queryResult = await executeDecomposedManagerialQuery(cleanQuery);
 
   // Catat kueri ke jejak audit sistem
   await recordAuditLog({
@@ -427,8 +329,10 @@ export async function processManagerialNaturalQuery(
     action_type: "MANAGERIAL_QUERY_ANSWERED",
     payload: {
       query: cleanQuery,
-      executiveSummary,
-      stepCount: thoughtProcess.length,
+      executiveSummary: queryResult.executiveSummary,
+      stepCount: queryResult.thoughtProcess.length,
+      toolsInvoked: queryResult.toolsInvoked,
+      durationMs: queryResult.executionDurationMs,
     },
   });
 
@@ -447,6 +351,8 @@ export const geminiOrchestrator = {
   processManagerialNaturalQuery,
   getLatestOrchestratorRun,
   getLatestQueryHistory,
+  toolRegistry: toolCallingRegistry,
+  toolDeclarations: PASARIN_TOOL_DECLARATIONS,
   MAX_REACT_TURNS,
   SYSTEM_PROMPT: ORCHESTRATOR_SYSTEM_PROMPT,
 };

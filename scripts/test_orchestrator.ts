@@ -141,7 +141,7 @@ async function runOrchestratorTests() {
     "Analisis Suhu Terverifikasi"
   );
   assert(
-    weatherResult.thoughtProcess.some((s) => s.agent === "WeatherAgent"),
+    weatherResult.thoughtProcess.some((s) => s.agent?.includes("WeatherAgent")),
     "Alur ReAct secara tepat memanggil modul WeatherAgent",
     "WeatherAgent Terpanggil"
   );
