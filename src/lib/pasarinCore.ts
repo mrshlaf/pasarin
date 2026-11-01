@@ -496,3 +496,161 @@ export function calculateInverseSurgePricing(
     targetAudience: "Warteg & Katering UMKM",
   };
 }
+
+
+export type UrgencyLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface KioskStockInput {
+  kioskId: string;
+  kioskName: string;
+  commodityId: string;
+  initialStockKg: number;
+  arrivalHourDecimal: number;
+}
+
+export interface StallSurplusPrediction {
+  kioskId: string;
+  commodityId: string;
+  commodityName: string;
+  initialStockKg: number;
+  estimatedSurplusKg: number;
+  decayScore: number;
+  hoursRemaining: number;
+  urgencyLevel: UrgencyLevel;
+  allocatedTier: RescueTier;
+  recommendedSalvagePricePerKg: number;
+}
+
+export interface CompositeMarketSurplusSummary {
+  totalAnalyzedStalls: number;
+  totalMarketStockKg: number;
+  totalPredictedSurplusKg: number;
+  tier1WartegAllocatedKg: number;
+  tier2SocialKitchenAllocatedKg: number;
+  tier3MaggotAllocatedKg: number;
+  criticalEmergencyItemsCount: number;
+  weatherImpactDescription: string;
+}
+
+// Klasifikasi skala urgensi penyelamatan pangan (Level 5 = sisa waktu < 4 jam) (PSR-19)
+export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
+  if (hoursRemaining < 4.0) return 5;
+  if (hoursRemaining < 6.0) return 4;
+  if (hoursRemaining < 8.0) return 3;
+  if (hoursRemaining < 12.0) return 2;
+  return 1;
+}
+
+// Prediksi kuantitatif surplus pasar komposit (baseline 1.240 kg) pada jam 14:30 WIB (PSR-19)
+export function calculateCompositeMarketSurplus(
+  stallItems: KioskStockInput[],
+  temperatureCelsius: number = 32.5,
+  relativeHumidityPercent: number = 75.0,
+  rainfallMm: number = 12.5,
+  currentHourDecimal: number = 14.5
+): {
+  items: StallSurplusPrediction[];
+  summary: CompositeMarketSurplusSummary;
+} {
+  const footfall = calculateRainFootfallAttenuation(rainfallMm);
+
+  const items: StallSurplusPrediction[] = [];
+  let totalMarketStockKg = 0;
+  let totalPredictedSurplusKg = 0;
+  let tier1WartegAllocatedKg = 0;
+  let tier2SocialKitchenAllocatedKg = 0;
+  let tier3MaggotAllocatedKg = 0;
+  let criticalEmergencyItemsCount = 0;
+
+  for (const item of stallItems) {
+    const commodity = COMMODITIES.find((c) => c.id === item.commodityId) || COMMODITIES[0];
+    totalMarketStockKg += item.initialStockKg;
+
+    const hoursElapsed = Math.max(1.0, currentHourDecimal - item.arrivalHourDecimal);
+    const decayResult = evaluateArrheniusDecay(
+      commodity,
+      temperatureCelsius,
+      relativeHumidityPercent,
+      hoursElapsed
+    );
+
+    const urgencyLevel = calculateUrgencyLevel(decayResult.hoursRemaining);
+    if (urgencyLevel === 5) {
+      criticalEmergencyItemsCount++;
+    }
+
+    const baselineRetailClearance = 0.82;
+    const weatherDropImpact = (footfall.footfallDropPercentage / 100.0) * 0.72;
+    const effectiveClearanceRate = Math.max(0.20, baselineRetailClearance - weatherDropImpact);
+    const unsoldSurplusRate = Math.max(0.10, 1.0 - effectiveClearanceRate);
+
+    const rawSurplusKg = item.initialStockKg * unsoldSurplusRate;
+    const estimatedSurplusKg = Number(rawSurplusKg.toFixed(1));
+    totalPredictedSurplusKg += estimatedSurplusKg;
+
+    const pricing = calculateInverseSurgePricing(commodity, currentHourDecimal, rainfallMm);
+
+    let allocatedTier: RescueTier = decayResult.recommendedTier;
+    if (decayResult.condition === 'layu_ringan') {
+      tier1WartegAllocatedKg += estimatedSurplusKg;
+    } else if (decayResult.condition === 'layu_sedang') {
+      tier2SocialKitchenAllocatedKg += estimatedSurplusKg;
+    } else if (decayResult.condition === 'tidak_layak') {
+      tier3MaggotAllocatedKg += estimatedSurplusKg;
+    } else {
+      allocatedTier = 'fresh';
+    }
+
+    items.push({
+      kioskId: item.kioskId,
+      commodityId: item.commodityId,
+      commodityName: commodity.localName,
+      initialStockKg: item.initialStockKg,
+      estimatedSurplusKg,
+      decayScore: decayResult.decayScore,
+      hoursRemaining: decayResult.hoursRemaining,
+      urgencyLevel,
+      allocatedTier,
+      recommendedSalvagePricePerKg: pricing.offeredSalvagePrice,
+    });
+  }
+
+  totalPredictedSurplusKg = Number(totalPredictedSurplusKg.toFixed(1));
+  tier1WartegAllocatedKg = Number(tier1WartegAllocatedKg.toFixed(1));
+  tier2SocialKitchenAllocatedKg = Number(tier2SocialKitchenAllocatedKg.toFixed(1));
+  tier3MaggotAllocatedKg = Number(tier3MaggotAllocatedKg.toFixed(1));
+
+  const uniqueKiosks = new Set(stallItems.map((i) => i.kioskId)).size;
+
+  return {
+    items,
+    summary: {
+      totalAnalyzedStalls: uniqueKiosks,
+      totalMarketStockKg,
+      totalPredictedSurplusKg,
+      tier1WartegAllocatedKg,
+      tier2SocialKitchenAllocatedKg,
+      tier3MaggotAllocatedKg,
+      criticalEmergencyItemsCount,
+      weatherImpactDescription: footfall.aisleAccessibilityDescription,
+    },
+  };
+}
+
+// Quality gate moral hazard: sayur layak konsumsi dilarang dialihkan ke pakan ternak maggot (PSR-21)
+export function validateQualityGateMoralHazard(
+  decayScore: number,
+  requestedTier: RescueTier
+): { isPermitted: boolean; violationReason?: string } {
+  const isHumanEdible = decayScore < 0.85;
+
+  if (isHumanEdible && requestedTier === 'tier_3') {
+    return {
+      isPermitted: false,
+      violationReason:
+        'Pelanggaran gerbang mutu: sayur masih layak makan (skor < 0.85), tidak boleh dialihkan ke maggot.',
+    };
+  }
+
+  return { isPermitted: true };
+}
