@@ -11,6 +11,7 @@ import {
   Plus,
   Check,
   X,
+  CloudRain,
 } from "lucide-react";
 
 export function VendorDashboard() {
@@ -18,12 +19,14 @@ export function VendorDashboard() {
     selectedVendorId,
     setSelectedVendorId,
     stockItems,
+    addStockItem,
     offers,
     vendorWalletBalanceIdr,
     getEvaluationForStock,
     approveOfferByVendor,
     rejectOfferByVendor,
     stageConfig,
+    footfallSimulation,
   } = useMarketSimulation();
 
   const currentVendor =
@@ -61,7 +64,7 @@ export function VendorDashboard() {
         Math.random() * 90 + 10
       )}`,
     };
-    stockItems.push(newStock);
+    addStockItem(newStock);
     setShowAddStock(false);
   };
 
@@ -229,6 +232,36 @@ export function VendorDashboard() {
           </div>
         </div>
       )}
+      {/* Weather & Muddy Aisle Footfall Alert (PSR-15) - Status Dorman */}
+      {false && footfallSimulation.isMuddy && (
+        <div className="bg-sky-50 border border-sky-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-sky-300 flex items-center justify-center text-[#0369A1] shrink-0">
+              <CloudRain className="w-5 h-5 text-[#0369A1]" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-slate-900">
+                  Peringatan Mikroklimat & Akses Lorong (PSR-15)
+                </h4>
+                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-rose-50 text-[#BE123C] border border-rose-300">
+                  Footfall Pembeli -{footfallSimulation.footfallDropPercentage}%
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-amber-50 text-[#B45309] border border-amber-300">
+                  Surplus {footfallSimulation.surplusMultiplier}x
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                {footfallSimulation.aisleAccessibilityDescription} Sistem mempercepat diskon likuidasi sore.
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-[#075985] bg-white px-2.5 py-1 rounded-lg border border-sky-200 shrink-0 self-start sm:self-auto font-medium">
+            Rain Attenuation Model
+          </span>
+        </div>
+      )}
+
       {/* Visual Inspection Card (MobileNetV3) */}
       <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
         <div className="flex items-center gap-3">

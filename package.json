@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test:db": "tsx scripts/test_supabase_connection.ts",
     "db:migrate": "tsx scripts/migrate_and_seed.ts",
+    "test": "tsx scripts/run_unit_tests.ts",
     "test:unit": "tsx scripts/run_unit_tests.ts"
   },
   "dependencies": {
