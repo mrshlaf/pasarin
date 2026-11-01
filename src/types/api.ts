@@ -200,3 +200,47 @@ export interface QualityGateRequestPayload {
   imageBase64?: string;
   chlorophyllRatio?: number;
 }
+
+/**
+ * Tahap penalaran langkah-demi-langkah ReAct (Thought -> Action -> Observation) (PSR-17).
+ */
+export interface ReActStep {
+  step: number;
+  thought: string;
+  action?: string;
+  observation?: string;
+  agent?: string;
+  tool?: string;
+  toolPayload?: Record<string, unknown>;
+}
+
+/**
+ * Hasil eksekusi siklus otonom orkestrator multi-agen (PSR-17 / Agent 1).
+ */
+export interface OrchestratorRunResult {
+  executionMode: "scheduled_autonomous_cron" | "manual_simulation";
+  surplusDetectedKg: number;
+  kiosksScanned: number;
+  telegramNotificationsDispatched: number;
+  fleetAssignmentsCount: number;
+  allocations: {
+    tier1WartegKg: number;
+    tier2SocialKg: number;
+    tier3MaggotKg: number;
+  };
+  thoughtProcess: ReActStep[];
+  executiveSummary: string;
+  auditEventId?: string;
+  executedAt: string;
+}
+
+/**
+ * Hasil sintesis pemrosesan kueri bahasa alami manajer pasar (PSR-17 / PSR-18).
+ */
+export interface OrchestratorQueryResult {
+  query: string;
+  executiveSummary: string;
+  thoughtProcess: ReActStep[];
+  recommendations?: string[];
+  generatedAt: string;
+}
