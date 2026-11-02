@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * Komponen Header Aplikasi PASARIN (Clean Swiss Minimalist / Light Mode Premium).
+ * Menampilkan identitas brand resmi Pasar Induk Kramat Jati,
+ * indikator telemetri mikroklimat waktu nyata (suhu, kelembapan, curah hujan),
+ * serta kontrol profil autentikasi dan tombol keluar (Logout).
+ */
+
 import Link from "next/link";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { useAuth } from "@/lib/authContext";
@@ -8,136 +15,85 @@ import {
   Thermometer,
   CloudRain,
   Clock,
-  Wallet,
-  Send,
-  Leaf,
-  Layers,
   LogOut,
   User,
+  ShieldCheck,
 } from "lucide-react";
-interface AppHeaderProps {
-  onOpenTelegram: () => void;
-}
 
+interface AppHeaderProps {
+  onOpenTelegram?: () => void;
+}
 export function AppHeader({ onOpenTelegram }: AppHeaderProps) {
   const {
     stageConfig,
-    escrowBalanceTotalIdr,
-    totalCarbonSavedKg,
-    notifications,
-    triggerCronSweepNow,
-    currentStage,
   } = useMarketSimulation();
   const { user, signOut } = useAuth();
-
-  const pendingNotifsCount = notifications.filter((n) => n.actionRequired).length;
   return (
-    <header className="sticky top-0 z-30 bg-white border-b border-slate-200/90 px-5 lg:px-8 py-3 shadow-2xs">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-2.5 transition-all">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 max-w-[1720px] mx-auto">
-        {/* Brand identity */}
-        <div className="flex items-center gap-4 shrink-0">
+        {/* Brand Identity */}
+        <div className="flex items-center gap-3.5 shrink-0">
           <PasarinLogo size="md" />
-          <div className="hidden xl:block h-5 w-px bg-slate-200" />
-          <span className="hidden xl:inline text-xs text-slate-600 font-medium">
-            Pasar Induk Kramat Jati
-          </span>
+          <div className="hidden lg:block h-4 w-px bg-slate-200" />
+          <div className="hidden lg:flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#2A5C5F]" />
+            <span>UPB Kramat Jati</span>
+          </div>
         </div>
 
-        {/* High-Contrast WCAG-Compliant Live Telemetry */}
-        <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          {/* Circadian Clock */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800">
-            <Clock className="w-3.5 h-3.5 text-[#0369A1]" />
-            <span className="font-semibold text-slate-900">{stageConfig.clockTime}</span>
-            <span className="text-slate-300">/</span>
-            <span className="text-slate-600 hidden sm:inline">{stageConfig.label}</span>
-          </div>
-
-          {/* Microclimate IoT */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#F0F6F6] border border-[#D1E1E2] text-[#2A5C5F]">
-            <Thermometer className="w-3.5 h-3.5 text-[#2A5C5F]" />
-            <span className="font-bold text-[#1E4345]">{stageConfig.temperatureC.toFixed(1)}°C</span>
-            <span className="text-slate-400">·</span>
-            <span className="font-semibold text-[#2A5C5F]">{stageConfig.humidityPercent}% RH</span>
-          </div>
-
-          {/* Weather status */}
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
-              stageConfig.isRaining
-                ? "bg-sky-50 border-sky-300 text-[#075985]"
-                : "bg-slate-50 border-slate-200 text-slate-700"
-            }`}
-          >
-            <CloudRain
-              className={`w-3.5 h-3.5 ${stageConfig.isRaining ? "text-[#0369A1]" : "text-slate-500"}`}
-            />
-            <span className="font-semibold">
-              {stageConfig.isRaining ? `Hujan ${stageConfig.rainMm} mm` : "Cerah Normal"}
+        {/* Telemetry Bar (Swiss Minimalist Data Architecture) */}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          {/* Circadian Market Clock */}
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800 font-mono text-[11px]">
+            <Clock className="w-3.5 h-3.5 text-[#0369A1] shrink-0" />
+            <span className="font-bold text-slate-900">{stageConfig.clockTime}</span>
+            <span className="text-slate-300">|</span>
+            <span className="text-slate-600 font-sans font-medium hidden sm:inline truncate max-w-[120px]">
+              {stageConfig.label}
             </span>
           </div>
 
-          {/* Escrow Pool Pill */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-800">
-            <Wallet className="w-3.5 h-3.5 text-[#2A5C5F]" />
-            <span className="text-slate-500 hidden xl:inline">Escrow:</span>
-            <span className="font-mono font-bold text-slate-900">
-              Rp {escrowBalanceTotalIdr.toLocaleString("id-ID")}
-            </span>
+          {/* Hyperlocal Weather Sensor */}
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#F0F6F6] border border-[#D1E1E2] text-[#1E4345] font-mono text-[11px]">
+            <Thermometer className="w-3.5 h-3.5 text-[#2A5C5F] shrink-0" />
+            <span className="font-bold">{stageConfig.temperatureC}°C</span>
+            <span className="text-[#D1E1E2]">|</span>
+            <span className="text-slate-600">{stageConfig.humidityPercent}% RH</span>
           </div>
 
-          {/* Carbon Credit Pill */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-[#065F46]">
-            <Leaf className="w-3.5 h-3.5 text-[#047857]" />
-            <span className="font-bold font-mono">{totalCarbonSavedKg} kg CO₂e</span>
-          </div>
-
-          {/* Telegram Simulator Link */}
-          <button
-            onClick={onOpenTelegram}
-            type="button"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#0369A1] font-semibold transition cursor-pointer border border-sky-300 shadow-2xs"
-          >
-            <Send className="w-3.5 h-3.5 text-[#0369A1]" />
-            <span className="hidden sm:inline">Bot Telegram</span>
-            {pendingNotifsCount > 0 && (
-              <span className="w-4 h-4 rounded-full bg-[#0369A1] text-white text-[10px] font-bold flex items-center justify-center">
-                {pendingNotifsCount}
-              </span>
-            )}
-          </button>
-
-          {/* Trigger Cron Sweep Button */}
-          {currentStage !== "cron_sweep" && (
-            <button
-              onClick={triggerCronSweepNow}
-              type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2A5C5F] hover:bg-[#1E4345] text-white font-medium transition cursor-pointer shadow-xs"
-            >
-              <Layers className="w-3.5 h-3.5 text-sky-200" />
-              <span>Simulasi 14:30</span>
-            </button>
+          {/* Rain Attenuation Indicator */}
+          {stageConfig.rainMm > 0 ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-50 border border-sky-300 text-[#0369A1] text-[11px] font-semibold">
+              <CloudRain className="w-3.5 h-3.5 shrink-0 animate-pulse" />
+              <span>Hujan {stageConfig.rainMm} mm</span>
+            </div>
+          ) : (
+            <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Cuaca Cerah</span>
+            </div>
           )}
 
-          {/* Profil Pengguna & Tombol Logout Supabase Auth (PSR-40) */}
+
+          {/* User Profile & Logout Action */}
           {user ? (
             <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div className="hidden sm:flex flex-col text-right">
-                <span className="text-[11px] font-bold text-slate-900 leading-tight truncate max-w-[140px]">
+                <span className="text-xs font-bold text-slate-900 leading-tight truncate max-w-[140px]">
                   {user.name}
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono truncate max-w-[140px]">
-                  {user.email}
+                  {user.role.toUpperCase()}
                 </span>
               </div>
               <button
                 onClick={() => signOut()}
                 type="button"
                 title="Keluar dari sesi akun (Logout)"
-                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold transition cursor-pointer text-xs shadow-2xs"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 border border-slate-200 text-slate-700 font-semibold transition cursor-pointer text-xs"
               >
-                <LogOut className="w-3.5 h-3.5 text-rose-600" />
-                <span className="hidden md:inline">Keluar</span>
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden lg:inline">Keluar</span>
               </button>
             </div>
           ) : (

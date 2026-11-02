@@ -54,20 +54,20 @@ export function PasarinLogo({
         <div className="flex items-center gap-1.5">
           <span
             className={`font-black uppercase leading-none font-sans ${titleSize} ${
-              variant === "white" ? "text-white" : "text-[#2A5C5F]"
+              variant === "white" ? "text-white" : "text-pine"
             }`}
           >
             PASARIN
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-[#0284C7] shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-sky-600 shrink-0" />
         </div>
         {showSubtitle && (
           <span
-            className={`font-semibold uppercase leading-none mt-1.5 whitespace-nowrap ${subtitleSize} ${
+            className={`font-medium leading-none mt-1.5 whitespace-nowrap ${subtitleSize} ${
               variant === "white" ? "text-slate-200" : "text-slate-500"
             }`}
           >
-            Proactive Market Surplus Redistribution
+            Proactive market surplus redistribution
           </span>
         )}
       </div>

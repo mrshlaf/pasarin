@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Dasbor Peran Dapur Sosial & Panti Asuhan (SocialKitchenDashboard) (Clean Swiss Minimalist).
+ * Mengelola alokasi pangan kemanusiaan Tier 2 dengan:
+ * 1. Jendela waktu reservasi prioritas 30 menit (Invarian 3).
+ * 2. Penaksiran dampak porsi bernutrisi bagi penerima manfaat.
+ * 3. Opsi penebusan subsidi terjangkau atau klaim paket donasi pangan layak konsumsi.
+ */
+
 import { useMarketSimulation, RescueOffer } from "@/lib/simulationStore";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
@@ -37,72 +45,110 @@ export function SocialKitchenDashboard() {
   const totalPortionsNutritious = totalKgRescued * 4;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header Profile */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-rose-50 text-[#BE123C] border border-rose-200 flex items-center justify-center shrink-0">
-              <HeartHandshake className="w-6 h-6" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-lg bg-rose-50 text-[#BE123C] border border-rose-200 flex items-center justify-center shrink-0">
+              <HeartHandshake className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
                   Dapur Sosial & Panti Asuhan Al-Hidayah
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-[#BE123C] border border-rose-300">
-                  Penyelamatan Pangan Tier 2
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-[#BE123C] border border-rose-300">
+                  Tier 2 Kemanusiaan
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1.5 font-medium">
-                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 Jl. Dukuh V No. 18, Kramat Jati · Kapasitas 250 Penerima Manfaat
               </p>
             </div>
           </div>
 
-          <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-xl p-3 shrink-0">
+          <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-lg p-3 shrink-0 text-right">
             <span className="text-[10px] text-[#2A5C5F] uppercase font-bold tracking-wider block">
               Dampak Terakumulasi
             </span>
             <p className="text-base font-bold text-slate-900 font-mono">
               {totalPortionsNutritious} Porsi Makanan
             </p>
-            <span className="text-[11px] text-slate-600 font-medium">
+            <span className="text-[11px] text-slate-500 font-medium">
               dari {totalKgRescued} kg sayur surplus
             </span>
           </div>
         </div>
       </div>
 
+      {/* 4-Card Quick Metrics Row for Social Kitchen */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+            <span className="font-medium">Lot Pangan Tersedia</span>
+            <HeartHandshake className="w-4 h-4 text-[#BE123C]" />
+          </div>
+          <p className="text-lg font-black font-mono text-slate-900">{tier2Offers.length} Lot</p>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Tier 2 Subsidi 85% / Donasi</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+            <span className="font-medium">Porsi Nutrisi Makanan</span>
+            <Utensils className="w-4 h-4 text-emerald-600" />
+          </div>
+          <p className="text-lg font-black font-mono text-[#047857]">{totalPortionsNutritious} Porsi</p>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Kapasitas 250 penerima</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+            <span className="font-medium">Hak Jendela Prioritas</span>
+            <Clock className="w-4 h-4 text-[#0369A1]" />
+          </div>
+          <p className="text-lg font-black font-mono text-[#075985]">30 Menit</p>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Invarian 3 PRD §5.1</span>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
+            <span className="font-medium">Beban Biaya Pangan</span>
+            <Gift className="w-4 h-4 text-purple-600" />
+          </div>
+          <p className="text-lg font-black font-mono text-slate-900">0 - 15% Saja</p>
+          <span className="text-[10px] text-purple-700 font-semibold mt-0.5 block">Didanai CSR / Subsidi Pasar</span>
+        </div>
+      </div>
       {/* 30-Minute Priority Window Note */}
-      <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-2xl p-4 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-lg bg-white text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0">
-          <Clock className="w-4 h-4" />
+      <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-xl p-3.5 flex items-start gap-3">
+        <div className="w-7 h-7 rounded-lg bg-white text-[#2A5C5F] border border-[#D1E1E2] flex items-center justify-center shrink-0 mt-0.5">
+          <Clock className="w-3.5 h-3.5" />
         </div>
         <div>
           <h3 className="text-xs font-bold text-[#1E4345]">
-            Jendela Reservasi Prioritas 30 Menit
+            Jendela Reservasi Prioritas 30 Menit (Invarian 3 PRD §5.1)
           </h3>
-          <p className="text-xs text-slate-700 mt-0.5 leading-relaxed font-medium">
-            Mitra sosial memiliki hak klaim pertama selama 30 menit sebelum sistem secara otomatis mengalihkan komoditas ke Tier 3 (Biokonversi Maggot).
+          <p className="text-xs text-slate-600 mt-0.5 leading-relaxed font-medium">
+            Mitra dapur sosial memiliki hak reservasi eksklusif selama 30 menit. Komoditas bernutrisi tinggi dilarang dialihkan ke pakan ternak maggot sebelum jendela waktu ini habis.
           </p>
         </div>
       </div>
 
       {/* Available Tier 2 Offers */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-slate-600 font-medium px-1">
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between text-xs text-slate-500 font-medium px-1">
           <span>Surplus Tersedia untuk Subsidi & Donasi Pangan</span>
-          <span className="font-bold font-mono text-slate-900">{tier2Offers.length} Lot</span>
+          <span className="font-bold font-mono text-slate-800">{tier2Offers.length} Lot</span>
         </div>
 
         {tier2Offers.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-xs font-medium">
-            Tidak ada lot yang menunggu klaim Tier 2 saat ini.
+          <div className="bg-white border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-xs font-medium">
+            Tidak ada lot yang menunggu klaim Tier 2 saat ini. Pemicu sapuan 14:30 WIB di atas untuk mensimulasikan lot baru.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {tier2Offers.map((ofr) => {
               const comm = COMMODITIES.find((c) => c.id === ofr.commodityId);
               const vendor = KIOSKS.find((k) => k.id === ofr.vendorId);
@@ -111,40 +157,40 @@ export function SocialKitchenDashboard() {
               return (
                 <div
                   key={ofr.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs flex flex-col justify-between"
+                  className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs flex flex-col justify-between"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-100 text-[#BE123C] border border-rose-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-rose-100 text-[#BE123C] border border-rose-300">
                         Tier 2 Sosial
                       </span>
-                      <span className="text-xs font-mono text-slate-600 font-semibold flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-500" />
+                      <span className="text-xs font-mono text-slate-500 font-semibold flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
                         {ofr.expiresInMinutes}m tersisa
                       </span>
                     </div>
 
-                    <h4 className="text-base font-bold text-slate-900">
+                    <h4 className="text-sm font-bold text-slate-900">
                       {comm?.localName || ofr.commodityId}
                     </h4>
-                    <p className="text-xs text-slate-600 font-medium">
+                    <p className="text-xs text-slate-500 font-medium">
                       Asal: Kios {vendor?.stallNumber} · {vendor?.name}
                     </p>
 
-                    <div className="my-3 p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5 text-xs">
+                    <div className="my-2.5 p-2.5 rounded-lg bg-slate-50 border border-slate-200 space-y-1 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-600">Kuantitas Lot:</span>
+                        <span className="text-slate-500">Kuantitas Lot:</span>
                         <strong className="text-slate-900 font-mono font-bold">{ofr.quantityKg} kg</strong>
                       </div>
                       <div className="flex justify-between text-[#BE123C] font-bold">
                         <span>Estimasi Porsi:</span>
                         <span>{estPortions} Porsi Bergizi</span>
                       </div>
-                      <div className="flex justify-between text-slate-500 line-through font-mono">
+                      <div className="flex justify-between text-slate-400 line-through font-mono">
                         <span>Harga Asal:</span>
                         <span>Rp {ofr.originalPricePerKg.toLocaleString("id-ID")}/kg</span>
                       </div>
-                      <div className="flex justify-between text-slate-900 font-bold border-t border-slate-200 pt-1.5">
+                      <div className="flex justify-between text-slate-900 font-bold border-t border-slate-200 pt-1">
                         <span>Biaya Subsidi:</span>
                         <span className="text-[#1E4345] font-mono text-sm font-black">
                           Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}
@@ -153,11 +199,11 @@ export function SocialKitchenDashboard() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="grid grid-cols-2 gap-2 pt-1.5">
                     <button
                       onClick={() => handleClaim(ofr)}
                       type="button"
-                      className="py-2.5 rounded-xl bg-[#BE123C] hover:bg-[#9F1239] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                      className="py-2 rounded-lg bg-[#BE123C] hover:bg-[#9F1239] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                     >
                       <Utensils className="w-3.5 h-3.5" />
                       Tebus Subsidi
@@ -165,7 +211,7 @@ export function SocialKitchenDashboard() {
                     <button
                       onClick={() => handleClaim(ofr)}
                       type="button"
-                      className="py-2.5 rounded-xl border-2 border-[#2A5C5F] hover:bg-[#F0F6F6] text-[#2A5C5F] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                      className="py-2 rounded-lg border border-[#2A5C5F] hover:bg-[#F0F6F6] text-[#2A5C5F] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
                     >
                       <Gift className="w-3.5 h-3.5" />
                       Klaim Donasi

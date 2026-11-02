@@ -23,7 +23,10 @@
 # misc
 .DS_Store
 *.pem
-
+/.agents/
+/.claude/
+/.omp/
+/src/data/simulationState.json
 # debug
 npm-debug.log*
 yarn-debug.log*
