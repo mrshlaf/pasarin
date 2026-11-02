@@ -679,7 +679,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
   } else {
     executiveSummary =
       "Sistem PASARIN mengawasi 30 kios pedagang binaan Pasar Kramat Jati dengan estimasi perputaran 1.240 kg surplus harian. " +
-      "Pencegahan emisi metana mencapai 47,1 kg CH4 atau setara 595,2 kg CO2e terhindar dari TPA Bantar Gebang.";
+      "Pengalihan sampah organik mencapai 1.240 kg terhindar dari pembuangan akhir TPA Bantar Gebang.";
     recommendations.push("Pastikan kesiapan penampungan di sentra maggot dan panti asuhan sebelum jam sapuan sore.");
   }
 

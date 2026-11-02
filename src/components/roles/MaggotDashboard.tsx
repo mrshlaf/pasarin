@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Dasbor Peran Sentra Budidaya Maggot BSF & TPS 3R (MaggotDashboard) (Clean Swiss Minimalist).
+ * Mengelola biokonversi limbah pangan afkir Tier 3 (decayScore >= 0.85):
+ * 1. Rasio biokonversi larva BSF (5 : 1 untuk protein hewani).
+ * 2. Produksi pupuk organik padat kasgot (24% dari biomassa intake).
+ * 3. Kapasitas penampungan 40 rak biopond aktif area belakang Pasar Kramat Jati.
+ */
+
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { COMMODITIES } from "@/data/commodities";
 import {
@@ -8,6 +16,7 @@ import {
   Leaf,
   Layers,
   MapPin,
+  Check,
 } from "lucide-react";
 
 export function MaggotDashboard() {
@@ -30,45 +39,45 @@ export function MaggotDashboard() {
   const estKasgotFertilizerKg = Number((totalBiomassIntakeKg * 0.24).toFixed(1));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header Profile */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#047857] border border-emerald-300 flex items-center justify-center shrink-0">
-              <Recycle className="w-6 h-6" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-lg bg-emerald-50 text-[#047857] border border-emerald-200 flex items-center justify-center shrink-0">
+              <Recycle className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
                   Sentra Budidaya Maggot BSF & TPS 3R
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-[#065F46] border border-emerald-300">
-                  Daur Ulang Sirkular Tier 3
+                <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-[#065F46] border border-emerald-300">
+                  Tier 3 Biokonversi
                 </span>
               </div>
-              <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1.5 font-medium">
-                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 font-medium">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 TPS 3R Area Belakang Pasar Induk Kramat Jati · 40 Rak Biopond Aktif
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-xl p-3 text-center min-w-28">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-lg p-2.5 text-center min-w-24">
               <span className="text-[10px] text-[#2A5C5F] uppercase font-bold tracking-wider block">
                 Total Masuk
               </span>
-              <p className="text-base font-bold text-slate-900 font-mono">
+              <p className="text-sm font-bold text-slate-900 font-mono">
                 {totalBiomassIntakeKg} kg
               </p>
             </div>
 
-            <div className="bg-[#F0F6F6] border border-[#D1E1E2] rounded-xl p-3 text-center min-w-28">
-              <span className="text-[10px] text-[#2A5C5F] uppercase font-bold tracking-wider block">
-                Larva BSF
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 text-center min-w-24">
+              <span className="text-[10px] text-[#065F46] uppercase font-bold tracking-wider block">
+                Larva Protein
               </span>
-              <p className="text-base font-bold text-[#047857] font-mono">
+              <p className="text-sm font-bold text-[#047857] font-mono">
                 {estLarvaHarvestKg} kg
               </p>
             </div>
@@ -76,80 +85,97 @@ export function MaggotDashboard() {
         </div>
       </div>
 
-      {/* Metrics Biopond */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-700">
-              Rasio Biokonversi Larva
+      {/* Metrics Biopond 4-Card Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-slate-600">
+              Rasio Biokonversi
             </span>
             <Scale className="w-4 h-4 text-[#047857]" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 font-mono">5 : 1</p>
-          <p className="text-[11px] text-slate-600 mt-1 font-medium">
-            5 kg sayur busuk terkonversi menjadi 1 kg larva protein pakan
+          <p className="text-xl font-bold text-slate-900 font-mono">5 : 1</p>
+          <p className="text-[10px] text-slate-500 mt-0.5 font-normal">
+            5 kg afkir &rarr; 1 kg larva protein
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-700">
-              Produksi Pupuk Kasgot
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-slate-600">
+              Pupuk Kasgot
             </span>
             <Leaf className="w-4 h-4 text-[#047857]" />
           </div>
-          <p className="text-2xl font-bold text-[#047857] font-mono">
+          <p className="text-xl font-bold text-[#047857] font-mono">
             {estKasgotFertilizerKg} kg
           </p>
-          <p className="text-[11px] text-slate-600 mt-1 font-medium">
-            Residu bahan organik menjadi pupuk organik padat
+          <p className="text-[10px] text-slate-500 mt-0.5 font-normal">
+            Pupuk organik padat bernutrisi
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-700">
-              Kapasitas Rak Biopond
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-slate-600">
+              Kapasitas Biopond
             </span>
-            <Layers className="w-4 h-4 text-slate-600" />
+            <Layers className="w-4 h-4 text-slate-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 font-mono">
+          <p className="text-xl font-bold text-slate-900 font-mono">
             40 / 50 Rak
           </p>
-          <p className="text-[11px] text-slate-600 mt-1 font-medium">
-            80% ruang biokonversi terisi optimal
+          <p className="text-[10px] text-slate-500 mt-0.5 font-normal">
+            80% ruang biokonversi terisi
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-slate-600">
+              Total Sampah Terolah
+            </span>
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+              TPS 3R
+            </span>
+          </div>
+          <p className="text-xl font-bold text-emerald-700 font-mono">
+            {totalBiomassIntakeKg} kg
+          </p>
+          <p className="text-[10px] text-slate-500 mt-0.5 font-normal">
+            Dikelola menjadi pakan larva biokonversi
           </p>
         </div>
       </div>
 
       {/* Available Tier 3 Lots */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
-        <h3 className="text-sm font-bold text-slate-900 mb-1">
-          Muatan Organik Non-Konsumsi (Tier 3)
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+        <h3 className="text-sm font-bold text-slate-900 mb-0.5">
+          Muatan Biomassa Organik Non-Konsumsi (Tier 3)
         </h3>
-        <p className="text-xs text-slate-600 mb-4 font-medium">
-          Sayuran yang telah melampaui batas aman konsumsi pangan (Decay Score &ge; 0.85) dialihkan ke biopond
+        <p className="text-xs text-slate-500 mb-3.5 font-medium">
+          Sayuran yang telah melampaui batas aman konsumsi pangan (Decay Score &ge; 0.85) dialihkan ke biopond pakan larva
         </p>
 
         {tier3Offers.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-slate-200 rounded-xl text-slate-500 text-xs font-medium">
-            Tidak ada limbah busuk massal saat ini. Sebagian besar komoditas telah diselamatkan di Tier 1 & 2.
+          <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
+            Tidak ada limbah busuk massal saat ini. Sebagian besar komoditas berhasil diselamatkan di Tier 1 & 2 untuk konsumsi manusia.
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {tier3Offers.map((ofr) => {
               const comm = COMMODITIES.find((c) => c.id === ofr.commodityId);
               return (
                 <div
                   key={ofr.id}
-                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between"
+                  className="p-3.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between"
                 >
                   <div>
                     <h4 className="text-xs font-bold text-slate-900">
                       {comm?.localName || ofr.commodityId} · {ofr.quantityKg} kg
                     </h4>
-                    <p className="text-[11px] text-slate-600 font-medium">
-                      Potensi panen: {(ofr.quantityKg / 5).toFixed(1)} kg larva protein
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Potensi panen: {(ofr.quantityKg / 5).toFixed(1)} kg larva protein pakan
                     </p>
                   </div>
                   <button
@@ -157,9 +183,10 @@ export function MaggotDashboard() {
                       claimOfferByBuyer(ofr.id, "Sentra Maggot BSF Kramat Jati", "maggot")
                     }
                     type="button"
-                    className="px-3.5 py-1.5 rounded-lg bg-[#047857] hover:bg-[#065F46] text-white font-bold text-xs transition cursor-pointer shadow-xs"
+                    className="px-3 py-1.5 rounded-lg bg-[#047857] hover:bg-[#065F46] text-white font-bold text-xs transition cursor-pointer shadow-xs flex items-center gap-1"
                   >
-                    Angkut ke Biopond
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Angkut ke Biopond</span>
                   </button>
                 </div>
               );

@@ -9,8 +9,6 @@ import {
 } from "@/lib/simulationStore";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { RoleWorkflowStepper } from "@/components/common/RoleWorkflowStepper";
-import { MarketClockController } from "@/components/common/MarketClockController";
 import { TelegramDeviceSimulator } from "@/components/common/TelegramDeviceSimulator";
 
 import { VendorDashboard } from "@/components/roles/VendorDashboard";
@@ -43,12 +41,6 @@ function DashboardContent() {
         <AppSidebar />
 
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          {/* Universal Workflow Stepper */}
-          <RoleWorkflowStepper />
-
-          {/* Interactive Circadian Market Clock Controller */}
-          <MarketClockController />
-
           {/* Role-Specific Isolated Workspaces */}
           {role === "vendor" && <VendorDashboard />}
           {role === "warteg" && <WartegDashboard />}
@@ -101,9 +93,5 @@ export default function Home() {
     );
   }
 
-  return (
-    <SimulationProvider>
-      <DashboardContent />
-    </SimulationProvider>
-  );
+  return <DashboardContent />;
 }

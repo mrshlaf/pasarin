@@ -11,7 +11,14 @@
     "test:db": "tsx scripts/test_supabase_connection.ts",
     "db:migrate": "tsx scripts/migrate_and_seed.ts",
     "test": "tsx scripts/run_unit_tests.ts",
-    "test:unit": "tsx scripts/run_unit_tests.ts"
+    "test:unit": "tsx scripts/run_unit_tests.ts",
+    "reset:all": "tsx scripts/reset_all.ts",
+    "seed:demo": "tsx scripts/seed_demo_lots.ts",
+    "clear:demo": "tsx scripts/clear_demo_lots.ts",
+    "seed:warteg": "tsx scripts/seed_warteg.ts",
+    "seed:social": "tsx scripts/seed_social.ts",
+    "seed:maggot": "tsx scripts/seed_maggot.ts",
+    "seed:courier": "tsx scripts/seed_courier.ts"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",

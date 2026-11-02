@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import { AppRole } from "@/lib/simulationStore";
+
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import {
   Lock,
@@ -25,7 +25,7 @@ export default function LoginPage() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [selectedRole, setSelectedRole] = useState<AppRole>("vendor");
+
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -42,7 +42,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const result = await signInWithEmailPassword(identifier, password, selectedRole);
+      const result = await signInWithEmailPassword(identifier, password);
       if (result.success) {
         router.push("/");
       } else {
@@ -127,24 +127,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Peran Akun Operasional
-            </label>
-            <select
-              value={selectedRole}
-              onChange={(e) => setSelectedRole(e.target.value as AppRole)}
-              className="w-full text-xs font-bold py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 focus:bg-white focus:border-[#2A5C5F] outline-none transition"
-            >
-              <option value="vendor">Pedagang Lapak (30 Kios Kramat Jati)</option>
-              <option value="warteg">Pembeli Warteg (Surplus Terdiskon 50-70%)</option>
-              <option value="social_kitchen">Dapur Sosial & Panti Asuhan (Tier 2)</option>
-              <option value="maggot">Sentra Maggot BSF & Biokonversi (Tier 3)</option>
-              <option value="logistics">Kurir Logistik & Armada Pengangkut</option>
-              <option value="manager">Pengelola Pasar (Perumda Pasar Jaya)</option>
-              <option value="admin">Administrator Sistem (Full Supervisory)</option>
-            </select>
-          </div>
 
           <button
             type="submit"
