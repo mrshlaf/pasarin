@@ -12,6 +12,11 @@ import { KIOSKS } from "@/data/kiosks";
 import { calculateDecay, DecayEvaluation } from "@/lib/decayEngine";
 import { calculateRainFootfallAttenuation, FootfallSimulationResult } from "@/lib/pasarinCore";
 import { DEMO_SEED_OFFERS, DEMO_SEED_TRANSACTIONS } from "@/data/seedData";
+import {
+  evaluateTier2PriorityWindow,
+  validateClaimAgainstPriorityWindow,
+  SOCIAL_RESERVATION_WINDOW_MINUTES,
+} from "@/lib/priorityWindowDispatcher";
 export { DEMO_SEED_OFFERS, DEMO_SEED_TRANSACTIONS };
 export type AppRole =
   | "vendor"
@@ -143,6 +148,7 @@ export interface RescueOffer {
   discountPercentage: number;
   totalAmountIdr: number;
   expiresInMinutes: number;
+  createdAt?: string;
   status: "pending_vendor" | "active" | "claimed" | "settled" | "rejected";
   claimedBy?: string;
   claimedAt?: string;
@@ -480,6 +486,25 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   ) => {
     const targetOffer = offers.find((o) => o.id === offerId);
     if (!targetOffer) return;
+
+    // Invarian 3 & Invarian 1 (PSR-23 & PSR-21): Validasi gerbang etika jendela waktu prioritas Dapur Sosial
+    const priorityValidation = validateClaimAgainstPriorityWindow(targetOffer, claimantRole);
+    if (!priorityValidation.allowed) {
+      setNotifications((prev) => [
+        {
+          id: `notif_block_${Date.now()}`,
+          recipient: buyerName,
+          role: "maggot",
+          message: priorityValidation.reason || "Klaim ditolak oleh aturan Invarian sistem.",
+          timestamp: stageConfig.clockTime,
+          actionRequired: false,
+          offerId,
+          type: "vendor_alert",
+        },
+        ...prev,
+      ]);
+      return;
+    }
 
     // Invarian 1 (Zero Edible Food to Feed): Sentra maggot dilarang mengambil alokasi Tier 1 atau Tier 2
     if (claimantRole === "maggot" && targetOffer.targetTier !== "tier_3") {
