@@ -48,6 +48,10 @@ import {
   handleVendorCallbackQuery,
 } from "@/lib/vendorInlineKeyboardFlow";
 import {
+  calculateFleetAllocation,
+  generateDeliveryManifest,
+} from "@/lib/fleetCargoCalculator";
+import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
   MAX_REACT_TURNS,
@@ -405,6 +409,32 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-T05",
     "Dispatcher executeRegisteredTool dan fasad toolCallingRegistry terverifikasi operasional",
     "Tool Execution Valid"
+  );
+
+  // Pengujian Verifikasi PSR-27 Logistics Fleet Cargo Allocation and Weight Dispatch Rule
+  const allocLight = calculateFleetAllocation(250, "warteg");
+  const allocMedium = calculateFleetAllocation(750, "social_kitchen");
+  const allocHeavy = calculateFleetAllocation(1800, "maggot");
+  assert(
+    allocLight.vehicleType === "viar_trike" &&
+    allocMedium.vehicleType === "granmax_pickup" &&
+    allocHeavy.vehicleType === "isuzu_truck",
+    "TC-PSR27-01",
+    "PSR-27 Weight Dispatch Rule: Alokasi tepat sasaran (Viar <=300kg, GranMax 301-1000kg, Truk >1000kg)",
+    "Ambang Batas Terpenuhi"
+  );
+  const sampleStops = [
+    { kioskStall: "C-04", kioskName: "Kios Kentang", block: "C" as const, commodityName: "Kentang", weightKg: 50 },
+    { kioskStall: "A-12", kioskName: "Kios Sayur Daun", block: "A" as const, commodityName: "Kangkung", weightKg: 40 },
+  ];
+  const sampleManifest = generateDeliveryManifest(sampleStops, { name: "Warteg Condet", role: "warteg", distanceKm: 2.0 });
+  assert(
+    sampleManifest.orderedPickUpStops[0].block === "A" &&
+    sampleManifest.fuelConsumptionLiters > 0 &&
+    sampleManifest.estimatedFuelCostIdr > 0,
+    "TC-PSR27-02",
+    "PSR-27 Delivery Manifest: Manifes perjalanan menghasilkan rute penjemputan terurut dan estimasi biaya BBM",
+    `Rute: ${sampleManifest.orderedPickUpStops.map(s => s.kioskStall).join("->")} | BBM: ${sampleManifest.fuelConsumptionLiters}L`
   );
   // 9. Suite 9: PSR-40
   startSuite("SUITE 9: PSR-40", "Supabase Role Authentication & Role Isolation");
