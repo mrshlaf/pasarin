@@ -52,6 +52,11 @@ import {
   generateDeliveryManifest,
 } from "@/lib/fleetCargoCalculator";
 import {
+  generateBankIndonesiaQrisPayload,
+  validateQrisPayloadStructure,
+  executeEscrowSettlement,
+} from "@/lib/qrisEscrowGateway";
+import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
   MAX_REACT_TURNS,
@@ -563,7 +568,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 12. Suite 12: Invarian 2 & 3
-  startSuite("SUITE 12: Invarian 2 & 3", "Aturan Harga Sirkular & Jendela Reservasi Sosial");
+  startSuite("SUITE 12: Invarian 2 & 3, QRIS Escrow", "Aturan Harga Sirkular, Jendela Sosial, & QRIS Escrow");
   const tomat = COMMODITIES.find((c) => c.id === "tomat")!;
   const pTier1 = calculateInverseSurgePricing(tomat, 14.5, 0.0).offeredSalvagePrice;
   const pTier2 = Math.max(tomat.minimumSalvagePricePerKg, Math.round(tomat.baseWholesalePricePerKg * 0.20));
@@ -618,6 +623,23 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-PSR23-02",
     "PSR-23 Auto-Downgrade: Penawaran Tier 2 yang lewat 30 menit otomatis terbuka untuk pakan ternak (Tier 3)",
     "Otomasi Downgrade Sukses"
+  );
+
+  // Pengujian Verifikasi PSR-37 Bank Indonesia Dynamic QRIS Escrow Payment Gateway
+  const qrisSample = generateBankIndonesiaQrisPayload(87500, "INV-TB-37");
+  const qrisStructure = validateQrisPayloadStructure(qrisSample.qrisPayload);
+  assert(
+    qrisStructure.valid === true && qrisStructure.amountIdr === 87500 && qrisSample.crc16.length === 4,
+    "TC-PSR37-01",
+    "PSR-37 Dynamic QRIS: String QRIS EMVCo TLV Bank Indonesia tervalidasi sah dengan checksum CRC16",
+    `CRC: ${qrisSample.crc16} | Rp ${qrisStructure.amountIdr}`
+  );
+  const escrowPoDSettlement = executeEscrowSettlement(87500, 25, "held_in_escrow");
+  assert(
+    escrowPoDSettlement.settled === true && escrowPoDSettlement.newStatus === "released_to_vendor",
+    "TC-PSR37-02",
+    "PSR-37 Escrow Settlement: Dana escrow otomatis cair ke saldo pedagang saat jarak kurir <= 50m",
+    "Dana Dilepas ke Pedagang"
   );
   // Finalize last suite
   if (currentSuiteId) {
