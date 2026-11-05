@@ -56,6 +56,7 @@ import {
   validateQrisPayloadStructure,
   executeEscrowSettlement,
 } from "@/lib/qrisEscrowGateway";
+import { run24HourMarketMetabolismTrial } from "@/lib/marketMetabolismSimulator";
 import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
@@ -568,7 +569,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 12. Suite 12: Invarian 2 & 3
-  startSuite("SUITE 12: Invarian 2 & 3, QRIS Escrow", "Aturan Harga Sirkular, Jendela Sosial, & QRIS Escrow");
+  startSuite("SUITE 12: Invarian, QRIS Escrow, & 24H Trial", "Aturan Harga Sirkular, QRIS Escrow, & Uji Metabolisme 24 Jam");
   const tomat = COMMODITIES.find((c) => c.id === "tomat")!;
   const pTier1 = calculateInverseSurgePricing(tomat, 14.5, 0.0).offeredSalvagePrice;
   const pTier2 = Math.max(tomat.minimumSalvagePricePerKg, Math.round(tomat.baseWholesalePricePerKg * 0.20));
@@ -640,6 +641,21 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-PSR37-02",
     "PSR-37 Escrow Settlement: Dana escrow otomatis cair ke saldo pedagang saat jarak kurir <= 50m",
     "Dana Dilepas ke Pedagang"
+  );
+
+  // Pengujian Verifikasi PSR-31 24-Hour Market Metabolism Simulation Trial
+  const trialReport = await run24HourMarketMetabolismTrial();
+  assert(
+    trialReport.allPhasesCompleted === true && trialReport.phasesCount === 5,
+    "TC-PSR31-01",
+    "PSR-31 Metabolism Trial: Siklus 24 jam berhasil disimulasikan dari hulu ke hilir (5/5 Fase Sukses)",
+    "5/5 Fase Selesai"
+  );
+  assert(
+    trialReport.meetsDlhThreshold === true && trialReport.invariantsAudit.allInvariantsPassed === true,
+    "TC-PSR31-02",
+    "PSR-31 Target DLH DKI: Efisiensi pengalihan sampah organik mencapai target >= 90% dan seluruh invarian etis lolos",
+    `Efisiensi: ${trialReport.wasteDiversionEfficiencyPct}% (Target >=90%)`
   );
   // Finalize last suite
   if (currentSuiteId) {
