@@ -18,6 +18,7 @@ export interface RescueOffer {
   discountPercentage: number;
   totalAmountIdr: number;
   expiresInMinutes: number;
+  createdAt?: string;
   status: "pending_vendor" | "active" | "claimed" | "settled" | "rejected";
   paymentStatus: "unpaid" | "held_in_escrow" | "released_to_vendor";
   claimantRole?: "warteg" | "social_kitchen" | "maggot";

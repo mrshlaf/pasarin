@@ -34,6 +34,11 @@ import {
   evaluateChlorophyllLoss,
 } from "@/lib/qualityGateAgent";
 import {
+  evaluateTier2PriorityWindow,
+  validateClaimAgainstPriorityWindow,
+  processPriorityWindowDowngrades,
+} from "@/lib/priorityWindowDispatcher";
+import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
   MAX_REACT_TURNS,
@@ -499,6 +504,43 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Durasi Kunci: ${socialWindowMinutes} menit`
   );
 
+  // Pengujian Verifikasi PSR-23 Priority Time-Window Dispatcher Tier 2
+  const sampleT2Offer = {
+    id: "ofr_test_tb_t2",
+    stockId: "stk_01",
+    vendorId: "vendor_kramat_01",
+    commodityId: "pakcoy",
+    targetTier: "tier_2" as const,
+    quantityKg: 40,
+    originalPricePerKg: 8000,
+    salvagePricePerKg: 1200,
+    discountPercentage: 85,
+    totalAmountIdr: 48000,
+    expiresInMinutes: 30,
+    status: "active" as const,
+    paymentStatus: "unpaid" as const,
+  };
+  const maggotBlockCheck = validateClaimAgainstPriorityWindow(sampleT2Offer, "maggot");
+  assert(
+    maggotBlockCheck.allowed === false,
+    "TC-PSR23-01",
+    "PSR-23 Gatekeeper: Percobaan klaim Maggot pada masa reservasi 30 menit ditolak secara terprogram",
+    "Klaim Maggot Ditolak Mutlak"
+  );
+
+  const expiredT2List = [
+    {
+      ...sampleT2Offer,
+      createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    },
+  ];
+  const downgradeCheck = processPriorityWindowDowngrades(expiredT2List);
+  assert(
+    downgradeCheck.downgradedCount === 1 && downgradeCheck.updatedOffers[0].targetTier === "tier_3",
+    "TC-PSR23-02",
+    "PSR-23 Auto-Downgrade: Penawaran Tier 2 yang lewat 30 menit otomatis terbuka untuk pakan ternak (Tier 3)",
+    "Otomasi Downgrade Sukses"
+  );
   // Finalize last suite
   if (currentSuiteId) {
     suiteSummaries.push({
