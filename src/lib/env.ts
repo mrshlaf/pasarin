@@ -27,7 +27,10 @@ export const envSchema = z.object({
   GEMINI_API_KEY: z.string().min(1).optional(),
   OPENWEATHER_API_KEY: z.string().min(1).optional(),
   TELEGRAM_BOT_TOKEN: z.string().min(1).optional(),
-
+  TELEGRAM_WEBHOOK_SECRET: z
+    .string()
+    .min(1)
+    .default("pasarin-telegram-webhook-secret-2026"),
   // Kunci pengaman cron sweeper (PSR-4)
   CRON_SECRET_KEY: z
     .string()
@@ -61,7 +64,8 @@ export function getEnv(): Env {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-    CRON_SECRET_KEY: process.env.CRON_SECRET_KEY,
+    TELEGRAM_WEBHOOK_SECRET:
+      process.env.TELEGRAM_WEBHOOK_SECRET || "pasarin-telegram-webhook-secret-2026",
     NODE_ENV: process.env.NODE_ENV,
   };
 

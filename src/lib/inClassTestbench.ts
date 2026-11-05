@@ -39,6 +39,11 @@ import {
   processPriorityWindowDowngrades,
 } from "@/lib/priorityWindowDispatcher";
 import {
+  verifyTelegramWebhookSecret,
+  handleTelegramCommand,
+  dispatchTelegramMessage,
+} from "@/lib/telegramBotGateway";
+import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
   MAX_REACT_TURNS,
@@ -427,7 +432,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 10. Suite 10: PSR-3 & PSR-4
-  startSuite("SUITE 10: PSR-3 & 4", "Arsitektur API Response Envelope & Environment");
+  startSuite("SUITE 10: PSR-3, 4, 24", "Arsitektur API Envelope & Telegram Gateway");
   const env = getEnv();
   assert(
     !!env.CRON_SECRET_KEY && env.CRON_SECRET_KEY.length > 0,
@@ -451,6 +456,28 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Envelope Status 400"
   );
 
+  // Pengujian Verifikasi PSR-24 Telegram Bot API Gateway & Webhook
+  const isSecretValid = verifyTelegramWebhookSecret(env.TELEGRAM_WEBHOOK_SECRET);
+  assert(
+    isSecretValid === true && verifyTelegramWebhookSecret("token_palsu") === false,
+    "TC-TG01",
+    "PSR-24 Webhook Security: Validasi tajuk secret token Telegram berhasil membedakan token sah vs palsu",
+    "Token Protection Active"
+  );
+  const tgCommand = await handleTelegramCommand("/start", "9001201");
+  assert(
+    tgCommand.actionTaken.includes("welcome") && tgCommand.responseText.length > 0,
+    "TC-TG02",
+    "PSR-24 Command Dispatcher: Perintah Telegram /start berhasil diproses dengan balasan terstruktur",
+    tgCommand.actionTaken
+  );
+  const tgDispatch = await dispatchTelegramMessage("9001201", "Pesan uji coba latensi sistem PASARIN");
+  assert(
+    tgDispatch.success === true && tgDispatch.latencyMs < 3000,
+    "TC-TG03",
+    "PSR-24 Dispatch SLA: Pengiriman notifikasi ke ponsel mitra sukses dengan latensi di bawah 3 detik (< 3.000 ms)",
+    `Latensi: ${tgDispatch.latencyMs} ms`
+  );
   // 11. Suite 11: PSR-16
   startSuite("SUITE 11: PSR-16", "Integritas Master Data 30 Kios & 30 Komoditas");
   assert(
