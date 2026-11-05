@@ -10,6 +10,10 @@ import {
   dispatchTelegramMessage,
   TelegramUpdate,
 } from "@/lib/telegramBotGateway";
+import {
+  handleVendorCallbackQuery,
+  answerTelegramCallbackQuery,
+} from "@/lib/vendorInlineKeyboardFlow";
 
 /**
  * GET /api/telegram/webhook
@@ -81,19 +85,28 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Tangani callback query dari inline button (jika ada)
+    // Tangani callback query dari inline button (PSR-25: Vendor 1-Tap Inline Keyboard Flow)
     if (update.callback_query && update.callback_query.message) {
       const chatId = update.callback_query.message.chat.id;
-      const data = update.callback_query.data;
+      const messageId = update.callback_query.message.message_id;
+      const data = update.callback_query.data || "";
+      const callbackId = update.callback_query.id;
+
+      // Proses tombol persetujuan atau penolakan
+      const callbackResult = await handleVendorCallbackQuery(data, messageId, chatId);
+
+      // Balas callback query untuk notifikasi pop-up toast di aplikasi Telegram
+      await answerTelegramCallbackQuery(callbackId, callbackResult.message);
 
       return NextResponse.json({
         ok: true,
         processed: true,
-        actionTaken: "callback_query_acknowledged",
-        data,
+        actionTaken: "vendor_inline_callback_handled",
+        offerId: callbackResult.offerId,
+        newStatus: callbackResult.newStatus,
+        broadcastToBuyers: callbackResult.broadcastToBuyers,
       });
     }
-
     return NextResponse.json({ ok: true, processed: false, reason: "No actionable message found" });
   } catch (err) {
     return NextResponse.json(

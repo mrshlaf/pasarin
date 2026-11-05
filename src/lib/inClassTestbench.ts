@@ -44,6 +44,10 @@ import {
   dispatchTelegramMessage,
 } from "@/lib/telegramBotGateway";
 import {
+  buildVendorSurplusOfferKeyboard,
+  handleVendorCallbackQuery,
+} from "@/lib/vendorInlineKeyboardFlow";
+import {
   executeAutonomousOrchestration,
   processManagerialNaturalQuery,
   MAX_REACT_TURNS,
@@ -431,8 +435,8 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "pasar1 -> vendor, warteg1 -> warteg"
   );
 
-  // 10. Suite 10: PSR-3 & PSR-4
-  startSuite("SUITE 10: PSR-3, 4, 24", "Arsitektur API Envelope & Telegram Gateway");
+  // 10. Suite 10: PSR-3, 4, 24, 25
+  startSuite("SUITE 10: PSR-3, 4, 24, 25", "Arsitektur API Envelope & Telegram Inline Gateway");
   const env = getEnv();
   assert(
     !!env.CRON_SECRET_KEY && env.CRON_SECRET_KEY.length > 0,
@@ -477,6 +481,23 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-TG03",
     "PSR-24 Dispatch SLA: Pengiriman notifikasi ke ponsel mitra sukses dengan latensi di bawah 3 detik (< 3.000 ms)",
     `Latensi: ${tgDispatch.latencyMs} ms`
+  );
+
+  // Pengujian Verifikasi PSR-25 Vendor 1-Tap Inline Keyboard Flow
+  const testInlineKb = buildVendorSurplusOfferKeyboard("ofr_tb_demo_25");
+  assert(
+    testInlineKb.inline_keyboard[0].length === 2 &&
+    testInlineKb.inline_keyboard[0][0].text.includes("Setuju Jual"),
+    "TC-IK01",
+    "PSR-25 Inline Keyboard: Struktur tombol [✅ Setuju Jual] dan [❌ Lewati] terbangun presisi",
+    "1-Tap Action Ready"
+  );
+  const cbApprove = await handleVendorCallbackQuery("approve_offer:ofr_tb_demo_25", 9901, "9001201");
+  assert(
+    cbApprove.success === true && cbApprove.newStatus === "active" && cbApprove.broadcastToBuyers === true,
+    "TC-IK02",
+    "PSR-25 Callback Handler: 1-ketuk tombol Setuju Jual mengubah status penawaran menjadi 'active' seketika",
+    "Status: active (Broadcast On)"
   );
   // 11. Suite 11: PSR-16
   startSuite("SUITE 11: PSR-16", "Integritas Master Data 30 Kios & 30 Komoditas");
