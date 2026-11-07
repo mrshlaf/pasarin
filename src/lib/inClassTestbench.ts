@@ -1,6 +1,6 @@
 /**
  * Modul Master Testbench Pengujian Sesi Kelas (PSR-39 / In-Class Unit Testbench).
- * Memvalidasi 12 suite rekayasa perangkat lunak PASARIN (Sprint 1 & Sprint 2):
+ * Memvalidasi 14 suite rekayasa perangkat lunak PASARIN (Sprint 1, Sprint 2 & Sprint 3):
  * 1. [SUITE 1: PSR-5]  Telemetri Cuaca Hiperlokal & In-Memory Cache 15 Menit.
  * 2. [SUITE 2: PSR-14] Kinetika Peluruhan Biologis Arrhenius-Q10 & Laju Respirasi Daun.
  * 3. [SUITE 3: PSR-15] Model Redaman Pengunjung Pasar Akibat Hujan Lebat (Penurunan 48%).
@@ -13,6 +13,8 @@
  * 10. [SUITE 10: PSR-3 & 4] Arsitektur API Response Envelope, Validasi Skema Zod & Otorisasi Cron.
  * 11. [SUITE 11: PSR-16] Konsistensi Master Data 30 Kios & 30 Komoditas Pasar Kramat Jati.
  * 12. [SUITE 12: Invarian 2 & 3] Urutan Harga Berjenjang & Jendela Reservasi Sosial 30 Menit.
+ * 13. [SUITE 13: PSR-22] Mesin Pencocokan Sirkular 3-Tier, Formula Haversine, & Proteksi Kapasitas.
+ * 14. [SUITE 14: PSR-26] Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik.
  */
 
 import { COMMODITIES } from "@/data/commodities";
@@ -77,7 +79,24 @@ import {
 } from "@/data/accounts";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getEnv } from "@/lib/env";
-import { AppRole } from "@/lib/simulationStore";
+import { AppRole, RescueOffer } from "@/lib/simulationStore";
+import {
+  haversineDistanceKm,
+  findMatchesForOffer,
+  batchMatchOffers,
+  matchmakingEngine,
+} from "@/lib/matchmakingEngine";
+import {
+  CIRCULAR_BUYERS,
+  MARKET_ANCHOR_COORDINATES,
+  CircularBuyer,
+} from "@/data/buyers";
+import {
+  generateBuyerBroadcastMessage,
+  executeFastClaim,
+  resetClaimLocks,
+  buyerClaimChannel,
+} from "@/lib/buyerClaimChannel";
 
 export interface MasterTestReport {
   suiteTitle: string;
@@ -656,6 +675,370 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-PSR31-02",
     "PSR-31 Target DLH DKI: Efisiensi pengalihan sampah organik mencapai target >= 90% dan seluruh invarian etis lolos",
     `Efisiensi: ${trialReport.wasteDiversionEfficiencyPct}% (Target >=90%)`
+  );
+
+  // ============================================================================
+  // SUITE 13: PSR-22 (Circular 3-Tier Matchmaking Engine)
+  // ============================================================================
+  startSuite("SUITE 13: PSR-22", "Mesin Pencocokan Sirkular 3-Tier & Formula Haversine");
+
+  // TC-MM01: Akurasi Geospasial Haversine ke Warteg Hek (~0.43 km)
+  const distYayu = haversineDistanceKm(
+    MARKET_ANCHOR_COORDINATES.latitude,
+    MARKET_ANCHOR_COORDINATES.longitude,
+    -6.264,
+    106.872
+  );
+  assert(
+    distYayu >= 0.35 && distYayu <= 0.55,
+    "TC-MM01",
+    "Formula Haversine menghitung jarak presisi ke Warteg Hek (~0.43 km)",
+    `Jarak aktual: ${distYayu} km`
+  );
+
+  // TC-MM02: Akurasi Geospasial Haversine ke Condet (~1.22 km)
+  const distCondet = haversineDistanceKm(
+    MARKET_ANCHOR_COORDINATES.latitude,
+    MARKET_ANCHOR_COORDINATES.longitude,
+    -6.275,
+    106.862
+  );
+  assert(
+    distCondet >= 1.0 && distCondet <= 1.5,
+    "TC-MM02",
+    "Formula Haversine menghitung jarak presisi ke Condet (~1.22 km)",
+    `Jarak aktual: ${distCondet} km`
+  );
+
+  // TC-MM03: Jarak titik terhadap dirinya sendiri bernilai nol mutlak (0.000 km)
+  const distZero = haversineDistanceKm(
+    MARKET_ANCHOR_COORDINATES.latitude,
+    MARKET_ANCHOR_COORDINATES.longitude,
+    MARKET_ANCHOR_COORDINATES.latitude,
+    MARKET_ANCHOR_COORDINATES.longitude
+  );
+  assert(
+    distZero === 0,
+    "TC-MM03",
+    "Jarak titik terhadap dirinya sendiri bernilai nol mutlak (0.000 km)",
+    `Jarak: ${distZero} km`
+  );
+
+  // TC-MM04: Isolasi Tier 1 hanya dievaluasi ke Warteg & UMKM
+  const sampleOfferTier1 = {
+    id: "ofr_test_01",
+    commodityId: "kangkung",
+    quantityKg: 35,
+    targetTier: "tier_1" as const,
+  };
+  const matchResultTier1 = findMatchesForOffer(sampleOfferTier1);
+  const allTier1 = matchResultTier1.rankedMatches.every((m) => m.tier === "tier_1");
+  assert(
+    allTier1 && matchResultTier1.rankedMatches.length > 0,
+    "TC-MM04",
+    "Penawaran Tier 1 hanya dievaluasi dan dipasangkan ke mitra Warteg & UMKM",
+    `Total kandidat: ${matchResultTier1.rankedMatches.length} mitra`
+  );
+
+  // TC-MM05: Isolasi Tier 3 hanya dievaluasi ke Sentra Maggot BSF
+  const sampleOfferTier3 = {
+    id: "ofr_test_03",
+    commodityId: "sawi_hijau",
+    quantityKg: 40,
+    targetTier: "tier_3" as const,
+  };
+  const matchResultTier3 = findMatchesForOffer(sampleOfferTier3);
+  const allTier3 = matchResultTier3.rankedMatches.every((m) => m.tier === "tier_3");
+  assert(
+    allTier3 && matchResultTier3.rankedMatches.length > 0,
+    "TC-MM05",
+    "Penawaran Tier 3 hanya dievaluasi dan dipasangkan ke Sentra Maggot BSF",
+    `Total kandidat: ${matchResultTier3.rankedMatches.length} mitra`
+  );
+
+  // TC-MM06: Pembatasan radius geospasial maksimal 5.0 km
+  const farBuyer: CircularBuyer = {
+    id: "buyer_far_bogor",
+    name: "Warteg Jauh di Depok Margonda",
+    ownerName: "Pak Joko",
+    phone: "081299998888",
+    tier: "tier_1",
+    typeLabel: "Warteg & Katering UMKM",
+    latitude: -6.372,
+    longitude: 106.832,
+    address: "Jl. Margonda Raya No. 100, Depok",
+    dailyCapacityKg: 100,
+    currentAllocatedKg: 0,
+    reputationScore: 90,
+    preferredCommodities: ["kangkung"],
+    operationalHours: { openClock: "06:00", closeClock: "22:00" },
+  };
+  const matchWithFar = findMatchesForOffer(sampleOfferTier1, { customBuyers: [...CIRCULAR_BUYERS, farBuyer] });
+  const farMatch = matchWithFar.rankedMatches.find((m) => m.buyerId === "buyer_far_bogor")!;
+  assert(
+    farMatch.isEligible === false && farMatch.distanceKm > 5.0,
+    "TC-MM06",
+    "Mitra dengan jarak > 5.0 km otomatis ditandai TIDAK ELIGIBLE",
+    `Jarak: ${farMatch.distanceKm} km`
+  );
+
+  // TC-MM07 & TC-MM08: Proteksi kelebihan muatan kapasitas harian
+  const giantOffer = {
+    id: "ofr_giant_01",
+    commodityId: "kangkung",
+    quantityKg: 75,
+    targetTier: "tier_1" as const,
+  };
+  const matchGiant = findMatchesForOffer(giantOffer);
+  const yayuMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_02")!;
+  assert(
+    yayuMatch.isEligible === false,
+    "TC-MM07",
+    "Mitra yang kuota tampungnya tidak mencukupi muatan surplus otomatis ditandai TIDAK ELIGIBLE",
+    `Sisa Kuota: ${yayuMatch.remainingCapacityKg} kg vs Muatan: 75 kg`
+  );
+  const cawangMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_04")!;
+  assert(
+    cawangMatch.isEligible === true && cawangMatch.remainingCapacityKg >= 75,
+    "TC-MM08",
+    "Mitra dengan kapasitas mencukupi tetap berstatus ELIGIBLE",
+    `Sisa Kuota: ${cawangMatch.remainingCapacityKg} kg`
+  );
+
+  // TC-MM09: Warteg pada radius terdekat (0.43 km) menempati peringkat 1 (Top Rank)
+  const rankedNormal = findMatchesForOffer({
+    id: "ofr_normal_01",
+    commodityId: "kangkung",
+    quantityKg: 20,
+    targetTier: "tier_1",
+  });
+  const topBuyer = rankedNormal.topRecommendedBuyer!;
+  assert(
+    topBuyer.id === "buyer_warteg_02",
+    "TC-MM09",
+    "Warteg pada radius terdekat (0.43 km) otomatis menempati rekomendasi pertama (Top Rank)",
+    `Top 1: ${topBuyer.name} (${rankedNormal.rankedMatches[0].distanceKm} km)`
+  );
+
+  // TC-MM10: SLA batch matchmaking (< 100 ms)
+  const benchStart = performance.now();
+  const batchRes = batchMatchOffers([
+    { id: "lot_01", commodityId: "kangkung", quantityKg: 40, targetTier: "tier_1" },
+    { id: "lot_02", commodityId: "bayam", quantityKg: 25, targetTier: "tier_1" },
+  ]);
+  const benchDuration = Number((performance.now() - benchStart).toFixed(2));
+  assert(
+    benchDuration < 100.0 && batchRes.length === 2,
+    "TC-MM10",
+    "Pencocokan batch seluruh lot aktif selesai dalam durasi di bawah seratus milidetik (< 100 ms)",
+    `Durasi: ${benchDuration} ms`
+  );
+
+  // TC-MM11: Integritas fasad matchmakingEngine
+  assert(
+    typeof matchmakingEngine.findMatchesForOffer === "function" &&
+    matchmakingEngine.MAX_RADIUS_KM === 5.0,
+    "TC-MM11",
+    "Fasad matchmakingEngine mengekspos seluruh fungsi dan konstanta kurikulum resmi",
+    `Radius acuan: ${matchmakingEngine.MAX_RADIUS_KM} km`
+  );
+
+  // ============================================================================
+  // SUITE 14: PSR-26 (Buyer Instant Alert & Fast Claim Concurrency Channel)
+  // ============================================================================
+  startSuite("SUITE 14: PSR-26", "Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik");
+
+  resetClaimLocks();
+
+  // TC-BC01 & TC-BC02: Integritas muatan broadcast & penghematan modal
+  const sampleOfferBC = {
+    id: "ofr_bc_01",
+    commodityId: "kangkung",
+    quantityKg: 40,
+    originalPricePerKg: 6000,
+    salvagePricePerKg: 2500,
+    discountPercentage: 58,
+    totalAmountIdr: 100000,
+    targetTier: "tier_1" as const,
+    expiresInMinutes: 30,
+  };
+  const targetWarteg = CIRCULAR_BUYERS.find((b) => b.id === "buyer_warteg_01")!;
+  const broadcastMsg = generateBuyerBroadcastMessage(sampleOfferBC, targetWarteg);
+  assert(
+    broadcastMsg.formattedMessageText.includes("Warteg Kharisma Bahari Condet") &&
+    broadcastMsg.formattedMessageText.includes("Diskon 58%"),
+    "TC-BC01",
+    "Pesan siaran memuat nama mitra, nama komoditas, persentase hemat modal, dan link klaim cepat",
+    `Penerima: ${broadcastMsg.recipientName}`
+  );
+  assert(
+    broadcastMsg.totalSavingsIdr === 140000,
+    "TC-BC02",
+    "Kalkulasi total penghematan modal belanja terverifikasi akurat (Rp 140.000)",
+    `Total Hemat: Rp ${broadcastMsg.totalSavingsIdr.toLocaleString("id-ID")}`
+  );
+
+  // TC-BC03 & TC-BC04: Eksekusi klaim normal tunggal & penerbitan QRIS/PoD
+  const singlePool: RescueOffer[] = [
+    {
+      id: "ofr_single_tb",
+      stockId: "stk_01",
+      vendorId: "vendor_kramat_01",
+      commodityId: "kangkung",
+      targetTier: "tier_1",
+      quantityKg: 45,
+      originalPricePerKg: 6000,
+      salvagePricePerKg: 2500,
+      discountPercentage: 58,
+      totalAmountIdr: 112500,
+      expiresInMinutes: 45,
+      status: "active",
+      paymentStatus: "unpaid",
+    },
+  ];
+  const claimSingleRes = await executeFastClaim(singlePool, "ofr_single_tb", {
+    buyerId: "buyer_warteg_01",
+    buyerName: "Warteg Kharisma Bahari Condet",
+    role: "warteg",
+  });
+  assert(
+    claimSingleRes.success === true && singlePool[0].status === "claimed",
+    "TC-BC03",
+    "Klaim pertama berhasil mengubah status lot menjadi 'claimed' dan mencatat nama pemenang",
+    `Status: ${singlePool[0].status}, Pemenang: ${singlePool[0].claimedBy}`
+  );
+  assert(
+    typeof claimSingleRes.qrisPaymentReference === "string" &&
+    typeof claimSingleRes.podVerificationToken === "string",
+    "TC-BC04",
+    "Klaim sukses menerbitkan referensi pembayaran QRIS dan token verifikasi fisik serah terima PoD",
+    `QRIS Ref: ${claimSingleRes.qrisPaymentReference}`
+  );
+
+  // TC-BC05 & TC-BC06: Uji balapan serentak 5 pembeli (Atomic Concurrency Test)
+  const hotLotId = "ofr_hot_race_tb";
+  const concurrentPool: RescueOffer[] = [
+    {
+      id: hotLotId,
+      stockId: "stk_rare_01",
+      vendorId: "vendor_kramat_02",
+      commodityId: "bayam",
+      targetTier: "tier_1",
+      quantityKg: 30,
+      originalPricePerKg: 7000,
+      salvagePricePerKg: 2500,
+      discountPercentage: 64,
+      totalAmountIdr: 75000,
+      expiresInMinutes: 20,
+      status: "active",
+      paymentStatus: "unpaid",
+    },
+  ];
+  const competingBuyers = [
+    { buyerId: "b1", buyerName: "Warteg Condet Raya", role: "warteg" as const },
+    { buyerId: "b2", buyerName: "Warteg Ibu Yayu Hek", role: "warteg" as const },
+    { buyerId: "b3", buyerName: "Warteg Barokah Cililitan", role: "warteg" as const },
+    { buyerId: "b4", buyerName: "Katering Cawang Baru", role: "warteg" as const },
+    { buyerId: "b5", buyerName: "Warteg TMII Pintu 1", role: "warteg" as const },
+  ];
+  const raceResults = await Promise.all(
+    competingBuyers.map((b) => executeFastClaim(concurrentPool, hotLotId, b))
+  );
+  const raceSuccesses = raceResults.filter((r) => r.success).length;
+  const raceRejections = raceResults.filter((r) => !r.success).length;
+  assert(
+    raceSuccesses === 1,
+    "TC-BC05",
+    "Proteksi Konkurensi Atomik: Dari 5 pembeli serentak, TEPAT 1 pembeli yang berhasil mengamankan lot",
+    `Sukses: ${raceSuccesses}, Tertolak: ${raceRejections}`
+  );
+  assert(
+    raceRejections === 4,
+    "TC-BC06",
+    "Empat pembeli lain yang kalah cepat otomatis ditolak untuk mencegah klaim ganda (Zero Double Claim)",
+    `Tertolak: ${raceRejections}`
+  );
+
+  // TC-BC07: Pesan penolakan santun untuk pembeli terlambat
+  const lateRes = await executeFastClaim(concurrentPool, hotLotId, {
+    buyerId: "b_late",
+    buyerName: "Warteg Telat",
+    role: "warteg",
+  });
+  assert(
+    lateRes.success === false && lateRes.code === "ALREADY_CLAIMED" && lateRes.message.includes("telah resmi diklaim oleh"),
+    "TC-BC07",
+    "Pembeli terlambat menerima pesan santun yang menginformasikan bahwa lot telah diambil mitra lain",
+    `Pesan: '${lateRes.message}'`
+  );
+
+  // TC-BC08: Validasi batas otoritas peran (Role Authorization Guard)
+  const freshTier1Pool: RescueOffer[] = [
+    {
+      id: "ofr_fresh_t1",
+      stockId: "stk_01",
+      vendorId: "v1",
+      commodityId: "kangkung",
+      targetTier: "tier_1",
+      quantityKg: 30,
+      originalPricePerKg: 6000,
+      salvagePricePerKg: 2500,
+      discountPercentage: 58,
+      totalAmountIdr: 75000,
+      expiresInMinutes: 30,
+      status: "active",
+      paymentStatus: "unpaid",
+    },
+  ];
+  const unauthRes = await executeFastClaim(freshTier1Pool, "ofr_fresh_t1", {
+    buyerId: "buyer_maggot_01",
+    buyerName: "Sentra Maggot BSF",
+    role: "maggot",
+  });
+  assert(
+    unauthRes.success === false && unauthRes.code === "TIER_MISMATCH",
+    "TC-BC08",
+    "Sistem memblokir akun Maggot yang mencoba mengklaim penawaran Tier 1 Warteg (Anti-Misallocation)",
+    `Kode: ${unauthRes.code}`
+  );
+
+  // TC-BC09: SLA latensi eksekusi transaksi klaim (< 50 ms)
+  const freshPool2: RescueOffer[] = [
+    {
+      id: "ofr_speed_tb",
+      stockId: "stk_05",
+      vendorId: "v3",
+      commodityId: "pakcoy",
+      targetTier: "tier_2",
+      quantityKg: 20,
+      originalPricePerKg: 8000,
+      salvagePricePerKg: 1200,
+      discountPercentage: 85,
+      totalAmountIdr: 24000,
+      expiresInMinutes: 30,
+      status: "active",
+      paymentStatus: "unpaid",
+    },
+  ];
+  const speedRes = await executeFastClaim(freshPool2, "ofr_speed_tb", {
+    buyerId: "buyer_social_01",
+    buyerName: "Dapur Pangan Yatim",
+    role: "social_kitchen",
+  });
+  assert(
+    speedRes.success === true && speedRes.executionDurationMs < 50.0,
+    "TC-BC09",
+    "Eksekusi penguncian atomik dan mutasi status tuntas dalam durasi kilat (< 50 ms)",
+    `Durasi: ${speedRes.executionDurationMs} ms`
+  );
+
+  // TC-BC10: Integritas fasad buyerClaimChannel
+  assert(
+    typeof buyerClaimChannel.generateBuyerBroadcastMessage === "function" &&
+    typeof buyerClaimChannel.executeFastClaim === "function",
+    "TC-BC10",
+    "Fasad buyerClaimChannel mengekspos generator pesan dan eksekutor klaim atomik secara terpadu",
+    "Fasad Channel Valid"
   );
   // Finalize last suite
   if (currentSuiteId) {

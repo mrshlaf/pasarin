@@ -12,6 +12,8 @@
     "db:migrate": "tsx scripts/migrate_and_seed.ts",
     "test": "tsx scripts/run_unit_tests.ts",
     "test:unit": "tsx scripts/run_unit_tests.ts",
+    "test:matchmaking": "tsx scripts/test_matchmaking_engine.ts",
+    "test:fast-claim": "tsx scripts/test_buyer_claim_concurrency.ts",
     "reset:all": "tsx scripts/reset_all.ts",
     "seed:demo": "tsx scripts/seed_demo_lots.ts",
     "clear:demo": "tsx scripts/clear_demo_lots.ts",
