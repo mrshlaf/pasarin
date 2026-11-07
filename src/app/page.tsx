@@ -25,9 +25,20 @@ function DashboardContent() {
   const [showTelegram, setShowTelegram] = useState(false);
 
   // Kunci otomatis peran workspace sesuai peran akun pengguna yang login (Role Isolation)
+  // Setel otomatis peran dashboard awal saat pengguna login, dan kunci mutlak untuk peran operasional
   useEffect(() => {
-    if (user && user.role !== "admin" && user.role !== "manager" && role !== user.role) {
-      setRole(user.role);
+    if (user && user.role) {
+      if (typeof window !== "undefined") {
+        const lastUserId = sessionStorage.getItem("pasarin_active_session_uid");
+        if (lastUserId !== user.id) {
+          setRole(user.role);
+          sessionStorage.setItem("pasarin_active_session_uid", user.id);
+          return;
+        }
+      }
+      if (user.role !== "admin" && user.role !== "manager" && role !== user.role) {
+        setRole(user.role);
+      }
     }
   }, [user, role, setRole]);
 

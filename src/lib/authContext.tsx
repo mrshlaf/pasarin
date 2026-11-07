@@ -58,9 +58,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     async function initializeAuthSession() {
+      // 1. Cek sesi lokal (LocalStorage) terlebih dahulu untuk respon instan
+      if (typeof window !== "undefined") {
+        try {
+          const storedUserRaw = localStorage.getItem(LOCAL_STORAGE_AUTH_KEY);
+          if (storedUserRaw && isMounted) {
+            const parsedUser = JSON.parse(storedUserRaw) as AuthUser;
+            setUser(parsedUser);
+            setIsLoading(false);
+            return;
+          }
+        } catch {}
+      }
+
+      // 2. Cek sesi Supabase Auth dengan batas waktu aman 500ms agar tidak menggantung jika offline
       try {
-        // Cek sesi aktif pada Supabase Auth
-        const { data: sessionData } = await supabase.auth.getSession();
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { session: null } }), 500)
+        );
+
+        const { data: sessionData } = (await Promise.race([sessionPromise, timeoutPromise])) as {
+          data: { session: { user?: { id: string; email?: string; user_metadata?: { role?: string; name?: string; organization?: string } } } | null };
+        };
 
         if (sessionData.session?.user && isMounted) {
           const authEmail = sessionData.session.user.email || "";
@@ -76,15 +96,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
           setIsLoading(false);
           return;
-        }
-
-        // Fallback: baca sesi tersimpan pada LocalStorage browser saat mode offline/lokal
-        if (typeof window !== "undefined") {
-          const storedUserRaw = localStorage.getItem(LOCAL_STORAGE_AUTH_KEY);
-          if (storedUserRaw && isMounted) {
-            const parsedUser = JSON.parse(storedUserRaw) as AuthUser;
-            setUser(parsedUser);
-          }
         }
       } catch (err) {
         console.warn("[AuthInit Warning] Gagal menginisialisasi sesi auth Supabase:", err);
