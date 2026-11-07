@@ -79,6 +79,7 @@ export function VendorDashboard() {
       lotNumber: `LOT-${currentVendor.stallNumber}-${Math.floor(
         Math.random() * 90 + 10
       )}`,
+      createdAt: new Date().toISOString(),
     };
     addStockItem(newStock);
     setShowAddStock(false);

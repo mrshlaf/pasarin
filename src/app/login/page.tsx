@@ -56,12 +56,12 @@ export default function LoginPage() {
   };
 
 
-  if (isLoading || isAuthenticated) {
+  if (isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#FBFDFD] flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-3 border-[#2A5C5F] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-slate-600">Memeriksa sesi otentikasi PASARIN...</p>
+          <p className="text-xs font-semibold text-slate-600">Mengarahkan ke dashboard...</p>
         </div>
       </div>
     );

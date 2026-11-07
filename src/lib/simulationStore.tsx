@@ -134,8 +134,8 @@ export interface StockItem {
   arrivalClock: string;
   lotNumber: string;
   hoursOffset?: number;
+  createdAt?: string;
 }
-
 export interface RescueOffer {
   id: string;
   stockId: string;
@@ -220,15 +220,16 @@ const SimulationContext = createContext<SimulationContextType | undefined>(undef
  * dengan slot khusus Kios A-12 untuk alur pengujian Tier 1, 2, dan Tier 3 (Maggot).
  */
 function generateMarketWideInitialStocks(): StockItem[] {
+  const nowMs = Date.now();
   const stocks: StockItem[] = [
     // Kios A-12 (H. Rohmat) - Sentra Demonstrasi Lengkap Seluruh Komoditas 3-Tier
-    { id: "stk_01", vendorId: "vendor_kramat_01", commodityId: "kangkung", initialKg: 80, remainingKg: 45, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-01" },
-    { id: "stk_02", vendorId: "vendor_kramat_01", commodityId: "bayam", initialKg: 60, remainingKg: 35, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-02" },
-    { id: "stk_07", vendorId: "vendor_kramat_01", commodityId: "tomat", initialKg: 80, remainingKg: 50, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-03" },
-    { id: "stk_04", vendorId: "vendor_kramat_01", commodityId: "pakcoy", initialKg: 60, remainingKg: 40, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-04", hoursOffset: 4 },
-    { id: "stk_05", vendorId: "vendor_kramat_01", commodityId: "buncis", initialKg: 40, remainingKg: 25, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-05", hoursOffset: 3 },
-    { id: "stk_03", vendorId: "vendor_kramat_01", commodityId: "sawi_hijau", initialKg: 50, remainingKg: 30, arrivalClock: "Kemarin 17:00 (Inap)", lotNumber: "LOT-A12-AFKIR", hoursOffset: 12 },
-    { id: "stk_09", vendorId: "vendor_kramat_01", commodityId: "terung_ungu", initialKg: 50, remainingKg: 35, arrivalClock: "Kemarin 17:00 (Inap)", lotNumber: "LOT-A12-AFKIR2", hoursOffset: 15 },
+    { id: "stk_01", vendorId: "vendor_kramat_01", commodityId: "kangkung", initialKg: 80, remainingKg: 45, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-01", createdAt: new Date(nowMs).toISOString() },
+    { id: "stk_02", vendorId: "vendor_kramat_01", commodityId: "bayam", initialKg: 60, remainingKg: 35, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-02", createdAt: new Date(nowMs).toISOString() },
+    { id: "stk_07", vendorId: "vendor_kramat_01", commodityId: "tomat", initialKg: 80, remainingKg: 50, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-03", createdAt: new Date(nowMs).toISOString() },
+    { id: "stk_04", vendorId: "vendor_kramat_01", commodityId: "pakcoy", initialKg: 60, remainingKg: 40, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-04", hoursOffset: 4, createdAt: new Date(nowMs).toISOString() },
+    { id: "stk_05", vendorId: "vendor_kramat_01", commodityId: "buncis", initialKg: 40, remainingKg: 25, arrivalClock: "04:30 WIB", lotNumber: "LOT-A12-05", hoursOffset: 3, createdAt: new Date(nowMs).toISOString() },
+    { id: "stk_03", vendorId: "vendor_kramat_01", commodityId: "sawi_hijau", initialKg: 50, remainingKg: 30, arrivalClock: "Kemarin 17:00 (Inap)", lotNumber: "LOT-A12-AFKIR", hoursOffset: 25, createdAt: new Date(nowMs - 25 * 3600 * 1000).toISOString() },
+    { id: "stk_09", vendorId: "vendor_kramat_01", commodityId: "terung_ungu", initialKg: 50, remainingKg: 35, arrivalClock: "Kemarin 17:00 (Inap)", lotNumber: "LOT-A12-AFKIR2", hoursOffset: 135, createdAt: new Date(nowMs - 135 * 3600 * 1000).toISOString() },
   ];
 
   KIOSKS.filter((k) => k.id !== "vendor_kramat_01").forEach((kiosk, idx) => {
@@ -243,6 +244,7 @@ function generateMarketWideInitialStocks(): StockItem[] {
       remainingKg: 35 + ((idx * 3) % 25),
       arrivalClock: "04:30 WIB",
       lotNumber: `LOT-${kiosk.stallNumber}-01`,
+      createdAt: new Date(nowMs).toISOString(),
     });
 
     stocks.push({
@@ -253,6 +255,7 @@ function generateMarketWideInitialStocks(): StockItem[] {
       remainingKg: 25 + ((idx * 2) % 20),
       arrivalClock: "05:00 WIB",
       lotNumber: `LOT-${kiosk.stallNumber}-02`,
+      createdAt: new Date(nowMs).toISOString(),
     });
   });
   return stocks;
@@ -317,7 +320,23 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       try {
         const saved = localStorage.getItem("pasarin_sim_stocks");
-        if (saved) return JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved) as StockItem[];
+          let needsUpdate = false;
+          const hydrated = parsed.map((item) => {
+            if (!item.createdAt) {
+              needsUpdate = true;
+              const isOvernight = item.arrivalClock?.toLowerCase().includes("inap") || item.arrivalClock?.toLowerCase().includes("kemarin");
+              const defaultCreatedMs = isOvernight ? Date.now() - 25 * 3600 * 1000 : Date.now() - 14 * 3600 * 1000;
+              return { ...item, createdAt: new Date(defaultCreatedMs).toISOString() };
+            }
+            return item;
+          });
+          if (needsUpdate) {
+            localStorage.setItem("pasarin_sim_stocks", JSON.stringify(hydrated));
+          }
+          return hydrated;
+        }
       } catch {}
     }
     return INITIAL_STOCKS;
@@ -440,10 +459,25 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     stageConfig.isRaining
   );
 
-  // Hitung evaluasi decay untuk item stok berdasarkan stage cuaca saat ini
+  // Hitung evaluasi decay untuk item stok berdasarkan stage cuaca & waktu nyata yang telah berlalu
   const getEvaluationForStock = (stock: StockItem): DecayEvaluation => {
     const comm = COMMODITIES.find((c) => c.id === stock.commodityId) || COMMODITIES[0];
-    const effectiveHours = stageConfig.hoursElapsedSinceArrival + (stock.hoursOffset ?? 0);
+
+    // 1. Akumulasi jam riil yang telah berlalu sejak stok tiba / dicatat di sistem
+    let realElapsedHours = 0;
+    if (stock.createdAt) {
+      const createdMs = new Date(stock.createdAt).getTime();
+      if (!isNaN(createdMs) && createdMs > 0) {
+        realElapsedHours = Math.max(0, (Date.now() - createdMs) / (1000 * 60 * 60));
+      }
+    }
+
+    const offset = stock.hoursOffset ?? 0;
+    const simulatedStageHours = stageConfig.hoursElapsedSinceArrival;
+
+    // Hukum waktu: penambahan jam riil terus mengakumulasi usia simpan komoditas dan monoton bertambah
+    const effectiveHours = simulatedStageHours + offset + realElapsedHours;
+
     return calculateDecay(
       comm,
       stageConfig.temperatureC,
@@ -451,7 +485,6 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       effectiveHours
     );
   };
-
   // Vendor 1-ketuk persetujuan
   const approveOfferByVendor = (offerId: string) => {
     setOffers((prev) =>
