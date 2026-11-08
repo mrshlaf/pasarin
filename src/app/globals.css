@@ -1,12 +1,29 @@
+/* Hallmark · v2.0.0 · design: PRD_FRONTEND_DESIGN_SPECIFICATION.md · genre: modern-minimal · dial ENERGY 2 / RHYTHM 2 / MOTION 1
+   critique: Swiss editorial marketplace. One accent (pine teal), serif display, hairline rules,
+   and the decay meter as the repeated identity motif. No invented data, no decorative dots.
+   tokens: every colour and font resolves through this block. */
 @import "tailwindcss";
 
 :root {
-  --background: #fcfdfd;
-  --foreground: #0f172a;
+  --background: #f5f3eb;
+  --foreground: #182d2a;
   --brand-teal: #2a5c5f;
   --brand-teal-dark: #1e4345;
   --brand-teal-light: #f0f6f6;
   --surface-border: #e2e8f0;
+
+  --market-surface: #fffef8;
+  --market-ink: #182d2a;
+  --market-brand: #214d43;
+  --market-brand-strong: #173b34;
+  --market-line: #d5ded2;
+  --market-line-strong: #788e81;
+  --market-focus: #12645a;
+  --market-track: #b9c6ba;
+  --market-track-strong: #93a495;
+  --market-cream: #fffef3;
+  --market-dialog-border: #c9d5cd;
+  --market-backdrop: rgb(14 35 31 / 68%);
 }
 
 @theme inline {
@@ -14,6 +31,46 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-canvas: var(--background);
+  --color-surface: var(--market-surface);
+  --color-ink: var(--market-ink);
+  --color-ink-soft: #36594f;
+  --color-ink-muted: #465c54;
+  --color-brand: var(--market-brand);
+  --color-brand-strong: var(--market-brand-strong);
+  --color-brand-deep: #163d35;
+  --color-brand-soft: #e8efe5;
+  --color-line: var(--market-line);
+  --color-line-strong: var(--market-line-strong);
+  --color-tier-1: #0369a1;
+  --color-tier-1-soft: #e8f3fb;
+  --color-tier-2: #be123c;
+  --color-tier-2-soft: #fdecef;
+  --color-tier-3: #047857;
+  --color-tier-3-soft: #e7f6ec;
+  --color-tier-1-ink: #075985;
+  --color-tier-2-ink: #9f1239;
+  --color-tier-3-ink: #065f46;
+  --color-brand-ink: #173b34;
+  --color-warning: #8a5309;
+  --color-warning-soft: #fdf3e3;
+  --color-danger: #97231c;
+  --color-danger-soft: #fdeaea;
+  --color-cream: var(--market-cream);
+  --color-sage: #cbe6bd;
+  --color-sage-soft: #dce8d6;
+  --color-rail: #79988b;
+  --color-decay-safe: #a9cdb4;
+  --color-decay-watch: #ecd7ae;
+  --color-decay-risk: #e8b4ad;
+  --color-track: #e3e8de;
+  --color-signal: #0284c7;
+}
+
+html,
+body {
+  overflow-x: clip;
 }
 
 /* Enforce Clean Swiss Minimalist Typography & Selection */
@@ -25,9 +82,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
 ::selection {
   background-color: var(--brand-teal);
-  color: #ffffff;
+  color: var(--market-cream);
 }
 
 /* Crisp minimal scrollbar */
@@ -41,28 +108,36 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--market-track);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--market-track-strong);
 }
 
 :focus-visible {
-  outline: 3px solid #12645a;
+  outline: 2px solid var(--market-focus);
   outline-offset: 3px;
 }
 
 .market-input {
   min-height: 3rem;
   width: 100%;
-  border: 1px solid #788e81;
-  border-radius: 0.5rem;
-  background: #fff;
+  border: 1px solid var(--market-line-strong);
+  border-radius: 0.625rem;
+  background: var(--market-surface);
   padding-inline: 0.75rem;
-  color: #182d2a;
+  color: var(--market-ink);
   font-size: 1rem;
+}
+
+.market-input:hover {
+  border-color: #5c7668;
+}
+
+.market-input:focus-visible {
+  border-color: var(--market-brand);
 }
 
 .market-input.pr-14 { padding-inline-end: 3.5rem; }
@@ -72,14 +147,15 @@ body {
   width: min(32rem, calc(100% - 2rem));
   margin: auto;
   overflow: auto;
-  border: 1px solid #c9d5cd;
-  border-radius: 1rem;
-  background: #fffef8;
-  padding: 1.25rem;
-  color: #182d2a;
+  border: 1px solid var(--market-dialog-border);
+  border-radius: 1.25rem;
+  background: var(--market-surface);
+  padding: 1.5rem;
+  color: var(--market-ink);
+  box-shadow: 0 24px 60px rgb(14 35 31 / 24%);
 }
 
-.market-dialog::backdrop { background: rgb(14 35 31 / 68%); }
+.market-dialog::backdrop { background: var(--market-backdrop); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -96,11 +172,6 @@ body {
 .market-role-content :is(button, select):disabled {
   cursor: not-allowed;
   opacity: 0.6;
-}
-
-.market-role-content :is(.text-xs, .text-\[11px\], .text-\[10px\]) {
-  font-size: 0.8125rem;
-  line-height: 1.35;
 }
 
 .market-role-content .text-slate-400 {

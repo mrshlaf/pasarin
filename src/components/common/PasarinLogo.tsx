@@ -54,7 +54,7 @@ export function PasarinLogo({
         <div className="flex items-center gap-1.5">
           <span
             className={`font-black uppercase leading-none font-sans ${titleSize} ${
-              variant === "white" ? "text-white" : "text-[#214d43]"
+              variant === "white" ? "text-cream" : "text-brand"
             }`}
           >
             PASARIN
@@ -63,7 +63,7 @@ export function PasarinLogo({
         {showSubtitle && (
           <span
             className={`mt-1.5 hidden whitespace-nowrap font-medium leading-none sm:block ${subtitleSize} ${
-              variant === "white" ? "text-slate-200" : "text-slate-500"
+              variant === "white" ? "text-sage-soft" : "text-ink-muted"
             }`}
           >
             Proactive market surplus redistribution
