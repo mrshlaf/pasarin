@@ -7,6 +7,7 @@ import {
   SimulationProvider,
   useMarketSimulation,
 } from "@/lib/simulationStore";
+import { Send } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { TelegramDeviceSimulator } from "@/components/common/TelegramDeviceSimulator";
@@ -62,6 +63,20 @@ function DashboardContent() {
           {role === "admin" && <AdminDashboard />}
         </main>
       </div>
+      {/* Floating Telegram Integration Launcher */}
+      <button
+        onClick={() => setShowTelegram(true)}
+        type="button"
+        className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-xl transition-all hover:scale-105 cursor-pointer border border-sky-400/30"
+        title="Buka Layar Kotak Telegram Bot PASARIN"
+      >
+        <Send className="w-4 h-4 -rotate-45" />
+        <span className="text-xs font-bold tracking-wide">Telegram Bot Live</span>
+        <span className="relative flex h-2.5 w-2.5">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-300" />
+        </span>
+      </button>
 
       {/* Telegram Smartphone Simulator Modal */}
       <TelegramDeviceSimulator
