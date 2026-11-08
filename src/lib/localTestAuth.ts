@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import type { AuthUser } from "@/data/accounts";
-import { DEMO_ACCOUNT_BY_USERNAME, demoActorId } from "@/data/demoAccounts";
+import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "@/data/marketAccounts";
 
 export const LOCAL_TEST_COOKIE = "pasarin_local_test";
 export const LOCAL_TEST_SESSION_SECONDS = 8 * 60 * 60;
@@ -21,12 +21,12 @@ export function isLocalTestRequest(req: NextRequest) {
   return !origin || origin === `${req.nextUrl.protocol}//${host}`;
 }
 
-/** Returns a role-bound identity from the shared demo account directory. */
+/** Returns a role-bound identity from the shared market account directory. */
 export function localTestProfile(username: string): AuthUser | null {
-  const account = DEMO_ACCOUNT_BY_USERNAME.get(username);
+  const account = MARKET_ACCOUNT_BY_USERNAME.get(username);
   if (!account) return null;
   return {
-    id: demoActorId(account.username),
+    id: localActorId(account.username),
     email: `${account.username}@pasarin.id`,
     name: account.name,
     organization: account.organization,

@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, successResponse } from "@/lib/api-response";
 import { matchesSecret, requireApiRole } from "@/lib/apiAuth";
-import { DEMO_ACCOUNTS, demoActorId } from "@/data/demoAccounts";
+import { MARKET_ACCOUNTS, localActorId } from "@/data/marketAccounts";
 import { getServiceRoleClient } from "@/lib/supabase";
+import { getDatabasePool, databaseConfigured } from "@/lib/database";
+import { countMarketAccounts, seedAccounts } from "@/lib/serverAuth";
 import { getServerSimulationState, seedMarketStateServer } from "@/lib/serverSimulationState";
 
 export const runtime = "nodejs";
@@ -20,25 +22,48 @@ function seedSecret(req: NextRequest) {
 async function authorizeSeed(req: NextRequest) {
   if (process.env.NODE_ENV !== "production") {
     const auth = await requireApiRole(req, ["admin"]);
-    return auth.response ? { response: auth.response } as const : { actorIds: Object.fromEntries(
-      DEMO_ACCOUNTS.map((account) => [account.username, demoActorId(account.username)]),
+    if ("response" in auth) return { response: auth.response } as const;
+    return { actorIds: Object.fromEntries(
+      MARKET_ACCOUNTS.map((account) => [account.username, localActorId(account.username)]),
     ) } as const;
   }
   if (!matchesSecret(seedSecret(req), process.env.PASARIN_SEED_SECRET)) {
     return { response: errorResponse("Seed hanya dapat dijalankan dengan kunci server.", 401) } as const;
   }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { response: errorResponse("SUPABASE_SERVICE_ROLE_KEY belum diatur di Vercel.", 503) } as const;
+  if (!databaseConfigured() && !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { response: errorResponse("SUPABASE_DB_URL atau SUPABASE_SERVICE_ROLE_KEY belum diatur di Vercel.", 503) } as const;
   }
   return { actorIds: null } as const;
 }
 
-/** Reports whether the Supabase state table and the demo accounts are ready. */
+/** Reports whether the state table and market accounts are ready. */
 export async function GET(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;
+
+  if (databaseConfigured()) {
+    try {
+      const pool = getDatabasePool();
+      let marketTableReady = false;
+      let marketTableError: string | null = null;
+      try {
+        await pool.query("select id from public.pasarin_simulation_state where id = $1", ["market"]);
+        marketTableReady = true;
+      } catch (error) {
+        marketTableError = error instanceof Error ? error.message : "Tabel state belum siap.";
+      }
+      const accounts = await countMarketAccounts().catch(() => 0);
+      return successResponse({
+        backend: "postgres", accounts: accounts, expectedMarketAccounts: MARKET_ACCOUNTS.length,
+        marketTableReady, marketTableError,
+      });
+    } catch (error) {
+      return errorResponse(error instanceof Error ? error.message : "Status seed tidak dapat dibaca.", 503);
+    }
+  }
+
   if (process.env.NODE_ENV !== "production") {
-    return successResponse({ backend: "local-file", accounts: DEMO_ACCOUNTS.length, marketTableReady: true });
+    return successResponse({ backend: "local-file", accounts: MARKET_ACCOUNTS.length, marketTableReady: true });
   }
   try {
     const client = getServiceRoleClient();
@@ -47,18 +72,15 @@ export async function GET(req: NextRequest) {
       client.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
     return successResponse({
-      backend: "supabase",
-      accounts: users.data?.users.length ?? 0,
-      demoAccounts: DEMO_ACCOUNTS.length,
-      marketTableReady: !table.error,
-      marketTableError: table.error?.message ?? null,
+      backend: "supabase", accounts: users.data?.users.length ?? 0, expectedAccounts: MARKET_ACCOUNTS.length,
+      marketTableReady: !table.error, marketTableError: table.error?.message ?? null,
     });
   } catch (error) {
     return errorResponse(error instanceof Error ? error.message : "Status seed tidak dapat dibaca.", 503);
   }
 }
 
-/** Creates or refreshes all 47 Supabase demo accounts, then seeds the market atomically. */
+/** Creates or refreshes the 142 accounts, then seeds the market atomically. */
 export async function POST(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;
@@ -66,13 +88,15 @@ export async function POST(req: NextRequest) {
   if (!input.success) return errorResponse("Format permintaan seed tidak valid.", 400);
   try {
     let actorIds = auth.actorIds;
-    if (!actorIds) {
+    if (databaseConfigured()) {
+      actorIds = await seedAccounts();
+    } else if (!actorIds) {
       const client = getServiceRoleClient();
       const { data: list, error: listError } = await client.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (listError) throw listError;
       const existing = new Map(list.users.map((user) => [user.email?.toLowerCase(), user]));
       actorIds = {};
-      for (const account of DEMO_ACCOUNTS) {
+      for (const account of MARKET_ACCOUNTS) {
         const email = `${account.username}@pasarin.id`;
         const metadata = {
           password: account.password,
@@ -95,12 +119,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (!actorIds) throw new Error("Daftar akun pasar belum tersedia.");
     const seeded = await seedMarketStateServer(actorIds);
     if (!seeded.success) return errorResponse(seeded.message, seeded.status);
     const state = await getServerSimulationState();
     return successResponse({
       message: seeded.message,
-      accounts: DEMO_ACCOUNTS.length,
+      accounts: MARKET_ACCOUNTS.length,
       stocks: state.stocks.length,
       offers: state.offers.length,
       transactions: state.transactions.length,

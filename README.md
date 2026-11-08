@@ -157,7 +157,7 @@ Untuk demo kelas, semua akun memakai nama pengguna sebagai kata sandi:
 | Peran | Akun |
 | --- | --- |
 | Pedagang kios | `pasar1` sampai `pasar30` |
-| Warteg | `warteg1` sampai `warteg5` |
+| Warteg | `warteg1` sampai `warteg100` |
 | Dapur sosial | `sosial1` sampai `sosial3` |
 | Maggot BSF | `maggot1` sampai `maggot2` |
 | Kurir | `kurir1` sampai `kurir5` |
@@ -174,7 +174,7 @@ curl -X POST https://pasarin.vercel.app/api/admin/seed \
   -H "content-type: application/json" -d "{}"
 ```
 
-Endpoint seed membuat 47 akun Supabase, 180 lot stok, 90 penawaran, dan contoh transaksi. Di localhost, admin dapat memicu endpoint yang sama tanpa secret setelah masuk sebagai `admin1`.
+Endpoint seed membuat 142 akun Supabase, 180 lot stok, 90 penawaran, dan contoh transaksi. Di localhost, admin dapat memicu endpoint yang sama tanpa secret setelah masuk sebagai `admin1`.
 
 ```sh
 npm run lint

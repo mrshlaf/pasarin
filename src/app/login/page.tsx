@@ -80,9 +80,9 @@ export default function LoginPage() {
               </button>
             </form>
             <details className="mt-6 border-t border-line pt-4 text-[13px] leading-5 text-ink-muted">
-              <summary className="cursor-pointer font-semibold text-ink">Akun demo</summary>
+              <summary className="cursor-pointer font-semibold text-ink">Akun</summary>
               <p className="mt-2">
-                Pedagang pasar1 sampai pasar30, warteg1 sampai warteg5, sosial1 sampai sosial3,
+                Pedagang pasar1 sampai pasar30, warteg1 sampai warteg100, sosial1 sampai sosial3,
                 maggot1 sampai maggot2, kurir1 sampai kurir5, pengelola1, dan admin1.
                 Kata sandi sama dengan nama pengguna.
               </p>
