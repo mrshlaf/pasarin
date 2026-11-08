@@ -9,6 +9,7 @@ import {
   handleTelegramCommand,
   dispatchTelegramMessage,
   bindChatToRole,
+  getBindingByChatId,
   buildRoleSelectorKeyboard,
   buildWartegSurplusKeyboard,
   buildSocialSurplusKeyboard,
@@ -209,9 +210,37 @@ export async function POST(req: NextRequest) {
           roleKeyboard = buildRoleSelectorKeyboard();
         }
 
-        bindChatToRole(chatId, targetRole);
-        await answerTelegramCallbackQuery(callbackId, `✅ Peran: ${roleName}`);
+        const curBinding = getBindingByChatId(chatId);
+        const isAlreadyLoggedInAsThisRole = curBinding && curBinding.isLoggedIn && curBinding.role === targetRole;
 
+        if (!isAlreadyLoggedInAsThisRole) {
+          let targetUser = "warteg1";
+          if (roleKey === "warteg") targetUser = "warteg1";
+          else if (roleKey === "social") targetUser = "sosial1";
+          else if (roleKey === "maggot") targetUser = "maggot1";
+          else if (roleKey === "logistics") targetUser = "kurir1";
+          else targetUser = "pasar1";
+
+          await answerTelegramCallbackQuery(callbackId, `🔒 Kredensial Diperlukan`);
+          await dispatchTelegramMessage(
+            chatId,
+            `🔒 *Otentikasi Peran Wajib (Role Isolation)*\n\n` +
+            `Untuk masuk sebagai *${roleName}* dan mencegah penyalahgunaan peran, silakan masukkan kata sandi:\n\n` +
+            `👉 \`/login ${targetUser} <password>\`\n\n` +
+            `_Contoh: \`/login ${targetUser} ${targetUser}123\`_`,
+            { parseMode: "Markdown" }
+          );
+
+          return NextResponse.json({
+            ok: true,
+            processed: true,
+            actionTaken: "auth_required_for_role",
+            role: targetRole,
+          });
+        }
+
+        // Jika sudah terotentikasi, tampilkan dasbor aktif
+        await answerTelegramCallbackQuery(callbackId, `✅ Peran: ${roleName}`);
         await dispatchTelegramMessage(chatId, dashboardText, {
           replyMarkup: roleKeyboard,
           parseMode: "Markdown",
@@ -220,9 +249,23 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           ok: true,
           processed: true,
-          actionTaken: "role_bound",
+          actionTaken: "role_dashboard_displayed",
           role: targetRole,
         });
+      }
+
+      // Periksa otentikasi sebelum mengeksekusi aksi transaksi (Invarian & Security Gate)
+      const activeBinding = getBindingByChatId(chatId);
+      if (!activeBinding || !activeBinding.isLoggedIn) {
+        await answerTelegramCallbackQuery(callbackId, "🔒 Akses Ditolak: Wajib Login");
+        await dispatchTelegramMessage(
+          chatId,
+          `🔒 *Aksi Ditolak: Sesi Belum Terotentikasi*\n\n` +
+          `Untuk mengeksekusi transaksi pasar, Anda wajib login terlebih dahulu:\n` +
+          `👉 \`/login <username> <password>\``,
+          { parseMode: "Markdown" }
+        );
+        return NextResponse.json({ ok: false, error: "Authentication required" });
       }
 
       // Tangani aksi interaktif per peran (Klaim Warteg, Tebus Subsidi, Donasi CSR, Maggot, PoD Kurir)
