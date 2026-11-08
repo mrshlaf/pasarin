@@ -17,11 +17,11 @@ import {
   buildLogisticsTasksKeyboard,
   TelegramUpdate,
 } from "@/lib/telegramBotGateway";
+import { claimOfferServer, verifyDeliveryPoDServer } from "@/lib/serverSimulationState";
 import {
   handleVendorCallbackQuery,
   answerTelegramCallbackQuery,
 } from "@/lib/vendorInlineKeyboardFlow";
-
 /**
  * GET /api/telegram/webhook
  * Memeriksa status kesehatan webhook dan metadata bot Telegram.
@@ -272,45 +272,56 @@ export async function POST(req: NextRequest) {
         let actionMsg = "Aksi berhasil diproses!";
         if (data.startsWith("act_claim_warteg_")) {
           const ofrId = data.replace("act_claim_warteg_", "");
-          actionMsg =
-            `🎉 *KLAIM TIER 1 WARTEG BERHASIL!*\n\n` +
-            `Lot *#${ofrId}* telah Anda klaim.\n` +
-            `• *Penerima* : Warteg Kharisma Bahari (Condet)\n` +
-            `• *Armada*   : Viar 01 Listrik (Pak Joko) ditugaskan menjemput ke Kios A-12\n` +
-            `• *Escrow*   : Pembayaran QRIS BI Terkunci Aman\n\n` +
-            `Ketik /status untuk memantau pesanan Anda.`;
+          const res = claimOfferServer(ofrId, "Warteg Kharisma Bahari (1.8 km)", "warteg");
+          actionMsg = res.success
+            ? `🎉 *KLAIM TIER 1 WARTEG BERHASIL!*\n\n` +
+              `Lot *#${ofrId}* telah Anda klaim.\n` +
+              `• *Penerima* : Warteg Kharisma Bahari (Condet)\n` +
+              `• *Armada*   : Viar 01 Listrik (Pak Joko) ditugaskan menjemput ke Kios A-12\n` +
+              `• *Escrow*   : Pembayaran QRIS BI Terkunci Aman\n\n` +
+              `Ketik /status untuk memantau pesanan Anda.`
+            : `⚠️ ${res.message}`;
         } else if (data.startsWith("act_tebus_")) {
           const ofrId = data.replace("act_tebus_", "");
-          actionMsg =
-            `🍲 *TEBUS SUBSIDI 85% BERHASIL!*\n\n` +
-            `Lot *#${ofrId}* berhasil ditebus dari kas panti.\n` +
-            `• *Penerima* : Dapur Sosial Al-Hidayah (250 Anak Yatim & Dhuafa)\n` +
-            `• *Dampak*   : 160 Porsi Makanan Bergizi Terselamatkan\n` +
-            `• *Armada*   : Viar 01 sedang meluncur mengantar ke panti asuhan.`;
+          const res = claimOfferServer(ofrId, "Dapur Sosial Al-Hidayah (Tebus Subsidi)", "social_kitchen");
+          actionMsg = res.success
+            ? `🍲 *TEBUS SUBSIDI 85% BERHASIL!*\n\n` +
+              `Lot *#${ofrId}* berhasil ditebus dari kas panti.\n` +
+              `• *Penerima* : Dapur Sosial Al-Hidayah (250 Anak Yatim & Dhuafa)\n` +
+              `• *Dampak*   : 160 Porsi Makanan Bergizi Terselamatkan\n` +
+              `• *Armada*   : Viar 01 sedang meluncur mengantar ke panti asuhan.`
+            : `⚠️ ${res.message}`;
         } else if (data.startsWith("act_donasi_")) {
           const ofrId = data.replace("act_donasi_", "");
-          actionMsg =
-            `🎁 *KLAIM DONASI PENUH CSR BERHASIL!*\n\n` +
-            `Lot *#${ofrId}* diamankan GRATIS (Rp 0,-).\n` +
-            `• *Pendanaan*: Program CSR Perumda Pasar Jaya\n` +
-            `• *Penerima* : Panti Asuhan Al-Hidayah\n` +
-            `• *Armada*   : Viar 01 sedang menuju lokasi panti.`;
+          const res = claimOfferServer(ofrId, "Dapur Sosial Al-Hidayah (Hibah CSR Rp 0)", "social_kitchen");
+          actionMsg = res.success
+            ? `🎁 *KLAIM DONASI PENUH CSR BERHASIL!*\n\n` +
+              `Lot *#${ofrId}* diamankan GRATIS (Rp 0,-).\n` +
+              `• *Pendanaan*: Program CSR Perumda Pasar Jaya\n` +
+              `• *Penerima* : Panti Asuhan Al-Hidayah\n` +
+              `• *Armada*   : Viar 01 sedang menuju lokasi panti.`
+            : `⚠️ ${res.message}`;
         } else if (data.startsWith("act_maggot_")) {
           const ofrId = data.replace("act_maggot_", "");
-          actionMsg =
-            `🪱 *BIOKONVERSI MAGGOT BSF DITUGASKAN!*\n\n` +
-            `Biomassa non-food *#${ofrId}* dialihkan ke TPS 3R.\n` +
-            `• *Fasilitas*: Biopond Larva BSF Belakang Pasar\n` +
-            `• *Estimasi* : +6.0 kg Larva Protein & +7.2 kg Kasgot\n` +
-            `• *Armada*   : Gerobak Motor TPS 3R ditugaskan menjemput.`;
+          const res = claimOfferServer(ofrId, "Sentra Maggot BSF Kramat Jati", "maggot");
+          actionMsg = res.success
+            ? `🪱 *BIOKONVERSI MAGGOT BSF DITUGASKAN!*\n\n` +
+              `Biomassa non-food *#${ofrId}* dialihkan ke TPS 3R.\n` +
+              `• *Fasilitas*: Biopond Larva BSF Belakang Pasar\n` +
+              `• *Estimasi* : +6.0 kg Larva Protein & +7.2 kg Kasgot\n` +
+              `• *Armada*   : Gerobak Motor TPS 3R ditugaskan menjemput.`
+            : `⚠️ ${res.message}`;
         } else if (data.startsWith("act_pod_verify_")) {
+          const ofrId = data.replace("act_pod_verify_", "");
+          const res = verifyDeliveryPoDServer(ofrId, 18);
           actionMsg =
             `✅ *VALIDASI SERAH TERIMA PoD SUKSES!*\n\n` +
+            `• *Status*   : ${res.message}\n` +
             `• *Geofence* : GPS 18 meter (Lolos <= 50m)\n` +
             `• *Kripto*   : Kunci HMAC-SHA256 Tervalidasi\n` +
-            `• *Escrow*   : Dana otomatis dicairkan ke saldo dompet pedagang!`;
+            `• *Escrow*   : Dana otomatis dicairkan ke saldo dompet pedagang!\n\n` +
+            `Tugas pengantaran ini telah selesai dan dipindahkan ke Riwayat.`;
         }
-
         await answerTelegramCallbackQuery(callbackId, "✅ Aksi Berhasil Diproses!");
         await dispatchTelegramMessage(chatId, actionMsg, { parseMode: "Markdown" });
 

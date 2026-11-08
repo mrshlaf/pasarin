@@ -10,8 +10,7 @@ import {
 import { Send } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar } from "@/components/layout/AppSidebar";
-import { TelegramDeviceSimulator } from "@/components/common/TelegramDeviceSimulator";
-
+import { MarketClockController } from "@/components/common/MarketClockController";
 import { VendorDashboard } from "@/components/roles/VendorDashboard";
 import { WartegDashboard } from "@/components/roles/WartegDashboard";
 import { SocialKitchenDashboard } from "@/components/roles/SocialKitchenDashboard";
@@ -23,8 +22,6 @@ import { AdminDashboard } from "@/components/roles/AdminDashboard";
 function DashboardContent() {
   const { role, setRole } = useMarketSimulation();
   const { user } = useAuth();
-  const [showTelegram, setShowTelegram] = useState(false);
-
   // Kunci otomatis peran workspace sesuai peran akun pengguna yang login (Role Isolation)
   // Setel otomatis peran dashboard awal saat pengguna login, dan kunci mutlak untuk peran operasional
   useEffect(() => {
@@ -46,14 +43,15 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-[#FBFDFD] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#2A5C5F] selection:text-white">
       {/* App Header with Live Telemetry */}
-      <AppHeader onOpenTelegram={() => setShowTelegram(true)} />
-
+      <AppHeader />
       {/* Main Workspace: Sidebar + Role Dashboard */}
       <div className="flex-1 flex flex-col lg:flex-row w-full max-w-[1720px] mx-auto">
         <AppSidebar />
 
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          {/* Role-Specific Isolated Workspaces */}
+          {/* Circadian Market Clock Controller */}
+          <MarketClockController />
+
           {role === "vendor" && <VendorDashboard />}
           {role === "warteg" && <WartegDashboard />}
           {role === "social_kitchen" && <SocialKitchenDashboard />}
@@ -63,26 +61,21 @@ function DashboardContent() {
           {role === "admin" && <AdminDashboard />}
         </main>
       </div>
-      {/* Floating Telegram Integration Launcher */}
-      <button
-        onClick={() => setShowTelegram(true)}
-        type="button"
+      {/* Floating Direct Hook to Real Telegram Bot */}
+      <a
+        href="https://t.me/agent_pasarin_bot"
+        target="_blank"
+        rel="noopener noreferrer"
         className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-xl transition-all hover:scale-105 cursor-pointer border border-sky-400/30"
-        title="Buka Layar Kotak Telegram Bot PASARIN"
+        title="Buka Chat Bot Telegram Asli (@agent_pasarin_bot)"
       >
         <Send className="w-4 h-4 -rotate-45" />
-        <span className="text-xs font-bold tracking-wide">Telegram Bot Live</span>
+        <span className="text-xs font-bold tracking-wide">Buka Telegram</span>
         <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-300" />
         </span>
-      </button>
-
-      {/* Telegram Smartphone Simulator Modal */}
-      <TelegramDeviceSimulator
-        isOpen={showTelegram}
-        onClose={() => setShowTelegram(false)}
-      />
+      </a>
     </div>
   );
 }
