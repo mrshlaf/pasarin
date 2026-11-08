@@ -281,7 +281,7 @@ const scenarioOffers: RescueOffer[] = [
     claimedById: "local:warteg2",
     claimedAt: "14:15 WIB",
     deliveredOn: new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" }).format(new Date()),
-    paymentStatus: "released",
+    paymentStatus: "released_to_vendor",
   },
 ];
 
@@ -294,8 +294,8 @@ const scenarioTransactions: EscrowTransaction[] = [
     vendorName: "H. Rohmat Sayur Daun (Kios A-12)",
     commodityName: "Kangkung Darat",
     amountIdr: 62500,
-    status: "held",
-    paidAt: new Date().toISOString(),
+    status: "held_in_escrow",
+    createdAt: new Date().toISOString(),
   },
   // Transaksi 2: Dana Sudah Cair ke Dompet Pedagang
   {
@@ -306,7 +306,7 @@ const scenarioTransactions: EscrowTransaction[] = [
     commodityName: "Caisim / Sawi Hijau",
     amountIdr: 50000,
     status: "released",
-    paidAt: new Date(Date.now() - 3600000).toISOString(),
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
     releasedAt: new Date().toISOString(),
   },
 ];
