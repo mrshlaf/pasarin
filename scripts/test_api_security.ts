@@ -130,7 +130,7 @@ async function run() {
   const publicState = (await (await overview()).json()).data;
   assert.equal(publicState.completedDeliveries, 1);
   assert.equal(publicState.distributedKg, closed.offers[0].quantityKg);
-  assert.deepEqual(Object.keys(publicState).sort(), ["availableKg", "availableLots", "completedDeliveries", "distributedKg", "lanes", "topCommodities"]);
+  assert.deepEqual(Object.keys(publicState).sort(), ["availableKg", "availableLots", "completedDeliveries", "distributedKg", "forecast", "lanes", "topCommodities"]);
 
   for (const [chat, role] of [[11, "vendor"], [22, "warteg"], [33, "logistics"], [44, "manager"], [55, "social_kitchen"], [66, "maggot"]] as const) {
     await startTelegramSession(chat, {

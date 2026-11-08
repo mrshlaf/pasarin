@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Send, UtensilsCrossed } from "lucide-react";
+import { ArrowDown, ArrowRight, Bike, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Send, Sparkles, Truck, UtensilsCrossed } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import { RealtimeWibClock } from "@/components/common/RealtimeWibClock";
 import { EmptyState, kg, marketButton, marketSecondary } from "@/components/common/MarketWorkspace";
@@ -131,6 +131,120 @@ export function PublicMarketDashboard() {
             </p>
           </section>
         </div>
+
+        {/* Perkiraan Hari Ini: Warteg, Dapur Sosial, & Armada Kurir (PSR-27 & AI Gemini) */}
+        {data?.forecast && (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-4 lg:grid-cols-[1.12fr_1fr] lg:gap-5">
+              {/* Kartu 1: Perkiraan Penyaluran Warteg & Dapur Sosial */}
+              <section className="market-panel min-w-0" aria-labelledby="forecast-recipients-title">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+                  <div>
+                    <p className="market-eyebrow">Proyeksi Serapan Hari Ini</p>
+                    <h2 id="forecast-recipients-title" className="market-section-heading">Perkiraan Warteg & Dapur Sosial</h2>
+                  </div>
+                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand">Estimasi Hari Ini</span>
+                </div>
+
+                <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+                  {/* Warteg Card */}
+                  <div className="rounded-2xl border border-line bg-canvas/80 p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-8 place-items-center rounded-lg bg-tier-1-soft text-tier-1"><UtensilsCrossed size={16} /></span>
+                      <h3 className="font-semibold text-ink text-sm">Mitra Warteg & UMKM</h3>
+                    </div>
+                    <div className="mt-3 flex items-baseline justify-between">
+                      <span className="font-serif text-2xl font-bold text-ink tabular-nums">{kg(data.forecast.recipients.warteg.kg)}</span>
+                      <span className="text-xs font-semibold text-ink-muted">{data.forecast.recipients.warteg.lots} lot aktif</span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-brand">~{number.format(data.forecast.recipients.warteg.estimatedMeals)} porsi makan terjangkau</p>
+                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{data.forecast.recipients.warteg.partnerCount} Warteg mitra (radius &lt; 2.5 km) siap menyerap.</p>
+                  </div>
+
+                  {/* Dapur Sosial Card */}
+                  <div className="rounded-2xl border border-line bg-canvas/80 p-4">
+                    <div className="flex items-center gap-2">
+                      <span className="grid size-8 place-items-center rounded-lg bg-tier-2-soft text-tier-2"><HeartHandshake size={16} /></span>
+                      <h3 className="font-semibold text-ink text-sm">Dapur Sosial & Panti</h3>
+                    </div>
+                    <div className="mt-3 flex items-baseline justify-between">
+                      <span className="font-serif text-2xl font-bold text-ink tabular-nums">{kg(data.forecast.recipients.socialKitchen.kg)}</span>
+                      <span className="text-xs font-semibold text-ink-muted">{data.forecast.recipients.socialKitchen.lots} lot aktif</span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-tier-2-ink">~{number.format(data.forecast.recipients.socialKitchen.estimatedBeneficiaries)} porsi santunan pangan</p>
+                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{data.forecast.recipients.socialKitchen.partnerCount} Panti & dapur sosial (jendela 30m aktif).</p>
+                  </div>
+                </div>
+
+                {/* Sentra Maggot Banner */}
+                {data.forecast.recipients.maggot.kg > 0 && (
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
+                    <span className="inline-flex items-center gap-1.5 font-medium text-ink">
+                      <Recycle size={14} className="text-tier-3" />
+                      Sentra Maggot BSF: <strong className="text-ink">{kg(data.forecast.recipients.maggot.kg)}</strong> ({data.forecast.recipients.maggot.lots} lot)
+                    </span>
+                    <span className="font-semibold text-tier-3-ink">Rp0 Bebas Biaya</span>
+                  </div>
+                )}
+              </section>
+
+              {/* Kartu 2: Perkiraan Kurir & Kendaraan Pengantar ("Nganter Pake Apa") */}
+              <section className="market-panel min-w-0" aria-labelledby="forecast-fleet-title">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+                  <div>
+                    <p className="market-eyebrow">Alokasi Armada Logistik (PSR-27)</p>
+                    <h2 id="forecast-fleet-title" className="market-section-heading">Perkiraan Kurir & Kendaraan</h2>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-deep px-2.5 py-0.5 text-xs font-semibold text-cream">
+                    <Truck size={13} /> {data.forecast.fleet.totalCouriers} Kurir Siaga
+                  </span>
+                </div>
+
+                <div className="mt-2 divide-y divide-line">
+                  {data.forecast.fleet.vehicles.map((v) => (
+                    <div key={v.type} className="flex items-start gap-3 py-2.5 text-xs">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-canvas text-brand">
+                        {v.type === "viar_trike" ? <Bike size={16} /> : <Truck size={16} />}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                          <strong className="text-[13px] font-semibold text-ink">{v.units}x {v.name}</strong>
+                          <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[11px] text-ink-soft">{v.licensePlate}</span>
+                        </div>
+                        <p className="mt-0.5 text-ink-soft">
+                          Pengemudi: <strong className="text-ink">{v.driverName}</strong> · Kapasitas: {v.capacityKg} kg ({v.fuelType})
+                        </p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{v.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            {/* Kartu 3: Sintesis AI Gemini */}
+            {data.forecast.aiAnalysis && (
+              <section className="rounded-2xl border border-brand/25 bg-gradient-to-r from-brand-soft/40 via-surface to-brand-soft/30 p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 pb-2.5">
+                  <div className="flex items-center gap-2 text-brand">
+                    <Sparkles size={17} className="text-brand shrink-0 animate-pulse" />
+                    <h3 className="text-sm font-semibold text-ink">Analisis & Rekomendasi AI Gemini 3.5 Flash</h3>
+                  </div>
+                  <span className="rounded-full border border-brand/30 bg-surface px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+                    {data.forecast.aiAnalysis.model} · {data.forecast.aiAnalysis.source === "gemini" ? "Live Gemini API" : "ReAct Heuristik"}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-ink-soft">
+                  {data.forecast.aiAnalysis.summary}
+                </p>
+                <div className="mt-3 rounded-xl border border-line bg-surface/90 p-3 text-xs leading-5 text-ink">
+                  <strong className="font-semibold text-brand">Rekomendasi Taktis: </strong>
+                  <span>{data.forecast.aiAnalysis.recommendation}</span>
+                </div>
+              </section>
+            )}
+          </div>
+        )}
 
         <div id="jalur" className="mt-4 grid scroll-mt-6 gap-4 lg:grid-cols-[1.12fr_1fr] lg:gap-5">
           <section aria-labelledby="lane-title" className="market-panel min-w-0">

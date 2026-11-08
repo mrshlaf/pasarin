@@ -417,6 +417,108 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
   return { ...visible, stockHealth, estimatedUnsoldKg, weather: { isEstimated: weather.isEstimated ?? false, temperatureC: weather.temperatureC, humidityPercent: weather.humidityPercent } };
 }
 
+let aiForecastCache: {
+  key: string;
+  expiresAt: number;
+  data: {
+    summary: string;
+    recommendation: string;
+    model: string;
+    source: "gemini" | "heuristik";
+  };
+} | null = null;
+
+async function generateOverviewAiAnalysis(
+  temperatureC: number,
+  humidityPercent: number,
+  wartegKg: number,
+  socialKg: number,
+  maggotKg: number,
+  couriersCount: number,
+  vehiclesList: string
+): Promise<{ summary: string; recommendation: string; model: string; source: "gemini" | "heuristik" }> {
+  const cacheKey = `${temperatureC}_${wartegKg}_${socialKg}_${maggotKg}_${couriersCount}`;
+  if (aiForecastCache && aiForecastCache.key === cacheKey && Date.now() < aiForecastCache.expiresAt) {
+    return aiForecastCache.data;
+  }
+
+  const defaultHeuristic = {
+    summary: `Di bawah suhu mikroklimat ${temperatureC}°C (${humidityPercent}% RH), pasar memproyeksikan penyaluran ${roundKg(wartegKg + socialKg + maggotKg)} kg komoditas pangan dan biomassa. Sebanyak ${wartegKg} kg dialokasikan untuk ketahanan pangan Warteg dan ${socialKg} kg disiagakan untuk Dapur Sosial.`,
+    recommendation: `Siagakan ${couriersCount} kurir armada (${vehiclesList}) dengan rute penjemputan prioritas sayuran daun Blok A sebelum jam 15:00 WIB guna meminimalkan akselerasi respirasi seluler.`,
+    model: "gemini-3.5-flash-lite",
+    source: "heuristik" as const,
+  };
+
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey || apiKey.length < 15) {
+    aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 5 * 60 * 1000, data: defaultHeuristic };
+    return defaultHeuristic;
+  }
+
+  try {
+    const prompt = `Anda adalah AI Asisten Operasional Logistik Pasar Induk Kramat Jati (PASARIN).
+Data operasional hari ini:
+- Suhu los pasar: ${temperatureC}°C, Kelembapan: ${humidityPercent}% RH
+- Estimasi alokasi Warteg (Tier 1): ${wartegKg} kg
+- Estimasi alokasi Dapur Sosial & Panti (Tier 2): ${socialKg} kg
+- Estimasi alokasi Sentra Maggot (Tier 3): ${maggotKg} kg
+- Kesiapan armada: ${couriersCount} kurir (${vehiclesList})
+
+Tuliskan dalam Bahasa Indonesia yang ringkas dan profesional:
+1. Ringkasan operasional (maksimal 2 kalimat mengenai dinamika suhu vs kecepatan distribusi pangan).
+2. Satu kalimat rekomendasi taktis pengantaran kurir hari ini.
+Format persis:
+RINGKASAN: [isi ringkasan]
+REKOMENDASI: [isi rekomendasi]`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 180, temperature: 0.2 },
+        }),
+        signal: controller.signal,
+      }
+    );
+    clearTimeout(timeout);
+
+    if (response.ok) {
+      const json = await response.json();
+      const text: string = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      if (text.length > 20) {
+        let summary = defaultHeuristic.summary;
+        let recommendation = defaultHeuristic.recommendation;
+
+        const summaryMatch = text.match(/RINGKASAN:\s*([\s\S]*?)(?=REKOMENDASI:|$)/i);
+        const recMatch = text.match(/REKOMENDASI:\s*([\s\S]*?)$/i);
+
+        if (summaryMatch && summaryMatch[1].trim()) summary = summaryMatch[1].trim();
+        if (recMatch && recMatch[1].trim()) recommendation = recMatch[1].trim();
+
+        const geminiResult = {
+          summary,
+          recommendation,
+          model: "gemini-3.5-flash-lite",
+          source: "gemini" as const,
+        };
+        aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 10 * 60 * 1000, data: geminiResult };
+        return geminiResult;
+      }
+    }
+  } catch {
+    // Fail-safe graceful fallback to heuristic without blocking
+  }
+
+  aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 3 * 60 * 1000, data: defaultHeuristic };
+  return defaultHeuristic;
+}
+
 /** Publishes only totals by lane and commodity. Account and transaction records stay private. */
 export async function readPublicMarketOverview() {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
@@ -447,7 +549,106 @@ export async function readPublicMarketOverview() {
   }
   const topCommodities = [...commodities].map(([name, kg]) => ({ name, kg }))
     .sort((a, b) => b.kg - a.kg || a.name.localeCompare(b.name, "id")).slice(0, 5);
-  return { availableLots, availableKg, distributedKg, completedDeliveries, lanes, topCommodities };
+
+  const wartegKg = lanes.tier_1.kg;
+  const wartegLots = lanes.tier_1.lots;
+  const socialKg = lanes.tier_2.kg;
+  const socialLots = lanes.tier_2.lots;
+  const maggotKg = lanes.tier_3.kg;
+  const maggotLots = lanes.tier_3.lots;
+
+  // Logistics fleet allocation (Weight Dispatch Rule PSR-27)
+  const viarUnits = wartegKg > 0 ? Math.max(1, Math.ceil(wartegKg / 300)) : 1;
+  const granmaxUnits = (socialKg > 0 || wartegKg > 300) ? Math.max(1, Math.ceil((socialKg + Math.max(0, wartegKg - 300)) / 1000)) : 1;
+  const isuzuUnits = maggotKg > 300 ? Math.max(1, Math.ceil(maggotKg / 4000)) : (availableKg > 800 ? 1 : 0);
+
+  const vehicles = [
+    {
+      type: "viar_trike" as const,
+      name: "Motor Viar Roda 3",
+      units: viarUnits,
+      driverName: "Pak Joko Santoso",
+      licensePlate: "B 4521 TXX",
+      capacityKg: 300,
+      fuelType: "Pertalite",
+      targetLane: "Warteg & UMKM Kuliner",
+      description: "Muatan ringan (<= 300 kg), lincah bermanuver di lorong sempit los pasar dan gang warteg.",
+    },
+    {
+      type: "granmax_pickup" as const,
+      name: "Daihatsu GranMax Pikap",
+      units: granmaxUnits,
+      driverName: "Pak Hendra Wijaya",
+      licensePlate: "B 9812 SAA",
+      capacityKg: 1000,
+      fuelType: "Pertamax",
+      targetLane: "Dapur Sosial & Panti Asuhan",
+      description: "Muatan menengah (301 - 1.000 kg), distribusi multi-stop Warteg & Dapur Sosial.",
+    },
+    ...(isuzuUnits > 0 ? [{
+      type: "isuzu_truck" as const,
+      name: "Truk Engkel Isuzu Elf",
+      units: isuzuUnits,
+      driverName: "Bpk. Rahmat Hidayat",
+      licensePlate: "B 7710 KDA",
+      capacityKg: 4000,
+      fuelType: "Bio Solar",
+      targetLane: "Sentra Maggot BSF & TPS 3R",
+      description: "Muatan massal (> 1.000 kg), limbah afkir organik langsung ke biokonversi maggot.",
+    }] : []),
+  ];
+
+  const totalCouriers = vehicles.reduce((sum, v) => sum + v.units, 0);
+  const vehicleSummary = vehicles.map((v) => `${v.units} ${v.name}`).join(", ");
+
+  const aiAnalysis = await generateOverviewAiAnalysis(
+    weather.temperatureC,
+    weather.humidityPercent,
+    wartegKg,
+    socialKg,
+    maggotKg,
+    totalCouriers,
+    vehicleSummary
+  );
+
+  const forecast = {
+    weather: {
+      temperatureC: weather.temperatureC,
+      humidityPercent: weather.humidityPercent,
+      isEstimated: weather.isEstimated ?? false,
+    },
+    recipients: {
+      warteg: {
+        lots: wartegLots,
+        kg: wartegKg,
+        partnerCount: 5,
+        estimatedMeals: Math.round(wartegKg * 4),
+        description: "Sayuran segar & layu ringan siap olah untuk Warteg & UMKM kuliner.",
+      },
+      socialKitchen: {
+        lots: socialLots,
+        kg: socialKg,
+        partnerCount: 3,
+        estimatedBeneficiaries: Math.round(socialKg * 4),
+        description: "Bahan pangan bernutrisi terlindungi jendela 30 menit untuk dapur sosial dan panti asuhan.",
+      },
+      maggot: {
+        lots: maggotLots,
+        kg: maggotKg,
+        partnerCount: 2,
+        landfillDivertedKg: maggotKg,
+        description: "Biomassa afkir teralihkan ke biokonversi maggot BSF bebas biaya (Rp0).",
+      },
+    },
+    fleet: {
+      totalCouriers,
+      totalPayloadKg: availableKg,
+      vehicles,
+    },
+    aiAnalysis,
+  };
+
+  return { availableLots, availableKg, distributedKg, completedDeliveries, lanes, topCommodities, forecast };
 }
 
 /** Rejects listings whose physical stock or current quality no longer supports a claim. */

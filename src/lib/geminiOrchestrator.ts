@@ -278,7 +278,7 @@ export async function processManagerialNaturalQuery(
         `dan sertakan ringkasan eksekutif bernilai rekayasa nyata.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
         contents: promptText,
       });
 
