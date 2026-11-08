@@ -28,12 +28,18 @@ import { buildMarketSeedState } from "../src/lib/marketSeed";
 
 // Muat env lokal jika ada
 try {
-  const envPath = path.resolve(process.cwd(), ".env.local");
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, "utf-8");
-    for (const line of envContent.split("\n")) {
-      const match = line.match(/^([^#=]+)=(.*)$/);
-      if (match) process.env[match[1].trim()] = match[2].trim();
+  const envCandidates = [
+    path.resolve(process.cwd(), ".env.local"),
+    path.resolve(__dirname, "../.env.local"),
+  ];
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      for (const line of envContent.split("\n")) {
+        const match = line.match(/^([^#=]+)=(.*)$/);
+        if (match) process.env[match[1].trim()] = match[2].trim();
+      }
+      break;
     }
   }
 } catch {}
@@ -340,7 +346,40 @@ async function seedTestingScenarios() {
   console.log(`       -> ${scenarioOffers.length} Penawaran Skenario Disuntikkan`);
   console.log(`       -> ${scenarioTransactions.length} Transaksi Escrow Disuntikkan\n`);
 
-  // 2. Jika SUPABASE_DB_URL tersedia, jalankan SQL ke Postgres
+  // 2. Sinkronkan ke Supabase Cloud (pasarin_simulation_state) agar Vercel otomatis sinkron 100%
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (supabaseUrl && serviceKey) {
+    try {
+      console.log("[INFO] Menyinkronkan state ke Supabase Cloud (Vercel State Engine)...");
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(supabaseUrl, serviceKey);
+      const { data: current } = await supabase
+        .from("pasarin_simulation_state")
+        .select("revision")
+        .eq("id", "market")
+        .maybeSingle();
+
+      const nextRevision = (current?.revision ?? 0) + 1;
+      const { error: upsertErr } = await supabase
+        .from("pasarin_simulation_state")
+        .upsert({
+          id: "market",
+          revision: nextRevision,
+          state: currentState,
+        });
+
+      if (upsertErr) {
+        console.warn(`[WARN] Sinkronisasi Supabase Cloud dilewati / error: ${upsertErr.message}`);
+      } else {
+        console.log(`[PASS] Supabase Cloud Database (Vercel State) Terupdate ke Revisi ${nextRevision} (100% Sinkron dengan Localhost)!\n`);
+      }
+    } catch (e: any) {
+      console.warn(`[WARN] Gagal menyinkronkan ke Supabase: ${e.message}\n`);
+    }
+  }
+
+  // 3. Jika SUPABASE_DB_URL tersedia, jalankan SQL ke Postgres
   const dbUrl = process.env.SUPABASE_DB_URL;
   if (dbUrl) {
     console.log("[INFO] Menginjeksikan ke Supabase PostgreSQL Database...");
@@ -365,11 +404,9 @@ async function seedTestingScenarios() {
         await client.end().catch(() => {});
       }
     }
-  } else {
-    console.log("[NOTE] SUPABASE_DB_URL tidak diatur di .env.local -> Berjalan pada Local Storage Engine (100% Siap Demo).\n");
   }
 
-  // 3. Ringkasan Peta Skenario untuk Presentasi
+  // 4. Ringkasan Peta Skenario untuk Presentasi
   console.log("================================================================================");
   console.log("            RINGKASAN 7 SKENARIO TESTING SIAP DEMO DI PASARIN                  ");
   console.log("================================================================================");
