@@ -65,17 +65,6 @@ export interface ChatKioskBinding {
  */
 const CHAT_KIOSK_BINDINGS: Map<string, ChatKioskBinding> = new Map([
   [
-    "6126029646",
-    {
-      chatId: "6126029646",
-      vendorId: "vendor_kramat_01",
-      stallNumber: "A-12",
-      vendorName: "H. Rohmat Sayur Daun",
-      boundAt: "2026-11-08T05:00:00Z",
-      role: "vendor",
-    },
-  ],
-  [
     "9001201",
     {
       chatId: "9001201",
@@ -84,6 +73,8 @@ const CHAT_KIOSK_BINDINGS: Map<string, ChatKioskBinding> = new Map([
       vendorName: "H. Rohmat Sayur Daun",
       boundAt: "2026-10-01T04:30:00Z",
       role: "vendor",
+      username: "pasar1",
+      isLoggedIn: true,
     },
   ],
   [
@@ -307,7 +298,7 @@ export async function handleTelegramCommand(
   switch (cleanCmd) {
     case "/start": {
       const binding = getBindingByChatId(chatId);
-      if (binding) {
+      if (binding && binding.isLoggedIn) {
         const roleTitle =
           binding.role === "warteg"
             ? "Pembeli Warteg (Tier 1)"
@@ -323,29 +314,13 @@ export async function handleTelegramCommand(
           actionTaken: "welcome_existing_user",
           responseText:
             `🌿 *Halo, ${binding.vendorName}!*\n\n` +
-            `Akun Telegram Anda aktif sebagai *${roleTitle}*.\n\n` +
+            `Akun Telegram Anda terhubung aktif sebagai *${roleTitle}* (Terautentikasi).\n\n` +
             `• Ketik \`/status\` untuk melihat profil & tugas Anda\n` +
             `• Ketik \`/surplus\` untuk melihat katalog sesuai peran Anda\n` +
             `• Ketik \`/logout\` untuk keluar akun\n\n` +
-            `👇 *Ganti Peran Kapan Saja (Tanpa Perlu Logout):*\n` +
-            `Tekan salah satu tombol peran di bawah atau ketik /warteg, /maggot, /sosial, /kurir, /pasar:`,
+            `🔒 *Keamanan:* Untuk berganti peran, login akun tujuan dengan \`/login <user> <pass>\` atau pilih di bawah.`,
           replyMarkup: buildRoleSelectorKeyboard(),
         };
-      }
-
-      // Jika ada parameter deep-linking (contoh: /start kios_A12)
-      if (args.length > 0 && args[0].startsWith("kios_")) {
-        const targetStall = args[0].replace("kios_", "").replace("_", "-");
-        const bindResult = bindChatToKiosk(chatId, targetStall);
-        if (bindResult.success && bindResult.binding) {
-          return {
-            actionTaken: "start_with_deep_link",
-            responseText:
-              `✅ *Inisiasi Berhasil!*\n\n` +
-              `Nomor chat Telegram Anda berhasil ditautkan ke *Lapak ${bindResult.binding.stallNumber} (${bindResult.binding.vendorName})*.\n` +
-              `Anda siap menerima sinyal penyelamatan surplus pangan harian.`,
-          };
-        }
       }
 
       return {
@@ -353,11 +328,17 @@ export async function handleTelegramCommand(
         responseText:
           `👋 *Selamat datang di Bot Resmi PASARIN!* (@agent_pasarin_bot)\n\n` +
           `Sistem Multi-Agen Otonom untuk Penyelamatan & Redistribusi Surplus Sayur Pasar Tradisional.\n\n` +
-          `Silakan *pilih peran operasional Anda* menggunakan tombol di bawah, atau ketik langsung:\n` +
-          `👉 \`/kios A-12\` (Pedagang Lapak Kios A-12)\n` +
-          `👉 \`/login <user> <pass>\` (Login akun ber-password)\n` +
-          `👉 \`/role\` (Menu pemilihan peran)\n` +
-          `👉 \`/help\` (Panduan lengkap)`,
+          `🔒 *Otentikasi Peran Wajib (Strict RBAC):*\n` +
+          `Untuk menjaga integritas pasar dan mencegah penyalahgunaan peran, seluruh akses transaksi wajib login dengan akun terdaftar:\n\n` +
+          `👉 \`/login <username> <password>\`\n\n` +
+          `*Pilihan Akun Kredensial Resmi:* \n` +
+          `• Pedagang Lapak : \`/login pasar1 pasar123\`\n` +
+          `• Pembeli Warteg : \`/login warteg1 warteg123\`\n` +
+          `• Dapur Sosial   : \`/login sosial1 sosial123\`\n` +
+          `• Sentra Maggot  : \`/login maggot1 maggot123\`\n` +
+          `• Kurir Armada   : \`/login kurir1 kurir123\`\n` +
+          `• Administrator  : \`/login admin admin123\`\n\n` +
+          `Ketik /help untuk panduan lengkap.`,
         replyMarkup: buildRoleSelectorKeyboard(),
       };
     }
@@ -574,16 +555,22 @@ export async function handleTelegramCommand(
 
     case "/status": {
       const binding = getBindingByChatId(chatId);
-      if (!binding) {
+      if (!binding || !binding.isLoggedIn) {
         return {
-          actionTaken: "status_unbound",
+          actionTaken: "status_unauthenticated",
           responseText:
-            `⚠️ *Akun Telegram Belum Ditautkan*\n\n` +
-            `Pilih peran Anda dengan mengetik \`/role\` atau masuk dengan \`/login <username> <password>\`.`,
+            `🔒 *Akses Terkunci: Anda Belum Login*\n\n` +
+            `Untuk menjaga keamanan data pasar dan mencegah penyalahgunaan peran, Anda wajib login terlebih dahulu.\n\n` +
+            `Format: \`/login <username> <password>\`\n\n` +
+            `*Pilihan Akun Resmi:*\n` +
+            `• Pedagang : \`/login pasar1 pasar123\`\n` +
+            `• Warteg   : \`/login warteg1 warteg123\`\n` +
+            `• Maggot   : \`/login maggot1 maggot123\`\n` +
+            `• Sosial   : \`/login sosial1 sosial123\`\n` +
+            `• Kurir    : \`/login kurir1 kurir123\``,
           replyMarkup: buildRoleSelectorKeyboard(),
         };
       }
-
       if (binding.role === "warteg") {
         return {
           actionTaken: "status_warteg",
@@ -672,9 +659,25 @@ export async function handleTelegramCommand(
     case "/stok":
     case "/surplus": {
       const binding = getBindingByChatId(chatId);
-      const userRole = binding ? binding.role : "vendor";
-      const isLogistics = binding && binding.stallNumber === "VIAR-01";
+      if (!binding || !binding.isLoggedIn) {
+        return {
+          actionTaken: "surplus_unauthenticated",
+          responseText:
+            `🔒 *Akses Terkunci: Anda Belum Login*\n\n` +
+            `Katalog surplus dikhususkan sesuai peran yang berwenang demi menjaga integritas harga dan alokasi etis.\n\n` +
+            `Silakan masuk terlebih dahulu:\n` +
+            `👉 \`/login <username> <password>\`\n\n` +
+            `*Contoh Login Cepat:*\n` +
+            `• Pembeli Warteg : \`/login warteg1 warteg123\`\n` +
+            `• Dapur Sosial   : \`/login sosial1 sosial123\`\n` +
+            `• Sentra Maggot  : \`/login maggot1 maggot123\`\n` +
+            `• Pedagang Lapak : \`/login pasar1 pasar123\``,
+          replyMarkup: buildRoleSelectorKeyboard(),
+        };
+      }
 
+      const userRole = binding.role;
+      const isLogistics = binding.stallNumber === "VIAR-01";
       if (isLogistics) {
         return {
           actionTaken: "logistics_tasks_displayed",
