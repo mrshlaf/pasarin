@@ -9,7 +9,7 @@ import { MarketDialog } from "@/components/common/MarketDialog";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
   EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
-  commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketSecondary, orderStatus, rupiah,
+  commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
 /** Gives supervisors the same live inventory and ledger with role-appropriate actions. */
