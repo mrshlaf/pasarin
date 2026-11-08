@@ -10,6 +10,8 @@
 import { getEnv } from "@/lib/env";
 import { KIOSKS } from "@/data/kiosks";
 import { DUMMY_ACCOUNTS } from "@/data/accounts";
+import { getActiveCourierTasks } from "@/lib/serverSimulationState";
+
 export interface TelegramChat {
   id: number | string;
   type: "private" | "group" | "supergroup" | "channel";
@@ -351,6 +353,7 @@ export async function handleTelegramCommand(
 
       const matched =
         DUMMY_ACCOUNTS[inputUser] ||
+        DUMMY_ACCOUNTS[`${inputUser}1`] ||
         (inputUser === "admin" ? DUMMY_ACCOUNTS.admin1 : undefined);
 
       if (!matched) {
@@ -362,14 +365,19 @@ export async function handleTelegramCommand(
         };
       }
 
+      const cleanBase = matched.username.replace(/[0-9]/g, "");
       const isValidPassword =
         inputPass.toLowerCase() === matched.username.toLowerCase() ||
-        inputPass === `${matched.username}123` ||
+        inputPass.toLowerCase() === cleanBase.toLowerCase() ||
+        inputPass.toLowerCase() === `${cleanBase}123` ||
+        inputPass.toLowerCase() === `${matched.username}123` ||
         inputPass === "admin123" ||
         inputPass === "pasar123" ||
         inputPass === "warteg123" ||
+        inputPass === "kurir123" ||
+        inputPass === "sosial123" ||
+        inputPass === "maggot123" ||
         inputPass === "123456";
-
       if (!isValidPassword) {
         return {
           actionTaken: "login_failed_wrong_password",
@@ -650,18 +658,46 @@ export async function handleTelegramCommand(
       const userRole = binding.role;
       const isLogistics = binding.stallNumber === "VIAR-01";
       if (isLogistics) {
+        const activeTasks = getActiveCourierTasks();
+        if (activeTasks.length === 0) {
+          return {
+            actionTaken: "logistics_no_active_tasks",
+            responseText:
+              `🚚 *DAFTAR TUGAS PENGANTARAN ARMADA VIAR 01*\n\n` +
+              `✅ *Semua tugas pengantaran telah selesai diserahterimakan!*\n` +
+              `• Saldo pembayaran telah dicairkan ke pedagang.\n` +
+              `• Tidak ada antrean muatan aktif yang tertunda saat ini.\n\n` +
+              `Ketik /status untuk mengecek profil armada Anda, atau /logout untuk keluar.`,
+          };
+        }
+
+        const taskLines = activeTasks
+          .map(
+            (t, idx) =>
+              `*Penugasan #${idx + 1}:*\n` +
+              `• *Komoditas*: ${t.commodityId} (${t.quantityKg} kg)\n` +
+              `• *Ambil di Kios*: H. Rohmat Sayur Daun (Kios A-12, Blok A)\n` +
+              `• *Tujuan*: ${t.claimedBy || "Pembeli Terdaftar"}\n` +
+              `• *Token PoD*: \`${t.podToken || "POD-HMAC-VERIFY"}\`\n` +
+              `• *Status Escrow*: Pembayaran QRIS BI Terkunci`
+          )
+          .join("\n\n");
+
         return {
           actionTaken: "logistics_tasks_displayed",
           responseText:
             `🚚 *DAFTAR TUGAS PENGANTARAN ARMADA VIAR 01*\n\n` +
-            `📦 *Penugasan Aktif:*\n` +
-            `• *Komoditas*: Kangkung Darat (45 kg)\n` +
-            `• *Ambil di Kios*: H. Rohmat Sayur Daun (Kios A-12, Blok A)\n` +
-            `• *Tujuan*: Warteg Kharisma Bahari (Jl. Raya Condet No. 42)\n` +
-            `• *Token PoD*: \`POD-HMAC-WARTEG1\`\n` +
-            `• *Status Escrow*: Pembayaran QRIS BI Terkunci\n\n` +
+            `📦 *Antrean Jemput Aktif (${activeTasks.length} Lot):*\n\n` +
+            `${taskLines}\n\n` +
             `Tekan tombol di bawah saat tiba di lokasi untuk validasi serah terima:`,
-          replyMarkup: buildLogisticsTasksKeyboard(),
+          replyMarkup: {
+            inline_keyboard: activeTasks.map((t) => [
+              {
+                text: `✅ Validasi Serah Terima (${t.commodityId} ${t.quantityKg}kg)`,
+                callback_data: `act_pod_verify_${t.id}`,
+              },
+            ]),
+          },
         };
       }
 

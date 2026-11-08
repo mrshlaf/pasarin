@@ -74,19 +74,18 @@ export function AppHeader({ onOpenTelegram }: AppHeaderProps) {
             </div>
           )}
 
-          {/* Telegram Live Bot Launcher */}
-          {onOpenTelegram && (
-            <button
-              onClick={onOpenTelegram}
-              type="button"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0088cc] hover:bg-[#0077b5] text-white font-semibold text-[11px] shadow-xs transition cursor-pointer"
-              title="Buka Layar Kotak Telegram Bot Simulator"
-            >
-              <Send className="w-3 h-3 -rotate-45" />
-              <span className="font-bold">Telegram Bot</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
-            </button>
-          )}
+          {/* Direct Hook to Real Telegram Bot */}
+          <a
+            href="https://t.me/agent_pasarin_bot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0088cc] hover:bg-[#0077b5] text-white font-semibold text-[11px] shadow-xs transition cursor-pointer"
+            title="Buka Chat Bot Telegram Asli (@agent_pasarin_bot)"
+          >
+            <Send className="w-3 h-3 -rotate-45" />
+            <span className="font-bold">Telegram Bot</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
+          </a>
 
           {/* User Profile & Logout Action */}
           {user ? (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { DEMO_SEED_OFFERS, DEMO_SEED_TRANSACTIONS } from "@/data/seedData";
+import { getServerSimulationState, saveServerSimulationState } from "@/lib/serverSimulationState";
 
 const STATE_FILE_PATH = path.join(process.cwd(), "src", "data", "simulationState.json");
 
@@ -35,7 +36,7 @@ function writePersistentState(state: SimulationSavedState) {
 }
 
 export async function GET() {
-  const current = readPersistentState();
+  const current = getServerSimulationState();
   return NextResponse.json({
     success: true,
     data: current,
@@ -48,8 +49,16 @@ export async function POST(req: NextRequest) {
     const action = body.action || "clear";
 
     if (action === "clear") {
-      const emptyState = { offers: [], transactions: [] };
-      writePersistentState(emptyState);
+      const emptyState = {
+        offers: [],
+        transactions: [],
+        vendorWalletIdr: 345000,
+        biomassProcessedKg: 0,
+        socialMealsServed: 0,
+        lastUpdated: new Date().toISOString(),
+      };
+      saveServerSimulationState(emptyState);
+      writePersistentState({ offers: [], transactions: [] });
       return NextResponse.json({
         success: true,
         message: "Status simulasi berhasil di-reset total dari nol (Kondisi Awal Pagi Hari).",
