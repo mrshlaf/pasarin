@@ -11,7 +11,8 @@ import { getRealtimeWIBTimeString } from "@/lib/marketClock";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
 import { executeEscrowSettlement } from "@/lib/qrisEscrowGateway";
 import { getServiceRoleClient } from "@/lib/supabase";
-import { buildDemoMarketState } from "@/lib/demoMarketSeed";
+import { buildMarketSeedState } from "@/lib/marketSeed";
+import { databaseConfigured, getDatabasePool } from "@/lib/database";
 
 export const BUYER_TIERS = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" } as const;
 export type BuyerRole = keyof typeof BUYER_TIERS;
@@ -33,7 +34,7 @@ type Actor = Pick<AuthUser, "id" | "name" | "role" | "vendorId">;
 const table = "pasarin_simulation_state";
 const stateKey = "market";
 const stateFile = () => process.env.PASARIN_STATE_FILE ?? path.join(os.tmpdir(), "pasarin_market_state_v2.json");
-const storesStateInDatabase = () => process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
+const storesStateInDatabase = () => databaseConfigured() || process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
 
 /** Initializes an empty market without inserting sample stock. */
 function newState(): ServerState {
@@ -105,9 +106,20 @@ async function readDatabaseState(client: ReturnType<typeof databaseClient>) {
   return data ? { revision: data.revision as number, state: normalizeState(data.state as ServerState) } : null;
 }
 
+/** Reads the same revisioned row through the direct Postgres pool. */
+async function readPostgresState() {
+  const result = await getDatabasePool().query<{ revision: string; state: ServerState }>(
+    "select revision::text as revision, state from public.pasarin_simulation_state where id = $1",
+    [stateKey],
+  );
+  const row = result.rows[0];
+  return row ? { revision: Number(row.revision), state: normalizeState(row.state) } : null;
+}
+
 /** Reads persistent market data and starts empty for a new installation. */
 export async function getServerSimulationState() {
   if (!storesStateInDatabase()) return readLocalState();
+  if (databaseConfigured()) return (await readPostgresState())?.state ?? newState();
   return (await readDatabaseState(databaseClient()))?.state ?? newState();
 }
 
@@ -128,6 +140,37 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
     });
     localMutationQueue = run.then(() => undefined, () => undefined);
     return run;
+  }
+
+  if (databaseConfigured()) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const snapshot = await readPostgresState();
+      const state = snapshot?.state ?? newState();
+      const result = mutate(state);
+      if (!result.success) return result;
+      state.lastUpdated = new Date().toISOString();
+      const pool = getDatabasePool();
+      if (!snapshot) {
+        const inserted = await pool.query(
+          `insert into public.pasarin_simulation_state (id, revision, state)
+           values ($1, 1, $2::jsonb)
+           on conflict (id) do nothing
+           returning id`,
+          [stateKey, JSON.stringify(state)],
+        );
+        if (inserted.rowCount) return result;
+      } else {
+        const updated = await pool.query(
+          `update public.pasarin_simulation_state
+           set state = $1::jsonb, revision = $2
+           where id = $3 and revision = $4
+           returning id`,
+          [JSON.stringify(state), snapshot.revision + 1, stateKey, snapshot.revision],
+        );
+        if (updated.rowCount) return result;
+      }
+    }
+    return { success: false, status: 409, message: "Data pasar baru berubah. Coba lagi." };
   }
 
   const client = databaseClient();
@@ -154,12 +197,12 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
   return { success: false, status: 409, message: "Data pasar baru berubah. Coba lagi." };
 }
 
-/** Replaces the market with the full demo population in one atomic revision. */
+/** Replaces the market with the full market population in one atomic revision. */
 export async function seedMarketStateServer(actorIds: Record<string, string> = {}) {
-  const seeded = buildDemoMarketState(actorIds);
+  const seeded = buildMarketSeedState(actorIds);
   return updateState((state) => {
     Object.assign(state, seeded);
-    return { success: true as const, message: "Data pasar demo berhasil dibuat ulang." };
+    return { success: true as const, message: "Data pasar berhasil dibuat ulang." };
   });
 }
 

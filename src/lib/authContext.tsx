@@ -14,14 +14,18 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const serverAuthEnabled = process.env.NEXT_PUBLIC_PASARIN_SERVER_AUTH === "1";
+const localTestEnabled = process.env.NODE_ENV === "development" && !serverAuthEnabled;
 
-/** Keeps the workspace tied to the Supabase session or a verified local test session. */
+/** Keeps the workspace tied to Supabase, the server session, or a local test session. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<AuthUser | null>(null);
   const [testUser, setTestUser] = useState<AuthUser | null>(null);
+  const [serverUser, setServerUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
-  const [testReady, setTestReady] = useState(process.env.NODE_ENV !== "development");
-  const user = account ?? testUser;
+  const [testReady, setTestReady] = useState(!localTestEnabled);
+  const [serverReady, setServerReady] = useState(!serverAuthEnabled);
+  const user = serverAuthEnabled ? serverUser : account ?? testUser;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -32,7 +36,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
+    if (!serverAuthEnabled) return;
+    const controller = new AbortController();
+    fetch("/api/auth/session", { signal: controller.signal, cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((result) => { if (!controller.signal.aborted) setServerUser(result?.user ?? null); })
+      .catch(() => {})
+      .finally(() => { if (!controller.signal.aborted) setServerReady(true); });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!localTestEnabled) return;
     const controller = new AbortController();
     fetch("/api/auth/local-test", { signal: controller.signal, cache: "no-store" })
       .then((response) => response.ok ? response.json() : null)
@@ -44,7 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Signs in an existing account and checks that it has a market role. */
   async function signInWithPassword(identifier: string, password: string) {
-    if (process.env.NODE_ENV === "development" && !identifier.includes("@")) {
+    if (serverAuthEnabled) {
+      const response = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: identifier, password }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok) return { success: false, error: result?.error ?? "Nama pengguna atau kata sandi tidak cocok." };
+      setServerUser(result.user);
+      return { success: true };
+    }
+    if (localTestEnabled && !identifier.includes("@")) {
       const response = await fetch("/api/auth/local-test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,23 +107,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }
 
-  /** Ends the active browser session and clears any local test cookie. */
+  /** Ends the active browser session and clears the matching cookie. */
   async function signOut() {
+    if (serverUser) {
+      await fetch("/api/auth/session", { method: "DELETE" });
+      setServerUser(null);
+    }
     if (testUser) {
       const response = await fetch("/api/auth/local-test", { method: "DELETE" });
       if (!response.ok && response.status !== 404) throw new Error("Sesi tes belum bisa diakhiri.");
       setTestUser(null);
     }
-    const { error } = await supabase.auth.signOut({ scope: "local" });
-    if (error) throw error;
-    setAccount(null);
+    if (!serverAuthEnabled) {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw error;
+      setAccount(null);
+    }
   }
 
   return (
     <AuthContext.Provider value={{
       user,
       isAuthenticated: user !== null,
-      isLoading: !ready || !testReady,
+      isLoading: !ready || !testReady || !serverReady,
       signInWithPassword,
       signOut,
       isRoleAccessible: (role) => user?.role === role || user?.role === "admin" || user?.role === "manager",

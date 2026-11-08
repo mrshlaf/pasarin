@@ -4,6 +4,7 @@ import { accountProfile, type AppRole } from "@/data/accounts";
 import { supabase } from "@/lib/supabase";
 import { errorResponse } from "@/lib/api-response";
 import { readLocalTestUser } from "@/lib/localTestAuth";
+import { serverAuthEnabled, readSessionUser } from "@/lib/serverAuth";
 
 /** Compares server-provided secrets without exposing the expected value. */
 export function matchesSecret(value: string | null | undefined, secret: string | undefined) {
@@ -13,8 +14,17 @@ export function matchesSecret(value: string | null | undefined, secret: string |
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Enforces the verified role from Supabase or a localhost-only test session. */
+/** Enforces the verified role from Supabase, the server session, or a localhost-only test session. */
 export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[]) {
+  if (serverAuthEnabled()) {
+    const serverUser = readSessionUser(req);
+    if (serverUser) {
+      if (roles && !roles.includes(serverUser.role)) {
+        return { response: errorResponse("Akun ini tidak memiliki akses untuk tindakan tersebut.", 403) } as const;
+      }
+      return { user: serverUser } as const;
+    }
+  }
   const token = req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   if (!token) {
     const user = readLocalTestUser(req);

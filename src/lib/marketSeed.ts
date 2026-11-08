@@ -1,11 +1,11 @@
 import { COMMODITIES, type Commodity } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
-import { DEMO_ACCOUNTS, demoActorId } from "@/data/demoAccounts";
+import { MARKET_ACCOUNTS, localActorId } from "@/data/marketAccounts";
 import type { EscrowTransaction, RescueOffer, StockItem } from "@/types/market";
 import type { ServerState } from "@/lib/serverSimulationState";
 import { calculateDecay } from "@/lib/decayEngine";
 
-const DEMO_WEATHER = { temperatureC: 32, humidityPercent: 75 } as const;
+const SEED_WEATHER = { temperatureC: 32, humidityPercent: 75 } as const;
 
 /** Six shelf-life stages per kiosk: fresh, two light-wilt, two medium-wilt, one feed-grade. */
 const STAGES = [
@@ -45,7 +45,7 @@ function hoursForDecay(commodity: Commodity, target: number) {
   let high = Math.max(24, commodity.standardShelfLifeHours * 3);
   for (let step = 0; step < 48; step++) {
     const middle = (low + high) / 2;
-    if (calculateDecay(commodity, DEMO_WEATHER.temperatureC, DEMO_WEATHER.humidityPercent, middle).decayScore < target) {
+    if (calculateDecay(commodity, SEED_WEATHER.temperatureC, SEED_WEATHER.humidityPercent, middle).decayScore < target) {
       low = middle;
     } else {
       high = middle;
@@ -61,8 +61,8 @@ function wibClockFromOffset(hours: number) {
   }).format(date);
 }
 
-function demoName(username: string) {
-  return DEMO_ACCOUNTS.find((account) => account.username === username)?.name ?? username;
+function accountName(username: string) {
+  return MARKET_ACCOUNTS.find((account) => account.username === username)?.name ?? username;
 }
 
 function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: number) {
@@ -72,7 +72,7 @@ function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: nu
 }
 
 /** Builds a deterministic market with 30 kiosks, varied shelf life, and role-specific offers. */
-export function buildDemoMarketState(actorIds: Record<string, string> = {}): ServerState {
+export function buildMarketSeedState(actorIds: Record<string, string> = {}): ServerState {
   const stocks: StockItem[] = [];
   const offers: RescueOffer[] = [];
   const transactions: EscrowTransaction[] = [];
@@ -84,7 +84,7 @@ export function buildDemoMarketState(actorIds: Record<string, string> = {}): Ser
     commodities.forEach((commodity, lotIndex) => {
       const stage = STAGES[lotIndex];
       const hoursOffset = hoursForDecay(commodity, stage.decayTarget);
-      const stockId = `stk_demo_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`;
+      const stockId = `stk_seed_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`;
       const remainingKg = 20 + ((kioskIndex * 7 + lotIndex * 13) % 46);
       const stock: StockItem = {
         id: stockId,
@@ -101,13 +101,13 @@ export function buildDemoMarketState(actorIds: Record<string, string> = {}): Ser
       if (!stage.offerTier) return;
 
       const evaluation = calculateDecay(
-        commodity, DEMO_WEATHER.temperatureC, DEMO_WEATHER.humidityPercent, hoursOffset,
+        commodity, SEED_WEATHER.temperatureC, SEED_WEATHER.humidityPercent, hoursOffset,
       );
       const salvagePricePerKg = priceForTier(commodity, stage.offerTier, evaluation.estimatedSalvagePrice);
       const discountPercentage = Math.max(0, Math.min(100,
         Math.round(100 * (1 - salvagePricePerKg / commodity.baseWholesalePricePerKg))));
       offers.push({
-        id: `ofr_demo_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`,
+        id: `ofr_seed_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`,
         stockId,
         vendorId: kiosk.id,
         commodityId: commodity.id,
@@ -127,10 +127,10 @@ export function buildDemoMarketState(actorIds: Record<string, string> = {}): Ser
 
   const findOffer = (kioskNumber: number, tier: OfferTier) => {
     const offer = offers.find((item) => item.vendorId === KIOSKS[kioskNumber - 1].id && item.targetTier === tier);
-    if (!offer) throw new Error(`Demo offer missing for kiosk ${kioskNumber} ${tier}`);
+    if (!offer) throw new Error(`Seed offer missing for kiosk ${kioskNumber} ${tier}`);
     return offer;
   };
-  const actorId = (username: string) => actorIds[username] ?? demoActorId(username);
+  const actorId = (username: string) => actorIds[username] ?? localActorId(username);
   const vendorName = (vendorId: string) => KIOSKS.find((kiosk) => kiosk.id === vendorId)?.name ?? vendorId;
   const commodityName = (commodityId: string) =>
     COMMODITIES.find((commodity) => commodity.id === commodityId)?.localName ?? commodityId;
@@ -140,13 +140,13 @@ export function buildDemoMarketState(actorIds: Record<string, string> = {}): Ser
     offer: RescueOffer, username: string, paymentStatus: RescueOffer["paymentStatus"], settled = false,
   ) => {
     offer.status = settled ? "settled" : "claimed";
-    offer.claimedBy = demoName(username);
+    offer.claimedBy = accountName(username);
     offer.claimedById = actorId(username);
     offer.claimedAt = nowClock;
     offer.paymentStatus = paymentStatus;
     if (settled) offer.deliveredOn = nowIso;
     const transaction: EscrowTransaction = {
-      id: `txn_demo_${offer.id}`,
+      id: `txn_seed_${offer.id}`,
       offerId: offer.id,
       buyerName: offer.claimedBy,
       vendorName: vendorName(offer.vendorId),

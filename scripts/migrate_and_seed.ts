@@ -6,11 +6,12 @@ try { loadEnvFile(".env.local"); } catch (error) {
   if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 }
 
-const connectionString = process.env.SUPABASE_DB_URL;
-if (!connectionString) {
+const rawConnectionString = process.env.SUPABASE_DB_URL;
+if (!rawConnectionString) {
   console.error("Isi SUPABASE_DB_URL dengan URL koneksi PostgreSQL target.");
   process.exit(1);
 }
+const connectionString: string = rawConnectionString;
 
 const files = [
   "supabase/migrations/20261005000000_init_pasarin_schema.sql",
@@ -19,7 +20,11 @@ const files = [
 ];
 
 async function run() {
-  const client = new Client({ connectionString, connectionTimeoutMillis: 10000 });
+  const client = new Client({
+    connectionString,
+    connectionTimeoutMillis: 10000,
+    ...(/localhost|127\.0\.0\.1/.test(connectionString) ? {} : { ssl: { rejectUnauthorized: false } }),
+  });
   await client.connect();
   try {
     await client.query("BEGIN");
