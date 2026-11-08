@@ -5,8 +5,10 @@
  */
 import { createClient } from "@supabase/supabase-js";
 
+export const supabaseAuthConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
 const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://cawsaaotwrqacqzyvhsl.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy";
 
@@ -23,7 +25,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
  * @returns Instans klien Supabase dengan sesi non-persisten dan auto-refresh dinonaktifkan.
  */
 export function getServiceRoleClient() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diatur.");
   return createClient(supabaseUrl, serviceKey, {
     auth: {
       persistSession: false,

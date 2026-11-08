@@ -105,6 +105,7 @@ export interface WeatherTelemetryData {
     locationName: string;
   };
   source: "CACHE" | "LIVE_API" | "FALLBACK" | "cache" | "live_api" | "fallback_offline";
+  isEstimated?: boolean;
   recordedAt: string;
   cacheExpiresAt: string;
   temperatureCelsius: number;

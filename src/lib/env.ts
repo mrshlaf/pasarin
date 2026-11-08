@@ -13,7 +13,7 @@ export const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
     .url("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL")
-    .default("https://cawsaaotwrqacqzyvhsl.supabase.co"),
+    .default("http://127.0.0.1:54321"),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z
     .string()
     .min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY cannot be empty")
@@ -30,12 +30,12 @@ export const envSchema = z.object({
   TELEGRAM_WEBHOOK_SECRET: z
     .string()
     .min(1)
-    .default("pasarin-telegram-webhook-secret-2026"),
+    .optional(),
   // Kunci pengaman cron sweeper (PSR-4)
   CRON_SECRET_KEY: z
     .string()
     .min(1)
-    .default("pasarin-cron-secret-dev-2026"),
+    .optional(),
 
   NODE_ENV: z
     .enum(["development", "production", "test"])
@@ -60,12 +60,12 @@ export function getEnv(): Env {
   const rawEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
-    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN,
-    TELEGRAM_WEBHOOK_SECRET:
-      process.env.TELEGRAM_WEBHOOK_SECRET || "pasarin-telegram-webhook-secret-2026",
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || undefined,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || undefined,
+    OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY?.trim() || undefined,
+    TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN?.trim() || undefined,
+    TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET?.trim() || process.env.TELEGRAM_SECRET_TOKEN?.trim() || undefined,
+    CRON_SECRET_KEY: process.env.CRON_SECRET?.trim() || process.env.CRON_SECRET_KEY?.trim() || undefined,
     NODE_ENV: process.env.NODE_ENV,
   };
 
@@ -78,7 +78,7 @@ export function getEnv(): Env {
     );
     // Gunakan fallback default agar proses tidak crash saat build
     cachedEnv = envSchema.parse({
-      NEXT_PUBLIC_SUPABASE_URL: "https://cawsaaotwrqacqzyvhsl.supabase.co",
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
       NEXT_PUBLIC_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy",
     });
     return cachedEnv;

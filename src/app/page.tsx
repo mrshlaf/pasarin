@@ -1,116 +1,82 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/authContext";
-import {
-  SimulationProvider,
-  useMarketSimulation,
-} from "@/lib/simulationStore";
-import { Send } from "lucide-react";
+import { useMarketSimulation } from "@/lib/simulationStore";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { AppSidebar } from "@/components/layout/AppSidebar";
-import { MarketClockController } from "@/components/common/MarketClockController";
+import { AppSidebar, ROLE_LABELS } from "@/components/layout/AppSidebar";
 import { VendorDashboard } from "@/components/roles/VendorDashboard";
-import { WartegDashboard } from "@/components/roles/WartegDashboard";
-import { SocialKitchenDashboard } from "@/components/roles/SocialKitchenDashboard";
-import { MaggotDashboard } from "@/components/roles/MaggotDashboard";
 import { LogisticsDashboard } from "@/components/roles/LogisticsDashboard";
-import { ManagerDashboard } from "@/components/roles/ManagerDashboard";
-import { AdminDashboard } from "@/components/roles/AdminDashboard";
 
+import { BuyerDashboard } from "@/components/roles/BuyerDashboard";
+import { OversightDashboard } from "@/components/roles/OversightDashboard";
+
+/** Renders the same workspace shell for each authorized role. */
 function DashboardContent() {
-  const { role, setRole } = useMarketSimulation();
   const { user } = useAuth();
-  // Kunci otomatis peran workspace sesuai peran akun pengguna yang login (Role Isolation)
-  // Setel otomatis peran dashboard awal saat pengguna login, dan kunci mutlak untuk peran operasional
-  useEffect(() => {
-    if (user && user.role) {
-      if (typeof window !== "undefined") {
-        const lastUserId = sessionStorage.getItem("pasarin_active_session_uid");
-        if (lastUserId !== user.id) {
-          setRole(user.role);
-          sessionStorage.setItem("pasarin_active_session_uid", user.id);
-          return;
-        }
-      }
-      if (user.role !== "admin" && user.role !== "manager" && role !== user.role) {
-        setRole(user.role);
-      }
-    }
-  }, [user, role, setRole]);
+  const { role, busy, stateReady, feedback, clearFeedback, refreshMarket } = useMarketSimulation();
 
   return (
-    <div className="min-h-screen bg-[#FBFDFD] flex flex-col font-sans text-slate-800 antialiased selection:bg-[#2A5C5F] selection:text-white">
-      {/* App Header with Live Telemetry */}
+    <div className="min-h-dvh bg-[#f5f3eb] text-[#182d2a]">
+      <a className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3" href="#market-content">Lewati ke ruang kerja</a>
       <AppHeader />
-      {/* Main Workspace: Sidebar + Role Dashboard */}
-      <div className="flex-1 flex flex-col lg:flex-row w-full max-w-[1720px] mx-auto">
-        <AppSidebar />
-
-        <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          {/* Circadian Market Clock Controller */}
-          <MarketClockController />
-
-          {role === "vendor" && <VendorDashboard />}
-          {role === "warteg" && <WartegDashboard />}
-          {role === "social_kitchen" && <SocialKitchenDashboard />}
-          {role === "maggot" && <MaggotDashboard />}
-          {role === "logistics" && <LogisticsDashboard />}
-          {role === "manager" && <ManagerDashboard />}
-          {role === "admin" && <AdminDashboard />}
-        </main>
+      <div className="mx-auto max-w-[1440px] px-4 pb-8 sm:px-7">
+        <div className="flex flex-wrap items-end justify-between gap-4 pb-5 pt-6 sm:pb-7 sm:pt-9">
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-[0.12em] text-[#465c54]">Pasar Induk Kramat Jati</p>
+            <h1 className="font-serif text-4xl leading-none tracking-tight sm:text-5xl">{ROLE_LABELS[role]}</h1>
+          </div>
+          <p className="text-sm font-semibold text-[#36594f]">{user?.organization || user?.name}</p>
+        </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+          <AppSidebar />
+          <main id="market-content" className="min-w-0 flex-1" aria-busy={busy} tabIndex={-1}>
+            {user?.role !== role && (
+              <p className="mb-4 rounded-lg border border-[#d5ded2] bg-[#fffef8] p-3 text-sm text-[#465c54]">
+                Pratinjau {ROLE_LABELS[role]}. Masuk dengan akun peran tersebut untuk menjalankan transaksi.
+              </p>
+            )}
+            {feedback && (
+              <div role={feedback.success ? "status" : "alert"}
+                className={`mb-4 flex items-center justify-between gap-3 rounded-lg border p-3 text-sm ${feedback.success
+                  ? "border-[#a9c4ad] bg-[#edf5e9] text-[#244b3e]" : "border-[#e4a79a] bg-[#fff0eb] text-[#8e2d23]"}`}>
+                <span>{feedback.message}</span>
+                {stateReady && <button type="button" className="min-h-9 font-semibold underline underline-offset-2" onClick={clearFeedback}>Tutup</button>}
+              </div>
+            )}
+            {!stateReady ? (
+              <div className="rounded-xl border border-[#d5ded2] bg-[#fffef8] p-5 text-sm text-[#465c54]">
+                {feedback
+                  ? <button type="button" onClick={refreshMarket} className="min-h-11 font-semibold underline underline-offset-2">Muat ulang data</button>
+                  : <p role="status">Memuat data pasar…</p>}
+              </div>
+            ) : (
+              <div className="market-role-content">
+                {role === "vendor" && <VendorDashboard />}
+                {(role === "warteg" || role === "social_kitchen" || role === "maggot") && <BuyerDashboard key={role} role={role} />}
+                {role === "logistics" && <LogisticsDashboard />}
+                {(role === "manager" || role === "admin") && <OversightDashboard />}
+              </div>
+            )}
+          </main>
+        </div>
       </div>
-      {/* Floating Direct Hook to Real Telegram Bot */}
-      <a
-        href="https://t.me/agent_pasarin_bot"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0088cc] hover:bg-[#0077b5] text-white shadow-xl transition-all hover:scale-105 cursor-pointer border border-sky-400/30"
-        title="Buka Chat Bot Telegram Asli (@agent_pasarin_bot)"
-      >
-        <Send className="w-4 h-4 -rotate-45" />
-        <span className="text-xs font-bold tracking-wide">Buka Telegram</span>
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-300" />
-        </span>
-      </a>
     </div>
   );
 }
+
+/** Redirects unauthenticated visitors to the sign-in screen. */
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
-
-  // Proteksi rute: arahkan pengguna yang belum terautentikasi ke halaman /login (PSR-40)
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace("/login");
-    }
+    if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#FBFDFD] flex items-center justify-center p-4">
-        <div className="text-center space-y-3">
-          <div className="w-10 h-10 border-3 border-[#2A5C5F] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-slate-600">Memuat sesi pengguna PASARIN...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#FBFDFD] flex items-center justify-center p-4">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-slate-400 border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-xs font-semibold text-slate-600">Mengarahkan ke halaman login...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <DashboardContent />;
+  return isAuthenticated ? <DashboardContent /> : (
+    <main className="grid min-h-dvh place-items-center bg-[#f5f3eb] px-5 text-sm text-[#465c54]">
+      <p role="status">{isLoading ? "Memeriksa sesi…" : "Membuka halaman masuk…"}</p>
+    </main>
+  );
 }

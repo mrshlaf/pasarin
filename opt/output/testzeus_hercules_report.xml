@@ -25,7 +25,7 @@
         [SCREENSHOT] qa_reports/screenshots/06_warteg_dashboard_catalog.png
       </system-out>
     </testcase>
-    <testcase classname="Warteg.Payment" name="WAR-02: Simulasi Pembayaran QRIS Bank Indonesia & Escrow Hold" time="1.64">
+    <testcase classname="Warteg.Payment" name="WAR-02: Simulasi Pembayaran QRIS Bank Indonesia &amp; Escrow Hold" time="1.64">
       <system-out>
         [EVIDENCE] Modal QRIS dinamis EMVCo TLV terbuka, pembayaran dikonfirmasi, dana tertahan di rekening penampung.
         [SCREENSHOT] qa_reports/screenshots/07_warteg_qris_bi_modal.png

@@ -48,3 +48,61 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+:focus-visible {
+  outline: 3px solid #12645a;
+  outline-offset: 3px;
+}
+
+.market-input {
+  min-height: 3rem;
+  width: 100%;
+  border: 1px solid #788e81;
+  border-radius: 0.5rem;
+  background: #fff;
+  padding-inline: 0.75rem;
+  color: #182d2a;
+  font-size: 1rem;
+}
+
+.market-input.pr-14 { padding-inline-end: 3.5rem; }
+
+.market-dialog {
+  max-height: calc(100dvh - 2rem);
+  width: min(32rem, calc(100% - 2rem));
+  margin: auto;
+  overflow: auto;
+  border: 1px solid #c9d5cd;
+  border-radius: 1rem;
+  background: #fffef8;
+  padding: 1.25rem;
+  color: #182d2a;
+}
+
+.market-dialog::backdrop { background: rgb(14 35 31 / 68%); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.market-role-content :is(button, select) {
+  min-height: 2.75rem;
+}
+
+.market-role-content :is(button, select):disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.market-role-content :is(.text-xs, .text-\[11px\], .text-\[10px\]) {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.market-role-content .text-slate-400 {
+  color: #546479;
+}

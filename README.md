@@ -1,7 +1,7 @@
 # PASARIN: Proactive Agent for Market Surplus Redistribution
 ### Sistem Multi-Agen Berbasis Agentic AI untuk Penyelamatan & Redistribusi Surplus Sayur-Buah Pasar Tradisional
 
-![Next.js 16](https://img.shields.io/badge/Next.js-16.3.8-black?style=flat-square&logo=next.js)
+![Next.js 16](https://img.shields.io/badge/Next.js-16.4.5-black?style=flat-square&logo=next.js)
 ![React 19](https://img.shields.io/badge/React-19.2.8-blue?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=flat-square&logo=typescript)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4.0-38bdf8?style=flat-square&logo=tailwind-css)
@@ -28,7 +28,7 @@ Berbeda dari aplikasi surplus konsumen pasif, PASARIN bekerja secara **proaktif 
    * **Tier 1 (Komersial Warteg):** Diskon dinamis 50%–70% dengan proteksi harga modal (*Price Floor*) untuk memulihkan modal tunai pedagang (*balik modal*).
    * **Tier 2 (Sosial & Kemanusiaan):** Jendela reservasi prioritas eksklusif 30 menit bagi Dapur Sosial & Panti Asuhan untuk mengklaim sayuran bergizi layak konsumsi.
    * **Tier 3 (Biokonversi Biomassa):** Alokasi otomatis sayuran reject non-food grade ke sentra budidaya larva Maggot BSF dan TPS 3R (Rp 1.500/kg).
-4. **Arsitektur Nol Biaya Server ($0 Cloud):** Beroperasi 100% pada kuota gratis (Vercel Edge, Supabase PostgreSQL, Google Gemini 2.0 Flash, OpenWeatherMap, dan Telegram Bot API).
+4. **Arsitektur Nol Biaya Server ($0 Cloud):** Beroperasi 100% pada kuota gratis (Vercel Edge, Supabase PostgreSQL, Google Gemini Flash, OpenWeatherMap, dan Telegram Bot API).
 
 ---
 
@@ -56,14 +56,14 @@ Proyek diselesaikan melalui 3 Sprint terpadu dengan siklus pengujian mingguan pa
  ├───────────────────────────────────┤ ├───────────────────────────────────┤ ├───────────────────────────────────┤
  │ • PSR-1 : Core Infra & DB Epic    │ │ • PSR-5 : Weather Telemetry API   │ │ • PSR-9 : 3-Tier Matching Epic    │
  │ • PSR-2 : Supabase Schema & DDL   │ │ • PSR-6 : Bio Decay & Market Epic │ │ • PSR-22: Circular 3-Tier Engine  │
- │ • PSR-3 : Next.js 14 API Scaffold │ │ • PSR-14: Arrhenius Core Module   │ │ • PSR-23: 30m Social Priority Win │
+ │ • PSR-3 : Next.js 16 API Scaffold │ │ • PSR-14: Arrhenius Core Module   │ │ • PSR-23: 30m Social Priority Win │
  │ • PSR-4 : Cron Scheduler 14:30    │ │ • PSR-15: Rain Footfall In-Core   │ │ • PSR-10: Telegram Interface Epic │
  │ • PSR-28: 7 Role Mobile Dashboards│ │ • PSR-16: 30 Kiosks Synthetic Data│ │ • PSR-24: Live Telegram Webhook   │
  │                                   │ │ • PSR-8 : Spoilage & Pricing Epic │ │ • PSR-25: Vendor 1-Tap Inline Flow│
  │                                   │ │ • PSR-20: Dynamic Pricing In-Core │ │ • PSR-26: Buyer Fast Claim & Lock │
  │                                   │ │ • PSR-21: Quality Gate Ethical    │ │ • PSR-27: Fleet Rule & Sim QRIS   │
  │                                   │ │ • PSR-7 : ReAct Orchestrator Epic │ │ • PSR-13: Verification Epic       │
- │                                   │ │ • PSR-17: Gemini 2.0 Flash Core   │ │ • PSR-31: 24h Market E2E Demo     │
+ │                                   │ │ • PSR-17: Gemini Flash Core   │ │ • PSR-31: 24h Market E2E Demo     │
  │                                   │ │ • PSR-18: Tool Calling Registry   │ │ • PSR-32: Academic Report & Pitch │
  │                                   │ │ • PSR-19: Composite Spoilage Calc │ │                                   │
  │                                   │ │ • PSR-39: In-Class Unit Testbench │ │                                   │
@@ -75,13 +75,13 @@ Proyek diselesaikan melalui 3 Sprint terpadu dengan siklus pengujian mingguan pa
 * **Sprint 1 (SELESAI / 100% Done):**
   * `PSR-1`: Epic Core Infrastructure Database & Scheduler.
   * `PSR-2`: Skema basis data relasional PostgreSQL Supabase (4 tabel inti: `kiosks`, `commodities`, `stock_items`, `offers`, indeks B-Tree, dan Row Level Security).
-  * `PSR-3`: Framework Next.js 14 App Router, standardisasi kontrak `ApiResponse<T>`, validasi runtime Zod di `src/lib/env.ts`, edge security middleware, dan endpoint status kesehatan peladen `/api/health`.
+  * `PSR-3`: Framework Next.js 16 App Router, standardisasi kontrak `ApiResponse<T>`, validasi runtime Zod di `src/lib/env.ts`, edge security middleware, dan endpoint status kesehatan peladen `/api/health`.
   * `PSR-4`: Automated Cron Scheduler 14:30 WIB (`vercel.json` jadwal `30 7 * * *`), otentikasi Bearer token rahasia, dan pencatatan jejak audit `system_audit_trail`.
   * `PSR-28`: Antarmuka 7 Role Mobile Dashboards bertema terang (Pedagang, Warteg, Panti, Maggot, Kurir, Manajer, Admin) di `src/components/roles/`.
 * **Sprint 2 (Target Kelas: Senin, 02 November 2026):**
   * Kinetika peluruhan biologis Arrhenius-Q10 & reduksi pengunjung hujan lebat (`PSR-14`, `PSR-15`).
   * Penetapan harga dinamis Inverse Surge dengan Price Floor Protection & Ethical Quality Gate (`PSR-20`, `PSR-21`).
-  * Agen ReAct Multi-Turn Google Gemini 2.0 Flash & Function Calling Registry (`PSR-17`, `PSR-18`).
+  * Agen ReAct Multi-Turn Google Gemini Flash & Function Calling Registry (`PSR-17`, `PSR-18`).
   * **`PSR-39`:** In-Class Automated Unit Testing Suite (`npm run test:unit`) siap demo di kelas.
   * **`PSR-40`:** Frontend Supabase Role Authentication & Login System (`/login` + Role Isolation).
 * **Sprint 3 (Target Final Release: Senin, 09 November 2026):**
@@ -128,7 +128,7 @@ C:/Project/Pasarin/
 │   │   ├── env.ts              (Runtime Zod validator untuk variabel lingkungan)
 │   │   ├── simulationStore.tsx (State reaktif global React Context 24 jam pasar)
 │   │   └── supabase.ts         (Inisialisasi koneksi Supabase Client & Service Role)
-│   ├── middleware.ts           # Global edge middleware penegakan header keamanan & CORS
+│   ├── middleware.ts           # Proxy penegakan header keamanan
 │   └── types/
 │       └── api.ts              # Interface TypeScript standar kontrak data & response API
 ├── supabase/
@@ -141,111 +141,48 @@ C:/Project/Pasarin/
 
 ---
 
-## 🛠️ Cara Menjalankan Secara Lokal (Getting Started)
+## Menjalankan Pasarin
 
-### 1. Prasyarat Sistem
-* Node.js v20.x atau lebih baru.
-* Manajer paket `npm`.
+Gunakan Node.js 22 dan jalankan:
 
-### 2. Kloning Repositori & Instalasi Dependensi
-```bash
-git clone https://github.com/mrshlaf/pasarin.git
-cd pasarin
-npm install
+```sh
+npm ci
+npm run dev -- --hostname 127.0.0.1
 ```
 
-### 3. Konfigurasi Variabel Lingkungan
-Salin berkas template environment:
-```bash
-cp .env.example .env.local
-```
-Sesuaikan variabel lingkungan yang diperlukan:
-```env
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-CRON_SECRET_KEY=pasarin-cron-secret-dev-2026
-```
+Buka http://localhost:3000/login. Masuk menggunakan email lengkap akun Supabase Auth yang sudah diberi peran. Untuk akun berdomain `@pasarin.id`, cukup masukkan nama penggunanya. Lingkungan lokal memakai penyimpanan server berbasis berkas. Atur `PASARIN_STATE_FILE` untuk memakai berkas terpisah dan mulai dengan inventaris kosong.
 
-### 4. Menjalankan Server Pengembangan (Development Mode)
-```bash
-npm run dev
-```
-Buka browser Anda di **`http://localhost:3000`**.
+Untuk demo kelas di localhost, akun `admin1`, `pasar1`, `warteg1`, `sosial1`, `maggot1`, `kurir1`, dan `pengelola1` memakai nama pengguna sebagai kata sandi. Akun ini aktif dalam mode pengembangan dengan penyimpanan lokal.
 
-### 5. Memeriksa Tipe Data & Melakukan Build Produksi
-```bash
-# Verifikasi strict type-safety (0 errors):
-node ./node_modules/typescript/bin/tsc --noEmit
-
-# Menjalankan build produksi:
+```sh
+npm run lint
+npm run typecheck
+npm test
 npm run build
-
-# Menjalankan peladen produksi:
-npm run start
 ```
 
----
+`npm test` memeriksa alur lintas peran dengan data terisolasi. `npm run test:db` melakukan CRUD pada Supabase yang dikonfigurasi. Gunakan basis data khusus pengujian untuk perintah tersebut.
 
-## 📡 Dokumentasi Endpoint API Aktif
+### Supabase dan integrasi
 
-### 1. `GET /api/health`
-Endpoint probe kesehatan peladen dan metrik mesin waktu nyata.
-* **Header Respons:** `X-Service-Identity: PASARIN-Engine-v0.1.0`
-* **Contoh Output (HTTP 200 OK):**
-```json
-{
-  "success": true,
-  "data": {
-    "status": "healthy",
-    "service": "pasarin-api",
-    "version": "0.1.0",
-    "environment": "production",
-    "uptimeSeconds": 65,
-    "timestamp": "2026-10-26T06:50:40.957Z",
-    "checks": {
-      "database": "configured",
-      "memoryUsageMB": 94.03
-    }
-  },
-  "timestamp": "2026-10-26T06:50:40.958Z"
-}
-```
+- Set `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dengan URL proyek dan kunci publishable atau anon. Untuk deployment, tambahkan `SUPABASE_SERVICE_ROLE_KEY` dan terapkan migrasi terlacak. Atur `SUPABASE_DB_URL` jika menerapkan migrasi lewat `npm run db:migrate`. Simpan semua kredensial di environment.
+- Isi `app_metadata.pasarin_role` melalui admin Supabase dengan salah satu nilai `vendor`, `warteg`, `social_kitchen`, `maggot`, `logistics`, `manager`, atau `admin`. Untuk pedagang, set `app_metadata.pasarin_vendor_id` ke ID kios.
+- Set `CRON_SECRET` untuk sapuan 14.30 WIB. Sapuan mengevaluasi usia stok yang sebenarnya dan membuat usulan penawaran.
+- Set `OPENWEATHER_API_KEY` untuk cuaca aktual. Jika data cuaca tidak tersedia, skor tetap dihitung dari usia stok dan profil cuaca estimasi yang diberi label. Dashboard memperbarui data sekitar setiap 15 detik.
+- Set `GEMINI_API_KEY` untuk pertanyaan pengelola di web dan Telegram. Default model `gemini-3.5-flash-lite` dapat diganti lewat `GEMINI_MODEL`. Jika Gemini tidak tersedia, aplikasi menyajikan ringkasan dari data pasar dan menyebut sumbernya.
+- Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, dan `TELEGRAM_CHAT_ACCOUNTS`. Peta JSON menggunakan ID chat privat sebagai kunci dan objek `{ "id": "id-user-supabase", "name": "Nama akun", "role": "warteg" }` sebagai nilai. Tambahkan `vendorId` untuk pedagang. Gunakan ID Supabase yang sama agar pesanan tersambung ke akun web. Daftarkan webhook ke endpoint deployment `/api/telegram/webhook`. Perintah `/help` menampilkan aksi yang sesuai peran.
 
-### 2. `GET /api/cron/afternoon-sweep` & `POST /api/cron/afternoon-sweep`
-Endpoint pemicu otonom sapuan sore hari jam 14.30 WIB yang memindai sisa stok lapak, mengalokasikan komoditas ke 3 tier penyelamatan, dan menerbitkan log audit.
-* **Otentikasi Wajib:** Header `Authorization: Bearer <CRON_SECRET_KEY>`.
-* **Proteksi Keamanan:** Akses tanpa token resmi ditolak langsung dengan status **HTTP 401 Unauthorized**.
-* **Contoh Output Terotorisasi (HTTP 200 OK):**
-```json
-{
-  "success": true,
-  "data": {
-    "eventId": "evt_1792972119022_ehmjhkl",
-    "subsystem": "CRON_SCHEDULER",
-    "actionType": "AFTERNOON_SWEEP_EXECUTED",
-    "schedule": "14:30 WIB (07:30 UTC)",
-    "triggeredAt": "2026-10-25T23:48:39.020Z",
-    "result": "Autonomous sweep completed: 1,240 kg surplus processed across 3 tiers.",
-    "executionDurationMs": 2,
-    "kiosksScanned": 30,
-    "surplusDetectedKg": 1240,
-    "allocations": {
-      "tier1WartegKg": 750,
-      "tier2SocialKg": 350,
-      "tier3MaggotKg": 140
-    },
-    "financials": {
-      "estimatedCapitalRecoveredIdr": 3750000,
-      "discountAveragePercent": 52.5
-    },
-    "auditTrail": {
-      "logged": true,
-      "storage": "in_memory"
-    }
-  },
-  "timestamp": "2026-10-25T23:48:39.022Z"
-}
-```
+### Alur operasional
+
+1. Pedagang mencatat komoditas dan berat, lalu menerbitkan penawaran. Skor susut dihitung dari waktu pasokan masuk dan cuaca yang tersedia.
+2. Pembeli yang sesuai tier mengklaim lot. Warteg mengonfirmasi pembayaran simulasi agar pesanan masuk antrean kurir. Lot yang diklaim ditandai dipesan di dasbor pedagang.
+3. Kurir mengonfirmasi serah terima. Stok fisik berkurang, pesanan selesai, dan saldo simulasi pedagang tercatat. Pengulangan konfirmasi tidak menambah saldo lagi.
+
+### Kontrak dan batas simulasi
+
+Kontrak HTTP tersedia di [public/openapi.json](public/openapi.json). Pembayaran dicatat dalam ledger simulasi. Serah terima dikonfirmasi oleh akun kurir untuk pesanan yang sudah dibayar.
+
+Berkas di `qa_reports/` dan `opt/output/` menyimpan bukti pengujian terdahulu. Hasil terbaru dapat diperoleh melalui CI atau perintah verifikasi di atas.
 
 ---
 

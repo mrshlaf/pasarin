@@ -10,17 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test:db": "tsx scripts/test_supabase_connection.ts",
     "db:migrate": "tsx scripts/migrate_and_seed.ts",
-    "test": "tsx scripts/run_unit_tests.ts",
+    "test": "tsx scripts/run_all_tests.ts",
     "test:unit": "tsx scripts/run_unit_tests.ts",
-    "test:matchmaking": "tsx scripts/test_matchmaking_engine.ts",
-    "test:fast-claim": "tsx scripts/test_buyer_claim_concurrency.ts",
-    "reset:all": "tsx scripts/reset_all.ts",
-    "seed:demo": "tsx scripts/seed_demo_lots.ts",
-    "clear:demo": "tsx scripts/clear_demo_lots.ts",
-    "seed:warteg": "tsx scripts/seed_warteg.ts",
-    "seed:social": "tsx scripts/seed_social.ts",
-    "seed:maggot": "tsx scripts/seed_maggot.ts",
-    "seed:courier": "tsx scripts/seed_courier.ts"
+    "test:matchmaking": "tsx scripts/test_matchmaking_engine.ts"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",
@@ -30,12 +22,12 @@
     "clsx": "^2.1.1",
     "dotenv": "^18.0.5",
     "lucide-react": "^1.52.0",
-    "next": "16.3.8",
+    "next": "16.4.5",
     "pg": "^8.23.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.7.0",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -43,9 +35,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.1"
+    }
   }
 }

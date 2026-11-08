@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/apiAuth";
 import {
   generateBankIndonesiaQrisPayload,
   validateQrisPayloadStructure,
@@ -16,7 +17,7 @@ import {
 export async function GET() {
   return NextResponse.json({
     ok: true,
-    service: "PASARIN Bank Indonesia Dynamic QRIS Escrow Payment Gateway",
+    service: "PASARIN QRIS Escrow Simulator",
     standard: "Bank Indonesia / ASPI / EMVCo TLV QRIS CPM/MPM",
     escrowModel: "Zero-Trust Dual Custody Escrow Pool",
     checksumAlgorithm: "CRC16-CCITT (Polynomial 0x1021)",
@@ -26,6 +27,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireApiRole(req, ["warteg", "admin"]);
+  if (auth.response) return auth.response;
   try {
     const body = (await req.json()) as {
       amountIdr?: number;
@@ -62,16 +65,17 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = await requireApiRole(req, ["admin"]);
+  if (auth.response) return auth.response;
   try {
     const body = (await req.json()) as {
       action?: "confirm_payment" | "release_to_vendor" | "refund";
       currentStatus?: EscrowPaymentStatus;
       amountIdr?: number;
-      gpsDistanceMeters?: number;
       qrisPayload?: string;
     };
 
-    if (!body.action) {
+    if (!body?.action) {
       return NextResponse.json({ ok: false, error: "Parameter 'action' wajib disertakan." }, { status: 400 });
     }
 
@@ -85,17 +89,16 @@ export async function PUT(req: NextRequest) {
 
     // 2. Eksekusi transisi status atau settlement PoD
     if (body.action === "release_to_vendor") {
-      const distance = typeof body.gpsDistanceMeters === "number" ? body.gpsDistanceMeters : 25;
-      const amount = body.amountIdr || 50000;
-      const current = body.currentStatus || "held_in_escrow";
-
-      const settlement = executeEscrowSettlement(amount, distance, current);
+      if (typeof body.amountIdr !== "number" || !body.currentStatus) {
+        return NextResponse.json({ ok: false, error: "Nominal dan status awal wajib disertakan." }, { status: 400 });
+      }
+      const settlement = executeEscrowSettlement(body.amountIdr, body.currentStatus);
       return NextResponse.json({
         ok: settlement.settled,
         newStatus: settlement.newStatus,
         creditedAmountIdr: settlement.creditedAmountIdr,
         message: settlement.message,
-      });
+      }, { status: settlement.settled ? 200 : 422 });
     }
 
     const currentStatus = body.currentStatus || "unpaid";

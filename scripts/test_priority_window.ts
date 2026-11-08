@@ -7,7 +7,6 @@
  */
 
 import {
-  SOCIAL_RESERVATION_WINDOW_MINUTES,
   evaluateTier2PriorityWindow,
   validateClaimAgainstPriorityWindow,
   processPriorityWindowDowngrades,

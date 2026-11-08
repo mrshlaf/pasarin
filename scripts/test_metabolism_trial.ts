@@ -27,7 +27,7 @@ async function runMetabolismTrialTests() {
   console.log("  Fokus: Validasi 5 Fase Sirkadian, Target Efisiensi >=90%, & Invarian Kritis");
   console.log("================================================================================\n");
 
-  const report = await run24HourMarketMetabolismTrial(true);
+  const report = await run24HourMarketMetabolismTrial();
 
   // Test 1: Verifikasi Kelengkapan 5 Fase Sirkadian
   console.log("[Test 1] Kelengkapan Eksekusi 5 Fase Sirkadian Pasar");

@@ -7,11 +7,11 @@ import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
 token = os.environ.get("SUPABASE_ACCESS_TOKEN")
-project_ref = os.environ.get("SUPABASE_PROJECT_REF") or "cawsaaotwrqacqzyvhsl"
+project_ref = os.environ.get("SUPABASE_PROJECT_REF")
 endpoint = f"https://api.supabase.com/v1/projects/{project_ref}/database/query"
 
-if not token:
-    print("[ERROR] SUPABASE_ACCESS_TOKEN environment variable is not set!")
+if not token or not project_ref:
+    print("[ERROR] Set SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF.")
     sys.exit(1)
 
 def execute_query(sql, description=""):
@@ -33,19 +33,16 @@ def execute_query(sql, description=""):
         raise Exception(f"Query failed: {err_content}")
 
 if __name__ == "__main__":
-    # 1. Read DDL Migration
-    migration_path = os.path.join(os.getcwd(), "supabase", "migrations", "20261005000000_init_pasarin_schema.sql")
-    with open(migration_path, "r", encoding="utf-8") as f:
-        ddl_sql = f.read()
-
-    execute_query(ddl_sql, "DDL Migration (Tables: kiosks, commodities, stock_items, offers, claims, Indexes, RLS)")
-
-    # 2. Read Seed SQL
-    seed_path = os.path.join(os.getcwd(), "supabase", "seed.sql")
-    with open(seed_path, "r", encoding="utf-8") as f:
-        seed_sql = f.read()
-
-    execute_query(seed_sql, "Seed Data (30 Kramat Jati Kiosks, 30 Commodities, Initial Stocks & Offers)")
+    files = (
+        "supabase/migrations/20261005000000_init_pasarin_schema.sql",
+        "supabase/migrations/20261108000000_audit_and_simulation_state.sql",
+        "supabase/seed.sql",
+    )
+    with_statements = []
+    for name in files:
+        with open(name, "r", encoding="utf-8") as source:
+            with_statements.append(source.read())
+    execute_query("BEGIN;\n" + "\n".join(with_statements) + "\nCOMMIT;", "Pasarin migrations and seed")
 
     # 3. Verify Tables & Counts
     count_res = execute_query("""

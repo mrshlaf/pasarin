@@ -113,6 +113,7 @@ function buildStallStockInputs(): KioskStockInput[] {
 export async function executeAutonomousOrchestration(options?: {
   executionMode?: "scheduled_autonomous_cron" | "manual_simulation";
   forceHeuristic?: boolean;
+  recordResult?: boolean;
 }): Promise<OrchestratorRunResult> {
   const executionMode = options?.executionMode || "scheduled_autonomous_cron";
   const executedAt = new Date().toISOString();
@@ -129,7 +130,7 @@ export async function executeAutonomousOrchestration(options?: {
   });
 
   // Langkah 2: Mengambil telemetri mikroklimat cuaca pasar aktual (Agent 3)
-  const weather = await weatherAgent.getMarketWeather();
+  const weather = await weatherAgent.getMarketWeather({ simulateOffline: options?.forceHeuristic });
   // Evaluasi redaman pengunjung: perhitungkan curah hujan aktual atau profil konvektif sore hari (12.5 mm)
   const effectiveRainfallMm = Math.max(12.5, weather.rainfallMm);
   const footfall = calculateRainFootfallAttenuation(effectiveRainfallMm, true);
@@ -208,7 +209,7 @@ export async function executeAutonomousOrchestration(options?: {
     `Ditugaskan ${totalFleetRequired} unit armada penjemputan dengan proteksi modal pedagang terkunci aman.`;
 
   // Rekam riwayat siklus orkestrasi ke audit trail sistem
-  const auditRecord = await recordAuditLog({
+  const auditRecord = options?.recordResult === false ? undefined : await recordAuditLog({
     subsystem: "ORCHESTRATOR",
     action_type: "AUTONOMOUS_SWEEP_EXECUTED",
     payload: {
@@ -239,11 +240,11 @@ export async function executeAutonomousOrchestration(options?: {
     },
     thoughtProcess,
     executiveSummary,
-    auditEventId: auditRecord.eventId,
+    auditEventId: auditRecord?.eventId,
     executedAt,
   };
 
-  latestOrchestratorRun = result;
+  if (options?.recordResult !== false) latestOrchestratorRun = result;
   return result;
 }
 
@@ -258,7 +259,7 @@ export async function executeAutonomousOrchestration(options?: {
  */
 export async function processManagerialNaturalQuery(
   query: string,
-  options?: { forceHeuristic?: boolean }
+  options?: { forceHeuristic?: boolean; recordResult?: boolean }
 ): Promise<OrchestratorQueryResult> {
   const cleanQuery = query.trim();
   const generatedAt = new Date().toISOString();
@@ -312,8 +313,10 @@ export async function processManagerialNaturalQuery(
           generatedAt,
         };
 
-        latestQueryHistory.unshift(queryResult);
-        if (latestQueryHistory.length > 20) latestQueryHistory.pop();
+        if (options?.recordResult !== false) {
+          latestQueryHistory.unshift(queryResult);
+          if (latestQueryHistory.length > 20) latestQueryHistory.pop();
+        }
         return queryResult;
       }
     } catch (apiError) {
@@ -323,7 +326,7 @@ export async function processManagerialNaturalQuery(
   // 2. Mesin Penalaran ReAct Dekomposisi Terstruktur via Tool Calling Registry (PSR-18)
   const queryResult = await executeDecomposedManagerialQuery(cleanQuery);
 
-  // Catat kueri ke jejak audit sistem
+  if (options?.recordResult === false) return queryResult;
   await recordAuditLog({
     subsystem: "ORCHESTRATOR",
     action_type: "MANAGERIAL_QUERY_ANSWERED",

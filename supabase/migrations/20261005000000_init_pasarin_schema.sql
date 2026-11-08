@@ -171,46 +171,55 @@ ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE claims ENABLE ROW LEVEL SECURITY;
 
 -- 6.1 Kebijakan Akses: commodities (Bebas dibaca oleh semua pihak)
+DROP POLICY IF EXISTS "Public Read Commodities" ON commodities;
 CREATE POLICY "Public Read Commodities"
     ON commodities FOR SELECT
     USING (true);
 
 -- 6.2 Kebijakan Akses: kiosks
+DROP POLICY IF EXISTS "Public Read Verified Kiosks" ON kiosks;
 CREATE POLICY "Public Read Verified Kiosks"
     ON kiosks FOR SELECT
     USING (verification_status = 'verified');
 
+DROP POLICY IF EXISTS "Vendors Manage Own Kiosk" ON kiosks;
 CREATE POLICY "Vendors Manage Own Kiosk"
     ON kiosks FOR ALL
     USING (auth.uid()::text = id)
     WITH CHECK (auth.uid()::text = id);
 
 -- 6.3 Kebijakan Akses: stock_items
+DROP POLICY IF EXISTS "Vendors Manage Own Stock Items" ON stock_items;
 CREATE POLICY "Vendors Manage Own Stock Items"
     ON stock_items FOR ALL
     USING (auth.uid()::text = vendor_id)
     WITH CHECK (auth.uid()::text = vendor_id);
 
+DROP POLICY IF EXISTS "Public Read Active Stock Items" ON stock_items;
 CREATE POLICY "Public Read Active Stock Items"
     ON stock_items FOR SELECT
     USING (is_active = true);
 
 -- 6.4 Kebijakan Akses: offers
+DROP POLICY IF EXISTS "Public Read Active Offers" ON offers;
 CREATE POLICY "Public Read Active Offers"
     ON offers FOR SELECT
     USING (status = 'active');
 
+DROP POLICY IF EXISTS "Vendors Manage Own Offers" ON offers;
 CREATE POLICY "Vendors Manage Own Offers"
     ON offers FOR ALL
     USING (auth.uid()::text = vendor_id)
     WITH CHECK (auth.uid()::text = vendor_id);
 
 -- 6.5 Kebijakan Akses: claims
+DROP POLICY IF EXISTS "Buyers Manage Own Claims" ON claims;
 CREATE POLICY "Buyers Manage Own Claims"
     ON claims FOR ALL
     USING (auth.uid()::text = buyer_id)
     WITH CHECK (auth.uid()::text = buyer_id);
 
+DROP POLICY IF EXISTS "Vendors Read Claims on Their Offers" ON claims;
 CREATE POLICY "Vendors Read Claims on Their Offers"
     ON claims FOR SELECT
     USING (
