@@ -2,7 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import { useAuth } from "@/lib/authContext";
 
@@ -23,7 +24,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) router.replace("/");
+    if (isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, router]);
 
   /** Submits credentials and presents the result without exposing provider internals. */
@@ -44,14 +45,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
-      <header className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-5 py-5 sm:px-9">
-        <PasarinLogo size="md" />
-        <span className="text-right text-xs font-semibold text-ink-muted">Pasar Induk Kramat Jati</span>
+      <header className="market-shell flex items-center justify-between gap-3 py-3 sm:py-5">
+        <Link href="/" aria-label="Dasbor publik Pasarin"><PasarinLogo size="sm" showSubtitle={false} /></Link>
+        <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-brand hover:bg-brand-soft">
+          <ArrowLeft size={16} aria-hidden /> Dasbor publik
+        </Link>
       </header>
-      <main className="mx-auto grid max-w-[1440px] gap-5 px-5 pb-5 sm:px-9 lg:min-h-[650px] lg:grid-cols-[1.12fr_1fr] lg:gap-8">
-        <section aria-labelledby="login-heading" className="flex min-w-0 items-center rounded-3xl border border-line bg-surface px-5 py-9 sm:px-12 lg:order-2 lg:px-14">
+      <main className="market-shell grid gap-4 pb-5 sm:gap-5 lg:min-h-[min(40rem,calc(100svh-9rem))] lg:grid-cols-[1.12fr_1fr]">
+        <section aria-labelledby="login-heading" className="flex min-w-0 items-center rounded-3xl border border-line bg-surface px-5 py-7 sm:px-12 sm:py-10 lg:order-2 lg:px-14">
           <div className="mx-auto w-full max-w-[390px]">
-            <h1 id="login-heading" className="font-serif text-4xl tracking-tight sm:text-5xl">Masuk ke Pasarin</h1>
+            <p className="market-eyebrow mb-2">Ruang kerja Pasarin</p>
+            <h1 id="login-heading" className="font-serif text-[clamp(2rem,4vw,3rem)] leading-tight tracking-tight">Masuk ke Pasarin</h1>
             <p className="mt-3 text-sm leading-6 text-ink-muted">Gunakan akun Anda untuk melihat stok, penawaran, atau tugas pengantaran sesuai peran.</p>
             <form onSubmit={handleSubmit} className="mt-7 space-y-4">
               <div>
@@ -77,34 +81,27 @@ export default function LoginPage() {
               <button type="submit" disabled={isSubmitting || isLoading || isAuthenticated}
                 className="flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-brand px-4 text-sm font-semibold text-cream hover:bg-brand-strong disabled:opacity-60">
                 {isAuthenticated ? "Membuka ruang kerja…" : isSubmitting ? "Memeriksa akun…" : "Masuk"}
+                {!isSubmitting && !isAuthenticated && <ArrowRight size={16} aria-hidden />}
               </button>
             </form>
-            <details className="mt-6 border-t border-line pt-4 text-[13px] leading-5 text-ink-muted">
-              <summary className="cursor-pointer font-semibold text-ink">Akun</summary>
-              <p className="mt-2">
-                Pedagang pasar1 sampai pasar30, warteg1 sampai warteg100, sosial1 sampai sosial3,
-                maggot1 sampai maggot2, kurir1 sampai kurir5, pengelola1, dan admin1.
-                Kata sandi sama dengan nama pengguna.
-              </p>
-            </details>
           </div>
         </section>
         <aside aria-label="Alur simulasi pasar" className="flex min-w-0 flex-col justify-between rounded-3xl bg-brand-deep px-6 py-9 text-cream sm:px-12 lg:order-1 lg:p-14">
           <div>
-            <p className="max-w-[12ch] font-serif text-[clamp(2.6rem,5.1vw,5.2rem)] leading-[0.96] tracking-[-0.04em]">Sisa pasar, sampai ke tujuan.</p>
+            <p className="max-w-[13ch] font-serif text-[clamp(2.25rem,5.1vw,4.75rem)] leading-none tracking-[-0.035em]">Sisa pasar, sampai ke tujuan.</p>
             <p className="mt-6 max-w-[39ch] text-sm leading-6 text-sage-soft">Pedagang, warteg, dapur sosial, dan kurir bekerja dari satu alur, mulai dari pasokan masuk sampai serah terima.</p>
           </div>
           <dl className="mt-10 grid border-t border-rail">
             {timeline.map(([time, label]) => (
-              <div key={time} className="flex items-center gap-5 border-b border-rail py-3.5">
-                <dt className="w-24 shrink-0 text-sm font-semibold text-sage">{time}</dt>
+              <div key={time} className="grid grid-cols-[6rem_minmax(0,1fr)] items-baseline gap-2 border-b border-rail py-3 sm:gap-5 sm:py-3.5">
+                <dt className="text-sm font-semibold text-sage">{time}</dt>
                 <dd className="text-sm text-cream">{label}</dd>
               </div>
             ))}
           </dl>
         </aside>
       </main>
-      <footer className="mx-auto max-w-[1440px] px-5 py-3 text-xs text-ink-muted sm:px-9">Prototipe akademik, Teknik Elektro, Universitas Indonesia.</footer>
+      <footer className="market-shell py-3 text-xs text-ink-muted">PASARIN</footer>
     </div>
   );
 }

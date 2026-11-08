@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { getEnv } from "@/lib/env";
 import { getServerSimulationState, evaluateMarketStock } from "@/lib/serverSimulationState";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
+import { isReadyForDelivery } from "@/types/market";
 
 const jakartaDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" });
 
@@ -16,16 +17,17 @@ export async function getMarketOperations() {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const today = jakartaDate.format(new Date());
   const stock = state.stocks.filter((item) => item.remainingKg > 0);
-  const pending = state.offers.filter((offer) => offer.status === "pending_vendor").length;
+  const weighed = new Set(stock.filter((item) => item.verifiedAt).map((item) => item.id));
+  const pending = state.offers.filter((offer) => offer.status === "pending_vendor" || (offer.status === "active" && !weighed.has(offer.stockId))).length;
   const unpaid = state.offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length;
-  const ready = state.offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "held_in_escrow").length;
+  const ready = state.offers.filter(isReadyForDelivery).length;
   const atRisk = stock.filter((item) => (evaluateMarketStock(item, weather)?.decayScore ?? 0) >= 0.35).length;
   return {
     date: today,
     arrivalsToday: state.stocks.filter((item) => isToday(item.createdAt, today)).length,
     deliveriesToday: state.offers.filter((offer) => isToday(offer.deliveredOn, today)).length,
-    inventoryKg: stock.reduce((total, item) => total + item.remainingKg, 0),
-    activeOffers: state.offers.filter((offer) => offer.status === "active").length,
+    inventoryKg: stock.reduce((total, item) => total + (item.verifiedAt ? item.remainingKg : 0), 0),
+    activeOffers: state.offers.filter((offer) => offer.status === "active" && weighed.has(offer.stockId)).length,
     pending, unpaid, ready, atRisk,
     workstreams: [
       ...(pending || atRisk ? ["Evaluasi stok dan penawaran"] : []),

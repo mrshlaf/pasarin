@@ -19,7 +19,11 @@ export function proxy(request: NextRequest) {
 
   // Header keamanan standar
   response.headers.set("X-Content-Type-Options", "nosniff");
-  response.headers.set("X-Frame-Options", "DENY");
+  if (request.nextUrl.pathname === "/telegram/login") {
+    response.headers.set("Content-Security-Policy", "frame-ancestors https://web.telegram.org");
+  } else {
+    response.headers.set("X-Frame-Options", "DENY");
+  }
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Service-Identity", "PASARIN-Engine-v0.1.0");
 

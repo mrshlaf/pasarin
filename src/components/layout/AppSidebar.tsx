@@ -3,6 +3,7 @@
 import { Building2, HeartHandshake, Recycle, ShieldCheck, Store, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation, type AppRole } from "@/lib/simulationStore";
+import { isReadyForDelivery } from "@/types/market";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   vendor: "Pedagang",
@@ -40,7 +41,7 @@ export function AppSidebar() {
   /** Gives each preview workspace a live count of the work waiting inside it. */
   function pendingCount(item: AppRole) {
     if (item === "vendor") return new Set(stockItems.filter((stock) => stock.remainingKg > 0).map((stock) => stock.vendorId)).size;
-    if (item === "logistics") return offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "held_in_escrow").length;
+    if (item === "logistics") return offers.filter((offer) => isReadyForDelivery(offer)).length;
     const tier = PREVIEW_TIERS[item];
     return tier ? offers.filter((offer) => offer.targetTier === tier && offer.status === "active").length : 0;
   }

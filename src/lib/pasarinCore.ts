@@ -95,7 +95,7 @@ export function calculateDecayScore(
   // Sisa jam simpan aman sebelum rusak total
   const remainingEquivalent = Math.max(0.0, tl - equivalentHours);
   const rawHoursRemaining = remainingEquivalent / Math.max(0.1, accelerationFactor);
-  const hoursRemaining = Math.max(0.0, Number(rawHoursRemaining.toFixed(1)));
+  const hoursRemaining = Math.max(0.0, Number(rawHoursRemaining.toFixed(4)));
 
   return {
     decayScore: normalizedDecayScore,
@@ -158,20 +158,31 @@ export function evaluateProduceDecay(
 ): DecayEvaluationResult {
   const arrhenius = evaluateArrheniusDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
   const basePrice = commodity.baseWholesalePricePerKg;
-  const floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
 
   let baseDiscountPercent = 0;
-  if (arrhenius.condition === 'layu_ringan') {
-    const surgeStep = (arrhenius.decayScore - 0.35) / 0.3;
-    baseDiscountPercent = 50 + Math.round(surgeStep * 20);
-  } else if (arrhenius.condition === 'layu_sedang') {
-    baseDiscountPercent = 85;
-  } else if (arrhenius.condition === 'tidak_layak') {
-    baseDiscountPercent = 95;
-  }
+  let estimatedSalvagePriceIdr = 0;
+  let floorPrice = commodity.minimumSalvagePricePerKg;
 
-  const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
-  const estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
+  if (arrhenius.condition === 'layu_ringan') {
+    // Tier 1 (Warteg): Semakin mendekati busuk, diskon bertambah (50% -> 70%) dan harga semakin murah
+    const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.35) / 0.30));
+    baseDiscountPercent = 50 + Math.round(surgeStep * 20);
+    floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
+    const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
+    estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
+  } else if (arrhenius.condition === 'layu_sedang') {
+    // Tier 2 (Dapur Sosial): Lebih layu dari tier 1, harga lebih murah lagi (diskon 75% -> 85%) jika ditebus subsidi
+    const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.65) / 0.20));
+    baseDiscountPercent = 75 + Math.round(surgeStep * 10);
+    floorPrice = 1000;
+    const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
+    estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
+  } else if (arrhenius.condition === 'tidak_layak') {
+    // Tier 3 (Maggot BSF): Komoditas afkir/rusak non-pangan manusia dialihkan GRATIS (Rp 0)
+    baseDiscountPercent = 100;
+    floorPrice = 0;
+    estimatedSalvagePriceIdr = 0;
+  }
 
   return {
     commodityId: commodity.id,
@@ -329,15 +340,11 @@ export function evaluateArrheniusDecay(
   }
 
   // Sisa jam aman sebelum memasuki batas afkir / tidak layak (decayScore >= 0.85).
-  // Mengikuti hukum waktu: jam aman monoton berkurang dan tidak bertambah saat suhu mendingin.
+  // Dihitung langsung dari invers kinetika Arrhenius agar selaras dengan skor peluruhan.
   let hoursRemaining = 0;
   if (decayScore < 0.85) {
-    const remainingFraction = (0.85 - decayScore) / 0.85;
-    const physicalHoursLeft = Math.max(0, safeHorizonHours - hoursElapsed);
-    hoursRemaining = Math.max(
-      0,
-      Number((remainingFraction * physicalHoursLeft).toFixed(1))
-    );
+    const targetHours = safeHorizonHours * Math.pow(0.85 / (0.82 * thermalScaling), 1 / 1.15);
+    hoursRemaining = Math.max(0, Number((targetHours - hoursElapsed).toFixed(4)));
   }
 
   const isEdibleForHumans = decayScore < 0.85;
@@ -548,6 +555,14 @@ export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
   return 1;
 }
 
+/** Estimates unsold retail stock from the existing weather-adjusted clearance model. */
+export function predictRetailSurplusKg(initialStockKg: number, footfallDropPercentage: number) {
+  const baselineRetailClearance = 0.82;
+  const weatherDropImpact = (footfallDropPercentage / 100) * 0.72;
+  const effectiveClearanceRate = Math.max(0.2, baselineRetailClearance - weatherDropImpact);
+  return Math.round(initialStockKg * Math.max(0.1, 1 - effectiveClearanceRate));
+}
+
 // Prediksi kuantitatif surplus pasar komposit (baseline 1.240 kg) pada jam 14:30 WIB (PSR-19)
 export function calculateCompositeMarketSurplus(
   stallItems: KioskStockInput[],
@@ -586,12 +601,7 @@ export function calculateCompositeMarketSurplus(
       criticalEmergencyItemsCount++;
     }
 
-    const baselineRetailClearance = 0.82;
-    const weatherDropImpact = (footfall.footfallDropPercentage / 100.0) * 0.72;
-    const effectiveClearanceRate = Math.max(0.20, baselineRetailClearance - weatherDropImpact);
-    const unsoldSurplusRate = Math.max(0.10, 1.0 - effectiveClearanceRate);
-
-    const rawSurplusKg = item.initialStockKg * unsoldSurplusRate;
+    const rawSurplusKg = predictRetailSurplusKg(item.initialStockKg, footfall.footfallDropPercentage);
     const estimatedSurplusKg = Number(rawSurplusKg.toFixed(1));
     totalPredictedSurplusKg += estimatedSurplusKg;
 

@@ -39,11 +39,11 @@ export function MarketSection({ title, description, action, variant = "card", ch
 }) {
   const card = variant === "card";
   return (
-    <section className={card ? "min-w-0 rounded-3xl border border-line bg-surface p-5 sm:p-6" : "min-w-0"}>
+    <section className={card ? "market-panel min-w-0" : "min-w-0"}>
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="break-words font-serif text-2xl leading-tight tracking-tight">{title}</h2>
-          {description && <p className="mt-1 break-words text-[13px] leading-5 text-ink-muted">{description}</p>}
+          <h2 className="market-section-heading break-words">{title}</h2>
+          {description && <p className="mt-1 max-w-prose break-words text-sm leading-6 text-ink-muted">{description}</p>}
         </div>
         {action}
       </header>
@@ -72,9 +72,9 @@ export function MarketMetrics({ items }: { items: MarketMetric[] }) {
   return (
     <dl className={`grid ${baseCols} gap-px overflow-hidden rounded-2xl border border-line bg-line ${wideCols}`}>
       {items.map(({ label, value, tone = "brand" }) => (
-        <div key={label} className="min-w-0 bg-surface p-3.5 sm:p-4">
+        <div key={label} className="min-w-0 bg-surface px-3 py-3.5 sm:p-4">
           <dt className="text-[13px] leading-5 text-ink-muted">{label}</dt>
-          <dd className={`mt-1.5 break-words text-[1.35rem] font-semibold leading-tight tracking-tight tabular-nums sm:text-[1.5rem] ${metricTones[tone]}`}>
+          <dd className={`mt-1.5 break-words text-[clamp(1.125rem,2.4vw,1.5rem)] font-semibold leading-tight tracking-tight tabular-nums ${metricTones[tone]}`}>
             {value}
           </dd>
         </div>
@@ -120,16 +120,16 @@ export function DecayMeter({ score }: { score: number }) {
   const zone = percent < 35
     ? { label: "Segar", text: "text-tier-3-ink" }
     : percent < 65
-      ? { label: "Mulai layu", text: "text-warning" }
+      ? { label: "Layu ringan", text: "text-warning" }
       : percent < 85
-        ? { label: "Layu", text: "text-warning" }
-        : { label: "Afkir", text: "text-danger" };
+        ? { label: "Layu sedang", text: "text-warning" }
+        : { label: "Khusus biokonversi", text: "text-danger" };
   return (
     <div className="min-w-0" role="meter" aria-label="Skor susut" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}
       aria-valuetext={`${percent} dari 100, ${zone.label}`}>
       <div className="flex items-center justify-between gap-3">
         <span className="text-[13px] text-ink-muted">Skor susut</span>
-        <span className="flex items-baseline gap-2">
+        <span className="flex flex-wrap items-baseline justify-end gap-x-2 text-right">
           <span className={`text-[12px] font-semibold ${zone.text}`}>{zone.label}</span>
           <span className="text-sm font-semibold tabular-nums">{percent}<span className="text-[12px] font-normal text-ink-muted">/100</span></span>
         </span>
@@ -194,6 +194,20 @@ export function offerTitle(offer: RescueOffer) {
   return commodityName(offer.commodityId) + ", " + kg(offer.quantityKg);
 }
 
+/** Pairs lot figures with labels that distinguish stock from orders. */
+export function LotFacts({ items }: { items: { label: string; value: string }[] }) {
+  return (
+    <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] leading-5">
+      {items.map(({ label, value }) => (
+        <div key={label} className="flex flex-wrap items-baseline gap-x-1.5">
+          <dt className="text-ink-muted">{label}</dt>
+          <dd className="font-semibold tabular-nums text-ink">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function commodityName(id: string) {
   return COMMODITIES.find((item) => item.id === id)?.localName ?? id;
 }
@@ -216,6 +230,33 @@ export function rupiah(amount: number) {
 /** Uses Indonesian decimal separators for kilograms. */
 export function kg(amount: number) {
   return amount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " kg";
+}
+
+/** Mengubah sisa jam simpan ke format ramah pengguna: menit jika < 1 jam, jam & menit jika ada sisa, atau afkir. */
+export function formatRemainingShelfLife(hours: number, decayScore?: number): string {
+  if (decayScore !== undefined && decayScore >= 0.85) {
+    return "Afkir (pakan maggot)";
+  }
+  if (!Number.isFinite(hours) || hours <= 0) {
+    return "Afkir (pakan maggot)";
+  }
+  if (hours < 1) {
+    const minutes = Math.max(1, Math.round(hours * 60));
+    return `${minutes} menit`;
+  }
+  const fullHours = Math.floor(hours);
+  const remainingMinutes = Math.round((hours - fullHours) * 60);
+  if (remainingMinutes === 0) {
+    return `${fullHours} jam`;
+  }
+  return `${fullHours} jam ${remainingMinutes} menit`;
+}
+
+/** Format durasi waktu pajang komoditas dalam jam bulat tanpa koma yang membingungkan. */
+export function formatElapsedHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours <= 0) return "1 jam";
+  const rounded = Math.max(1, Math.round(hours));
+  return `${rounded} jam`;
 }
 
 /** Keeps delivery history dates compact and locale-correct. */

@@ -150,7 +150,7 @@ npm ci
 npm run dev -- --hostname 127.0.0.1
 ```
 
-Buka http://localhost:3000/login. Masuk menggunakan email lengkap akun Supabase Auth yang sudah diberi peran. Untuk akun berdomain `@pasarin.id`, cukup masukkan nama penggunanya. Lingkungan lokal memakai penyimpanan server berbasis berkas. Atur `PASARIN_STATE_FILE` untuk memakai berkas terpisah dan mulai dengan inventaris kosong.
+Buka http://localhost:3000 untuk ringkasan pasar publik. Pilih **Masuk** untuk membuka ruang kerja di `/dashboard`. Gunakan email lengkap akun Supabase Auth yang sudah diberi peran atau nama pengguna untuk akun berdomain `@pasarin.id`. Lingkungan lokal memakai penyimpanan server berbasis berkas. Atur `PASARIN_STATE_FILE` untuk memakai berkas terpisah dan mulai dengan inventaris kosong.
 
 Untuk demo kelas, semua akun memakai nama pengguna sebagai kata sandi:
 
@@ -189,20 +189,21 @@ npm run build
 
 - Set `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dengan URL proyek dan kunci publishable atau anon. Untuk deployment, tambahkan `SUPABASE_SERVICE_ROLE_KEY` dan terapkan migrasi terlacak. Atur `SUPABASE_DB_URL` jika menerapkan migrasi lewat `npm run db:migrate`. Simpan semua kredensial di environment.
 - Isi `app_metadata.pasarin_role` melalui admin Supabase dengan salah satu nilai `vendor`, `warteg`, `social_kitchen`, `maggot`, `logistics`, `manager`, atau `admin`. Untuk pedagang, set `app_metadata.pasarin_vendor_id` ke ID kios.
-- Set `CRON_SECRET` untuk sapuan 14.30 WIB. Sapuan mengevaluasi usia stok yang sebenarnya dan membuat usulan penawaran.
+- Set `CRON_SECRET` untuk sapuan 14.30 WIB. Sapuan memakai model surplus berbasis stok awal dan cuaca untuk membuat usulan. Katalog pembeli baru menerima jumlah yang disetujui pedagang setelah timbang.
 - Set `OPENWEATHER_API_KEY` untuk cuaca aktual. Jika data cuaca tidak tersedia, skor tetap dihitung dari usia stok dan profil cuaca estimasi yang diberi label. Dashboard memperbarui data sekitar setiap 15 detik.
 - Set `GEMINI_API_KEY` untuk pertanyaan pengelola di web dan Telegram. Default model `gemini-3.5-flash-lite` dapat diganti lewat `GEMINI_MODEL`. Jika Gemini tidak tersedia, aplikasi menyajikan ringkasan dari data pasar dan menyebut sumbernya.
-- Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, dan `TELEGRAM_CHAT_ACCOUNTS`. Peta JSON menggunakan ID chat privat sebagai kunci dan objek `{ "id": "id-user-supabase", "name": "Nama akun", "role": "warteg" }` sebagai nilai. Tambahkan `vendorId` untuk pedagang. Gunakan ID Supabase yang sama agar pesanan tersambung ke akun web. Daftarkan webhook ke endpoint deployment `/api/telegram/webhook`. Perintah `/help` menampilkan aksi yang sesuai peran.
+- Set `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_WEBHOOK_SECRET`, lalu daftarkan webhook HTTPS deployment di `/api/telegram/webhook` dengan secret yang sama. Buka chat privat bot, kirim `/start`, lalu pilih **Masuk dengan akun Pasarin**. Formulir di dalam Telegram memakai username dan kata sandi website. Telegram menyimpan hingga delapan sesi akun terpisah per chat selama delapan jam. Gunakan `/akun` untuk memilih akun aktif, `/menu` untuk melihat tugas, dan `/keluar` atau `/logout` untuk menutup sesi akun aktif. Sesi web tetap terpisah.
+- Pedagang dapat mencatat pasokan lewat `/pasok`, melihat skor susut, dan menerbitkan penawaran dengan `/terbitkan ID KG_SISA` atau `/setujui ID KG_SISA`. Masukkan satu hasil timbang sisa di luar pesanan yang sudah dicadangkan. Tambahkan `jual` atau `donasi` untuk lot dapur sosial. Pembeli memilih lot dari katalog dan memasukkan jumlah lewat `/klaim ID KG`. Kurir melihat antrean dan riwayat serta mengonfirmasi serah terima. Pengelola dan admin dapat membaca ringkasan, penawaran, pembayaran, dan menggunakan `/tanya`. Admin dapat menjalankan evaluasi stok.
 
 ### Alur operasional
 
-1. Pedagang mencatat komoditas dan berat, lalu menerbitkan penawaran. Skor susut dihitung dari waktu pasokan masuk dan cuaca yang tersedia.
-2. Pembeli yang sesuai tier mengklaim lot. Warteg mengonfirmasi pembayaran simulasi agar pesanan masuk antrean kurir. Lot yang diklaim ditandai dipesan di dasbor pedagang.
-3. Kurir mengonfirmasi serah terima. Stok fisik berkurang, pesanan selesai, dan saldo simulasi pedagang tercatat. Pengulangan konfirmasi tidak menambah saldo lagi.
+1. Pedagang mencatat berat awal. Saat menerbitkan penawaran, pedagang menimbang sisa fisik yang belum dipesan. Skor susut menentukan jalur distribusi. Untuk jalur dapur sosial, pedagang memilih jual atau donasi.
+2. Pembeli memilih jumlah kilogram. Sisa penawaran tetap tersedia bagi pembeli lain. Pesanan jual masuk antrean kurir setelah pembayaran simulasi. Donasi langsung siap diantar.
+3. Kurir mengonfirmasi serah terima dan stok fisik berkurang sebesar jumlah pesanan. Penjualan menambah saldo simulasi. Donasi yang selesai menambah satu poin reputasi per lot sumber, maksimal 100.
 
 ### Kontrak dan batas simulasi
 
-Kontrak HTTP tersedia di [public/openapi.json](public/openapi.json). Pembayaran dicatat dalam ledger simulasi. Serah terima dikonfirmasi oleh akun kurir untuk pesanan yang sudah dibayar.
+Kontrak HTTP tersedia di [public/openapi.json](public/openapi.json). Pembayaran dicatat dalam ledger simulasi. Kurir mengonfirmasi serah terima donasi dan pesanan yang sudah dibayar.
 
 Hasil pengujian terbaru dapat diperoleh melalui CI atau perintah verifikasi di atas.
 

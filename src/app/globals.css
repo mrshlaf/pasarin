@@ -24,6 +24,10 @@
   --market-cream: #fffef3;
   --market-dialog-border: #c9d5cd;
   --market-backdrop: rgb(14 35 31 / 68%);
+  --market-gutter: clamp(1rem, 3vw, 2rem);
+  --market-panel-padding: clamp(1rem, 2vw, 1.5rem);
+  --market-display-font: Georgia, "Times New Roman", serif;
+  --market-panel-radius: 1.25rem;
 }
 
 @theme inline {
@@ -31,6 +35,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--market-display-font);
 
   --color-canvas: var(--background);
   --color-surface: var(--market-surface);
@@ -136,11 +141,49 @@ p {
   border-color: #5c7668;
 }
 
+.market-input::placeholder {
+  color: var(--color-ink-muted);
+  opacity: 1;
+}
+
 .market-input:focus-visible {
   border-color: var(--market-brand);
 }
 
 .market-input.pr-14 { padding-inline-end: 3.5rem; }
+
+.market-shell {
+  max-width: 90rem;
+  margin-inline: auto;
+  padding-inline: var(--market-gutter);
+}
+
+.market-panel {
+  border: 1px solid var(--market-line);
+  border-radius: var(--market-panel-radius);
+  background: var(--market-surface);
+  padding: var(--market-panel-padding);
+}
+
+.market-workspace-heading {
+  border-block-end: 1px solid var(--market-line);
+  padding-block: clamp(1.1rem, 2.5vw, 2rem) clamp(0.9rem, 1.75vw, 1.3rem);
+}
+
+.market-eyebrow {
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  line-height: 1.4;
+}
+
+.market-section-heading {
+  font-family: var(--market-display-font);
+  font-size: clamp(1.4rem, 2.25vw, 1.75rem);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
 
 .market-dialog {
   max-height: calc(100dvh - 2rem);
@@ -148,9 +191,9 @@ p {
   margin: auto;
   overflow: auto;
   border: 1px solid var(--market-dialog-border);
-  border-radius: 1.25rem;
+  border-radius: var(--market-panel-radius);
   background: var(--market-surface);
-  padding: 1.5rem;
+  padding: var(--market-panel-padding);
   color: var(--market-ink);
   box-shadow: 0 24px 60px rgb(14 35 31 / 24%);
 }
