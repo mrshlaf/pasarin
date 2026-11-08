@@ -10,7 +10,7 @@
 import { getEnv } from "@/lib/env";
 import { KIOSKS } from "@/data/kiosks";
 import { DUMMY_ACCOUNTS } from "@/data/accounts";
-import { getActiveCourierTasks } from "@/lib/serverSimulationState";
+import { getActiveCourierTasks, addVendorStockServer } from "@/lib/serverSimulationState";
 
 export interface TelegramChat {
   id: number | string;
@@ -209,9 +209,84 @@ export function buildMaggotSurplusKeyboard() {
 export function buildLogisticsTasksKeyboard() {
   return {
     inline_keyboard: [
-      [{ text: "✅ Validasi Serah Terima PoD (GPS 18m)", callback_data: "act_pod_verify_ofr_01" }],
+      [{ text: "✅ Validasi Serah Terima PoD (Token HMAC)", callback_data: "act_pod_verify_ofr_01" }],
       [{ text: "🔄 Beralih Peran", callback_data: "role_menu" }],
     ],
+  };
+}
+
+export function buildVendorSupplyKeyboard() {
+  return {
+    inline_keyboard: [
+      [
+        { text: "🥬 +50 kg Kangkung", callback_data: "act_supply_kangkung_50" },
+        { text: "🌿 +50 kg Bayam", callback_data: "act_supply_bayam_50" },
+      ],
+      [
+        { text: "🍅 +50 kg Tomat", callback_data: "act_supply_tomat_50" },
+        { text: "🥬 +40 kg Pakcoy", callback_data: "act_supply_pakcoy_40" },
+      ],
+      [
+        { text: "🫘 +30 kg Buncis", callback_data: "act_supply_buncis_30" },
+      ],
+    ],
+  };
+}
+
+export function getRolePersistentKeyboard(role?: string, stallNumber?: string) {
+  if (role === "warteg") {
+    return {
+      keyboard: [
+        [{ text: "🥦 Katalog Surplus" }, { text: "📋 Pesanan Saya" }],
+        [{ text: "📊 Status Profil" }, { text: "🔄 Ganti Peran" }],
+        [{ text: "🚪 Logout" }],
+      ],
+      resize_keyboard: true,
+      is_persistent: true,
+    };
+  }
+  if (role === "social_kitchen") {
+    return {
+      keyboard: [
+        [{ text: "❤️ Pangan Kemanusiaan" }, { text: "🍲 Riwayat Penyaluran" }],
+        [{ text: "📊 Status Profil" }, { text: "🔄 Ganti Peran" }],
+        [{ text: "🚪 Logout" }],
+      ],
+      resize_keyboard: true,
+      is_persistent: true,
+    };
+  }
+  if (role === "maggot") {
+    return {
+      keyboard: [
+        [{ text: "🪱 Limbah Afkir Biopond" }, { text: "📊 Kapasitas TPS 3R" }],
+        [{ text: "🔄 Ganti Peran" }, { text: "🚪 Logout" }],
+      ],
+      resize_keyboard: true,
+      is_persistent: true,
+    };
+  }
+  if (role === "logistics" || stallNumber === "VIAR-01") {
+    return {
+      keyboard: [
+        [{ text: "🚚 Tugas Pengantaran" }, { text: "📋 Riwayat PoD" }],
+        [{ text: "📊 Status Armada" }, { text: "🔄 Ganti Peran" }],
+        [{ text: "🚪 Logout" }],
+      ],
+      resize_keyboard: true,
+      is_persistent: true,
+    };
+  }
+  // Default: Vendor Pedagang Pasar
+  return {
+    keyboard: [
+      [{ text: "📦 Catat Pasokan Subuh" }, { text: "🏪 Inventaris Lapak" }],
+      [{ text: "🥦 Penawaran Surplus" }, { text: "💰 Saldo Dompet" }],
+      [{ text: "📊 Status Kios" }, { text: "🔄 Ganti Peran" }],
+      [{ text: "🚪 Logout" }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
   };
 }
 
