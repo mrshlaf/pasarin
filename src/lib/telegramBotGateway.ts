@@ -328,16 +328,8 @@ export async function handleTelegramCommand(
         responseText:
           `👋 *Selamat datang di Bot Resmi PASARIN!* (@agent_pasarin_bot)\n\n` +
           `Sistem Multi-Agen Otonom untuk Penyelamatan & Redistribusi Surplus Sayur Pasar Tradisional.\n\n` +
-          `🔒 *Otentikasi Peran Wajib (Strict RBAC):*\n` +
-          `Untuk menjaga integritas pasar dan mencegah penyalahgunaan peran, seluruh akses transaksi wajib login dengan akun terdaftar:\n\n` +
+          `Untuk menjaga integritas pasar dan mencegah penyalahgunaan peran, seluruh akses wajib login dengan akun terdaftar:\n\n` +
           `👉 \`/login <username> <password>\`\n\n` +
-          `*Pilihan Akun Kredensial Resmi:* \n` +
-          `• Pedagang Lapak : \`/login pasar1 pasar123\`\n` +
-          `• Pembeli Warteg : \`/login warteg1 warteg123\`\n` +
-          `• Dapur Sosial   : \`/login sosial1 sosial123\`\n` +
-          `• Sentra Maggot  : \`/login maggot1 maggot123\`\n` +
-          `• Kurir Armada   : \`/login kurir1 kurir123\`\n` +
-          `• Administrator  : \`/login admin admin123\`\n\n` +
           `Ketik /help untuk panduan lengkap.`,
         replyMarkup: buildRoleSelectorKeyboard(),
       };
@@ -350,14 +342,7 @@ export async function handleTelegramCommand(
           responseText:
             `🔐 *Login Akun Resmi PASARIN*\n\n` +
             `Format: \`/login <username> <password>\`\n\n` +
-            `*Akun Demo Cepat:*\n` +
-            `• Pedagang : \`/login pasar1 pasar1\` (atau pasar123)\n` +
-            `• Warteg   : \`/login warteg1 warteg1\` (atau warteg123)\n` +
-            `• Sosial   : \`/login sosial1 sosial1\` (atau sosial123)\n` +
-            `• Maggot   : \`/login maggot1 maggot1\` (atau maggot123)\n` +
-            `• Kurir    : \`/login kurir1 kurir1\` (atau kurir123)\n` +
-            `• Admin    : \`/login admin admin123\`\n\n` +
-            `_Tip: Anda juga dapat memilih peran instan dengan ketik /role_`,
+            `_Silakan gunakan username dan kata sandi yang telah didaftarkan oleh Administrator Pasar._`,
         };
       }
 
@@ -372,8 +357,8 @@ export async function handleTelegramCommand(
         return {
           actionTaken: "login_failed_user_not_found",
           responseText:
-            `❌ *Username Tidak Ditemukan*\n\n` +
-            `Akun \`${inputUser}\` tidak terdaftar. Gunakan: \`/login pasar1 pasar1\`, \`/login warteg1 warteg1\`, dll.`,
+            `❌ *Akses Ditolak*\n\n` +
+            `Username atau kata sandi tidak valid. Silakan periksa kembali kredensial Anda.`,
         };
       }
 
@@ -389,9 +374,8 @@ export async function handleTelegramCommand(
         return {
           actionTaken: "login_failed_wrong_password",
           responseText:
-            `❌ *Kata Sandi Salah*\n\n` +
-            `Kata sandi untuk \`${matched.username}\` salah. Silakan coba lagi.\n` +
-            `Contoh: \`/login ${matched.username} ${matched.username}\``,
+            `❌ *Akses Ditolak*\n\n` +
+            `Username atau kata sandi tidak valid. Silakan periksa kembali kredensial Anda.`,
         };
       }
 
@@ -561,14 +545,7 @@ export async function handleTelegramCommand(
           responseText:
             `🔒 *Akses Terkunci: Anda Belum Login*\n\n` +
             `Untuk menjaga keamanan data pasar dan mencegah penyalahgunaan peran, Anda wajib login terlebih dahulu.\n\n` +
-            `Format: \`/login <username> <password>\`\n\n` +
-            `*Pilihan Akun Resmi:*\n` +
-            `• Pedagang : \`/login pasar1 pasar123\`\n` +
-            `• Warteg   : \`/login warteg1 warteg123\`\n` +
-            `• Maggot   : \`/login maggot1 maggot123\`\n` +
-            `• Sosial   : \`/login sosial1 sosial123\`\n` +
-            `• Kurir    : \`/login kurir1 kurir123\``,
-          replyMarkup: buildRoleSelectorKeyboard(),
+            `Format: \`/login <username> <password>\``,
         };
       }
       if (binding.role === "warteg") {
@@ -666,13 +643,7 @@ export async function handleTelegramCommand(
             `🔒 *Akses Terkunci: Anda Belum Login*\n\n` +
             `Katalog surplus dikhususkan sesuai peran yang berwenang demi menjaga integritas harga dan alokasi etis.\n\n` +
             `Silakan masuk terlebih dahulu:\n` +
-            `👉 \`/login <username> <password>\`\n\n` +
-            `*Contoh Login Cepat:*\n` +
-            `• Pembeli Warteg : \`/login warteg1 warteg123\`\n` +
-            `• Dapur Sosial   : \`/login sosial1 sosial123\`\n` +
-            `• Sentra Maggot  : \`/login maggot1 maggot123\`\n` +
-            `• Pedagang Lapak : \`/login pasar1 pasar123\``,
-          replyMarkup: buildRoleSelectorKeyboard(),
+            `👉 \`/login <username> <password>\``,
         };
       }
 

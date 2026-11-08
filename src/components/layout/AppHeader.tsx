@@ -18,8 +18,8 @@ import {
   LogOut,
   User,
   ShieldCheck,
+  Send,
 } from "lucide-react";
-
 interface AppHeaderProps {
   onOpenTelegram?: () => void;
 }
@@ -74,6 +74,19 @@ export function AppHeader({ onOpenTelegram }: AppHeaderProps) {
             </div>
           )}
 
+          {/* Telegram Live Bot Launcher */}
+          {onOpenTelegram && (
+            <button
+              onClick={onOpenTelegram}
+              type="button"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#0088cc] hover:bg-[#0077b5] text-white font-semibold text-[11px] shadow-xs transition cursor-pointer"
+              title="Buka Layar Kotak Telegram Bot Simulator"
+            >
+              <Send className="w-3 h-3 -rotate-45" />
+              <span className="font-bold">Telegram Bot</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping" />
+            </button>
+          )}
 
           {/* User Profile & Logout Action */}
           {user ? (
