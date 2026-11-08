@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
 import {
   evaluateProduceById,
   getAllCommodityEvaluations,
@@ -13,6 +14,19 @@ import {
 import { DecayEvaluationResult } from "@/types/api";
 
 export const dynamic = "force-dynamic";
+
+const conditions = z.object({
+  hoursElapsed: z.number().nonnegative().default(10.5),
+  temperatureC: z.number().default(32.5),
+  humidityPercent: z.number().min(0).max(100).default(75),
+});
+const commodityIdSchema = z.string().trim().min(1).max(100);
+const batch = conditions.extend({
+  items: z.array(z.union([
+    commodityIdSchema,
+    z.object({ commodityId: commodityIdSchema, hoursElapsed: z.number().nonnegative().optional() }),
+  ])).min(1).max(200),
+});
 
 /**
  * Menangani evaluasi peluruhan komoditas melalui parameter kueri URL.
@@ -31,8 +45,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const temperatureC = Number(searchParams.get("temperatureC") ?? "32.5");
     const humidityPercent = Number(searchParams.get("humidityPercent") ?? "75");
 
-    if (isNaN(hoursElapsed) || hoursElapsed < 0) {
-      return errorResponse("Parameter hoursElapsed wajib berupa angka bernilai positif", 400);
+    if (!conditions.safeParse({ hoursElapsed, temperatureC, humidityPercent }).success) {
+      return errorResponse("Parameter jam pajang, suhu, atau kelembapan tidak valid.", 400);
     }
 
     if (commodityId && commodityId.trim().length > 0) {
@@ -77,12 +91,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await req.json();
-    const { items, hoursElapsed = 10.5, temperatureC = 32.5, humidityPercent = 75 } = body;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      return errorResponse("Body request wajib memuat array 'items' non-kosong", 400);
-    }
+    const input = await validateJsonBody(req, batch);
+    if (!input.success) return input.errorResponse;
+    const { items, hoursElapsed, temperatureC, humidityPercent } = input.data;
 
     const results: DecayEvaluationResult[] = [];
     const notFoundIds: string[] = [];

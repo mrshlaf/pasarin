@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
+import { requireApiRole } from "@/lib/apiAuth";
 import { WeatherTelemetryData } from "@/types/api";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,10 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
+    if (forceRefresh) {
+      const auth = await requireApiRole(req, ["admin"]);
+      if (auth.response) return auth.response;
+    }
     const weatherData: WeatherTelemetryData = await getHyperlocalMarketWeather(forceRefresh);
 
     return successResponse(weatherData, 200);

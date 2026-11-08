@@ -2,12 +2,13 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-response";
 import { requireApiRole } from "@/lib/apiAuth";
-import { claimOfferServer, getSurplusOffersForRole } from "@/lib/serverSimulationState";
+import { claimOfferServer, getSurplusOffersForRole, marketOfferForUser } from "@/lib/serverSimulationState";
 
 const buyerRoles = ["warteg", "social_kitchen", "maggot"] as const;
-const claim = z.object({
+const claim = z.strictObject({
   offerId: z.string().trim().min(1).max(100),
-  donated: z.boolean().optional(),
+  quantityKg: z.number().positive().max(10_000).optional(),
+  requestId: z.string().trim().min(1).max(100).optional(),
 });
 
 /** Reserves a lot for the authenticated buyer only. */
@@ -21,9 +22,9 @@ export async function POST(req: NextRequest) {
   const input = await validateJsonBody(req, claim);
   if (!input.success) return input.errorResponse;
   try {
-    const result = await claimOfferServer(input.data.offerId, { ...user, role }, input.data.donated);
+    const result = await claimOfferServer(input.data.offerId, { ...user, role }, input.data.quantityKg, input.data.requestId);
     if (!result.success) return errorResponse(result.message, result.status);
-    return successResponse(result);
+    return successResponse({ ...result, offer: result.offer && marketOfferForUser(result.offer, user.id) });
   } catch (error) {
     console.error("Cannot claim offer", error);
     return errorResponse("Penyimpanan data pasar sedang tidak tersedia.", 503);

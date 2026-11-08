@@ -66,7 +66,7 @@ function accountName(username: string) {
 }
 
 function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: number) {
-  if (tier === "tier_3") return Math.max(500, Math.round((commodity.baseWholesalePricePerKg * 0.05) / 500) * 500);
+  if (tier === "tier_3") return 0;
   if (tier === "tier_2") return Math.max(1000, Math.round((commodity.baseWholesalePricePerKg * 0.15) / 500) * 500);
   return Math.max(commodity.minimumSalvagePricePerKg, evaluationPrice);
 }
@@ -86,16 +86,18 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
       const hoursOffset = hoursForDecay(commodity, stage.decayTarget);
       const stockId = `stk_seed_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`;
       const remainingKg = 20 + ((kioskIndex * 7 + lotIndex * 13) % 46);
+      const initialKg = remainingKg + 10 + ((kioskIndex + lotIndex) % 16);
       const stock: StockItem = {
         id: stockId,
         vendorId: kiosk.id,
         commodityId: commodity.id,
-        initialKg: remainingKg,
-        remainingKg,
+        initialKg,
+        remainingKg: stage.offerTier ? remainingKg : initialKg,
         arrivalClock: wibClockFromOffset(hoursOffset),
         lotNumber: `LOT-${kiosk.stallNumber}-D${lotIndex + 1}`,
         hoursOffset,
         createdAt: nowIso,
+        verifiedAt: stage.offerTier ? nowIso : undefined,
       };
       stocks.push(stock);
       if (!stage.offerTier) return;
@@ -112,6 +114,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
         vendorId: kiosk.id,
         commodityId: commodity.id,
         targetTier: stage.offerTier,
+        distributionMode: stage.offerTier === "tier_3" ? "free" : "sale",
         quantityKg: remainingKg,
         originalPricePerKg: commodity.baseWholesalePricePerKg,
         salvagePricePerKg,
@@ -143,7 +146,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
     offer.claimedBy = accountName(username);
     offer.claimedById = actorId(username);
     offer.claimedAt = nowClock;
-    offer.paymentStatus = paymentStatus;
+    offer.paymentStatus = offer.targetTier === "tier_3" ? "not_required" : paymentStatus;
     if (settled) offer.deliveredOn = nowIso;
     const transaction: EscrowTransaction = {
       id: `txn_seed_${offer.id}`,
@@ -156,7 +159,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
       createdAt: nowClock,
       ...(settled ? { releasedAt: nowClock } : {}),
     };
-    transactions.push(transaction);
+    if (offer.paymentStatus !== "not_required") transactions.push(transaction);
     if (settled) {
       const stock = stocks.find((item) => item.id === offer.stockId);
       if (stock) stock.remainingKg = 0;
@@ -180,6 +183,11 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
 
   const vendorPending = findOffer(22, "tier_2");
   vendorPending.status = "pending_vendor";
+  const pendingStock = stocks.find((item) => item.id === vendorPending.stockId);
+  if (pendingStock) {
+    delete pendingStock.verifiedAt;
+    pendingStock.remainingKg = pendingStock.initialKg;
+  }
 
   const vendorRejected = findOffer(23, "tier_1");
   vendorRejected.status = "rejected";

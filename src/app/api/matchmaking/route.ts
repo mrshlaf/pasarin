@@ -1,7 +1,8 @@
 // Rute API Mesin Pencocokan Sirkular 3-Tier (PSR-22): GET & POST batch
 
 import { NextRequest, NextResponse } from "next/server";
-import { successResponse, errorResponse } from "@/lib/api-response";
+import { z } from "zod";
+import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
 import {
   findMatchesForOffer,
   batchMatchOffers,
@@ -9,6 +10,14 @@ import {
 } from "@/lib/matchmakingEngine";
 
 export const dynamic = "force-dynamic";
+
+const matchOffer = z.object({
+  id: z.string().min(1).max(100),
+  commodityId: z.string().min(1).max(100),
+  quantityKg: z.number().positive().max(10_000),
+  targetTier: z.enum(["tier_1", "tier_2", "tier_3"]),
+});
+const matchBatch = z.object({ offers: z.array(matchOffer).min(1).max(200) });
 
 // GET: Rekomendasi pembeli terdekat via query params (commodityId, quantityKg, targetTier, radiusKm)
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -20,23 +29,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const targetTier = (searchParams.get("targetTier") ?? "tier_1") as "tier_1" | "tier_2" | "tier_3";
     const maxRadiusKm = Number(searchParams.get("radiusKm") ?? "5.0");
 
-    if (isNaN(quantityKg) || quantityKg <= 0) {
-      return errorResponse("Parameter 'quantityKg' wajib berupa angka positif lebih dari nol", 400);
+    const offer = matchOffer.safeParse({ id: `ofr_query_${Date.now()}`, commodityId, quantityKg, targetTier });
+    if (!offer.success || !Number.isFinite(maxRadiusKm) || maxRadiusKm <= 0) {
+      return errorResponse("Parameter pencocokan tidak valid.", 400);
     }
-
-    if (!["tier_1", "tier_2", "tier_3"].includes(targetTier)) {
-      return errorResponse("Parameter 'targetTier' wajib salah satu dari: 'tier_1', 'tier_2', 'tier_3'", 400);
-    }
-
-    const matchmakingResult: MatchmakingResult = findMatchesForOffer(
-      {
-        id: `ofr_query_${Date.now()}`,
-        commodityId,
-        quantityKg,
-        targetTier,
-      },
-      { maxRadiusKm }
-    );
+    const matchmakingResult: MatchmakingResult = findMatchesForOffer(offer.data, { maxRadiusKm });
 
     return successResponse(matchmakingResult, 200);
   } catch (error) {
@@ -49,12 +46,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 // POST: Evaluasi batch penawaran surplus
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    const body = await req.json();
-    const { offers } = body;
-
-    if (!Array.isArray(offers) || offers.length === 0) {
-      return errorResponse("Body permintaan wajib memuat larik 'offers' non-kosong", 400);
-    }
+    const input = await validateJsonBody(req, matchBatch);
+    if (!input.success) return input.errorResponse;
+    const { offers } = input.data;
 
     const batchResults = batchMatchOffers(offers);
 

@@ -41,9 +41,9 @@ import {
 } from "@/lib/priorityWindowDispatcher";
 import {
   verifyTelegramWebhookSecret,
-  handleTelegramCommand,
   dispatchTelegramMessage,
 } from "@/lib/telegramBotGateway";
+import { handleTelegramCommand } from "@/lib/telegramWorkspace";
 import {
   calculateFleetAllocation,
   generateDeliveryManifest,

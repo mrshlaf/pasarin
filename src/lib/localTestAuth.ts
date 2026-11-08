@@ -2,6 +2,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import type { AuthUser } from "@/data/accounts";
 import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "@/data/marketAccounts";
+import { databaseConfigured } from "@/lib/database";
 
 export const LOCAL_TEST_COOKIE = "pasarin_local_test";
 export const LOCAL_TEST_SESSION_SECONDS = 8 * 60 * 60;
@@ -12,7 +13,7 @@ declare global {
 
 /** Restricts known test credentials to loopback development and local market storage. */
 export function isLocalTestRequest(req: NextRequest) {
-  if (process.env.NODE_ENV !== "development" || process.env.PASARIN_STATE_BACKEND === "supabase") return false;
+  if (process.env.NODE_ENV !== "development" || databaseConfigured() || process.env.PASARIN_STATE_BACKEND === "supabase") return false;
   const host = req.headers.get("host") ?? req.nextUrl.host;
   if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host)) return false;
   const forwarded = req.headers.get("x-forwarded-for");

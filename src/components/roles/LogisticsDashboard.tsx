@@ -9,12 +9,13 @@ import {
   Navigation,
   PackageCheck,
   Phone,
+  Receipt,
   Recycle,
   Store,
   Truck,
   UtensilsCrossed,
 } from "lucide-react";
-import type { RescueOffer } from "@/types/market";
+import { isDonation, isFreeMaggotOffer, isReadyForDelivery, type RescueOffer } from "@/types/market";
 import { CIRCULAR_BUYERS } from "@/data/buyers";
 import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import { useAuth } from "@/lib/authContext";
@@ -22,11 +23,14 @@ import { useMarketSimulation } from "@/lib/simulationStore";
 import { MarketDialog } from "@/components/common/MarketDialog";
 import {
   EmptyState,
+  LotFacts,
   MarketMetrics,
   MarketSection,
   StatusPill,
+  TierChip,
   commodityName,
   dateLabel,
+  formatRemainingShelfLife,
   kg,
   kioskLabel,
   marketButton,
@@ -92,13 +96,15 @@ const DISPATCH_PHASES = [
 /** Presents the circular phase-segmented dispatch queue and lets couriers confirm handover. */
 export function LogisticsDashboard() {
   const { user } = useAuth();
-  const { offers, confirmDelivery, busy } = useMarketSimulation();
+  const { offers, stockItems, stockHealth, transactions, confirmDelivery, busy } = useMarketSimulation();
   const [activePhase, setActivePhase] = useState<DispatchPhase>("all");
   const [selected, setSelected] = useState<RescueOffer | null>(null);
   const [error, setError] = useState("");
 
-  const queue = offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "held_in_escrow");
+  const queue = offers.filter(isReadyForDelivery);
   const completed = offers.filter((offer) => offer.status === "settled");
+  const stockById = new Map(stockItems.map((item) => [item.id, item]));
+  const selectedStock = selected && stockById.get(selected.stockId);
 
   // Filter antrean berdasarkan tahapan sirkular yang dipilih
   const filteredQueue = activePhase === "all"
@@ -137,7 +143,7 @@ export function LogisticsDashboard() {
         ? "Bpk. Rahmat Hidayat"
         : fleet.recommendedDriver;
 
-  /** Menentukan badge armada dan fase untuk setiap kartu order */
+  /** Menentukan badge armada untuk setiap kartu order */
   function getOfferVehicleBadge(targetTier: "tier_1" | "tier_2" | "tier_3") {
     if (targetTier === "tier_3") return "Viar TPS 3R (B 3319 BSF)";
     if (targetTier === "tier_2") return "Motor Viar Roda 3 (B 4521 TXX)";
@@ -255,7 +261,7 @@ export function LogisticsDashboard() {
             title={`Belum ada antrean ${currentPhaseConfig.shortLabel}`}
             description={
               activePhase === "all"
-                ? "Pesanan masuk ke antrean kurir setelah pembeli menyelesaikan pembayaran QRIS."
+                ? "Lot gratis, donasi, dan pesanan yang sudah dibayar akan muncul di sini."
                 : `Tidak ada pesanan aktif pada ${currentPhaseConfig.label} saat ini.`
             }
           />
@@ -270,6 +276,7 @@ export function LogisticsDashboard() {
               );
               const tierBadge = getTierBadge(offer.targetTier);
               const cardVehicle = getOfferVehicleBadge(offer.targetTier);
+              const lotNumber = stockById.get(offer.stockId)?.lotNumber;
 
               return (
                 <li key={offer.id} className="rounded-2xl border border-line bg-surface p-4 sm:p-5">
@@ -277,6 +284,7 @@ export function LogisticsDashboard() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusPill label="Siap diantar" tone="info" />
+                        <TierChip tier={offer.targetTier} />
                         <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${tierBadge.style}`}>
                           {tierBadge.label}
                         </span>
@@ -288,6 +296,10 @@ export function LogisticsDashboard() {
                       <h3 className="mt-2 break-words font-serif text-lg leading-tight tracking-tight">
                         {commodityName(offer.commodityId)}, {kg(offer.quantityKg)}
                       </h3>
+
+                      {lotNumber && (
+                        <p className="mt-1 text-[13px] text-ink-muted">{lotNumber}</p>
+                      )}
 
                       <div className="mt-2.5 grid gap-0 text-[13px]">
                         <p className="flex min-w-0 items-center gap-2">
@@ -321,9 +333,30 @@ export function LogisticsDashboard() {
                           </p>
                         )}
                       </div>
+
+                      {stockHealth[offer.stockId] && (
+                        <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
+                          <Clock size={13} aria-hidden className="text-brand shrink-0" />
+                          <span>
+                            Prioritas antar: sisa simpan{" "}
+                            <strong className="font-semibold text-ink">
+                              {formatRemainingShelfLife(
+                                stockHealth[offer.stockId]?.hoursRemaining ?? 0,
+                                stockHealth[offer.stockId]?.decayScore
+                              )}
+                            </strong>
+                          </span>
+                        </p>
+                      )}
                     </div>
 
-                    <p className="text-base font-semibold tabular-nums">{rupiah(offer.totalAmountIdr)}</p>
+                    {isFreeMaggotOffer(offer) ? (
+                      <StatusPill label="Gratis" tone="success" />
+                    ) : isDonation(offer) ? (
+                      <StatusPill label="Donasi" tone="success" />
+                    ) : (
+                      <p className="text-base font-semibold tabular-nums">{rupiah(offer.totalAmountIdr)}</p>
+                    )}
                   </div>
 
                   {user?.role === "logistics" && (
@@ -377,9 +410,61 @@ export function LogisticsDashboard() {
                 </div>
                 <div className="flex min-w-0 flex-wrap items-center gap-3">
                   <span className="text-sm font-semibold tabular-nums text-ink-muted">
-                    {rupiah(offer.totalAmountIdr)}
+                    {isFreeMaggotOffer(offer) ? "Gratis" : isDonation(offer) ? "Donasi" : rupiah(offer.totalAmountIdr)}
                   </span>
                   <StatusPill label="Selesai" tone="success" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </MarketSection>
+
+      {/* Riwayat Transaksi & Serah Terima (Escrow Release Ledger) */}
+      <MarketSection
+        title="Riwayat transaksi & serah terima"
+        description="Catatan pelepasan dana escrow yang telah diserahterimakan ke penerima."
+      >
+        {transactions.length === 0 ? (
+          <EmptyState
+            icon={Receipt}
+            title="Belum ada transaksi"
+            description="Transaksi yang berhasil diserahterimakan akan tercatat di sini."
+          />
+        ) : (
+          <ul>
+            {transactions.map((item) => (
+              <li
+                key={item.id}
+                className="grid min-w-0 gap-2 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <p className="break-words font-semibold">{item.commodityName}</p>
+                    <p className="font-semibold tabular-nums text-brand-ink">{rupiah(item.amountIdr)}</p>
+                  </div>
+                  <p className="mt-1 min-w-0 break-words text-[13px] leading-5 text-ink-muted">
+                    {item.vendorName} ke {item.buyerName} ·{" "}
+                    {item.releasedAt ? "Selesai " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <StatusPill
+                    label={
+                      item.status === "released"
+                        ? "Selesai disalurkan"
+                        : item.status === "refunded"
+                          ? "Dikembalikan"
+                          : "Dana ditahan"
+                    }
+                    tone={
+                      item.status === "released"
+                        ? "success"
+                        : item.status === "refunded"
+                          ? "danger"
+                          : "info"
+                    }
+                  />
                 </div>
               </li>
             ))}
@@ -391,13 +476,23 @@ export function LogisticsDashboard() {
       {selected && (
         <MarketDialog title="Konfirmasi serah terima" onClose={() => setSelected(null)}>
           <div className="grid gap-1 border-y border-line py-3.5 text-sm">
-            <p className="font-semibold">
-              {commodityName(selected.commodityId)}, {kg(selected.quantityKg)}
-            </p>
+            <p className="font-semibold">{commodityName(selected.commodityId)}</p>
+            <LotFacts
+              items={[
+                ...(selectedStock ? [{ label: "Kode lot", value: selectedStock.lotNumber }] : []),
+                { label: "Muatan pesanan", value: kg(selected.quantityKg) },
+              ]}
+            />
             <p className="mt-1 leading-5 text-ink-muted">
               {kioskLabel(selected.vendorId)} ke {selected.claimedBy ?? "penerima"}
             </p>
-            <p className="mt-1 font-semibold tabular-nums">{rupiah(selected.totalAmountIdr)}</p>
+            <p className="mt-1 font-semibold tabular-nums">
+              {isFreeMaggotOffer(selected)
+                ? "Lot Maggot gratis"
+                : isDonation(selected)
+                  ? "Donasi tanpa pembayaran"
+                  : rupiah(selected.totalAmountIdr)}
+            </p>
           </div>
           {error && (
             <p role="alert" className="mt-3 text-sm font-medium text-danger">
