@@ -1,75 +1,34 @@
-/**
- * Rute API Pemicu Siklus Otonom Orkestrator Multi-Agen (PSR-17 / PRD §15).
- * Menyediakan endpoint HTTP POST untuk mengeksekusi alur orkestrasi lengkap sistem PASARIN:
- * pembacaan telemetri cuaca, dekomposisi inventaris 30 kios, kalkulasi susut Arrhenius,
- * gerbang kendali mutu etis, dan penugasan armada logistik.
- */
-
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import {
-  executeAutonomousOrchestration,
-  getLatestOrchestratorRun,
-} from "@/lib/geminiOrchestrator";
+import { requireApiRole } from "@/lib/apiAuth";
+import { getMarketOperations } from "@/lib/marketOperations";
+import { publishMarketOffers, readMarketSnapshot } from "@/lib/serverSimulationState";
 
-export const dynamic = "force-dynamic";
-
-/**
- * Menangani pemicuan eksekusi siklus otonom sistem multi-agen via HTTP POST.
- * Mendukung muatan body JSON opsional { executionMode, forceHeuristic }.
- *
- * @param req - Objek NextRequest pembawa muatan konfigurasi eksekusi.
- * @returns Respons JSON berisi hasil eksekusi OrchestratorRunResult status HTTP 200 OK.
- */
-export async function POST(req: NextRequest): Promise<NextResponse> {
+/** Returns the current operational workload to supervisors. */
+export async function GET(req: NextRequest) {
+  const auth = await requireApiRole(req, ["admin", "manager"]);
+  if (auth.response) return auth.response;
   try {
-    let body: Record<string, unknown> = {};
-    try {
-      body = await req.json();
-    } catch {
-      // Body JSON opsional: jika kosong, sistem menggunakan parameter default
-    }
-
-    const executionMode =
-      body.executionMode === "manual_simulation" ? "manual_simulation" : "scheduled_autonomous_cron";
-    const forceHeuristic = Boolean(body.forceHeuristic);
-
-    const result = await executeAutonomousOrchestration({
-      executionMode,
-      forceHeuristic,
-    });
-
-    return successResponse(result, 200);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Eksekusi alur otonom orkestrator gagal";
-    console.error("[POST /api/orchestrator/run Error]:", error);
-    return errorResponse(message, 500);
+    return successResponse(await getMarketOperations());
+  } catch {
+    return errorResponse("Data pasar belum tersedia.", 503);
   }
 }
 
-/**
- * Mengambil ringkasan rekam jejak siklus otonom orkestrator terakhir via HTTP GET.
- *
- * @returns Respons JSON berisi OrchestratorRunResult terakhir atau status ketersediaan.
- */
-export async function GET(): Promise<NextResponse> {
-  const latestRun = getLatestOrchestratorRun();
-  if (!latestRun) {
-    // Jika belum pernah dijalankan, picu siklus awal untuk inisialisasi data
-    const freshRun = await executeAutonomousOrchestration({
-      executionMode: "scheduled_autonomous_cron",
-    });
-    return successResponse(freshRun, 200);
+/** Runs a live stock review and returns the resulting workspace snapshot. */
+export async function POST(req: NextRequest) {
+  const auth = await requireApiRole(req, ["admin"]);
+  if (auth.response) return auth.response;
+  try {
+    const result = await publishMarketOffers();
+    if (!result.success) return errorResponse(result.message, result.status);
+    return successResponse({ message: result.message, state: await readMarketSnapshot(auth.user) });
+  } catch {
+    return errorResponse("Evaluasi stok belum dapat dijalankan.", 503);
   }
-
-  return successResponse(latestRun, 200);
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (health probe) endpoint orkestrator.
- *
- * @returns Respons HTTP kosong dengan status 200 OK.
- */
-export async function HEAD(): Promise<NextResponse> {
-  return new NextResponse(null, { status: 200 });
+/** Answers monitoring probes without performing a stock review. */
+export async function HEAD() {
+  return new Response(null, { status: 200 });
 }

@@ -1,40 +1,104 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "PASARIN API (Proactive Agent for Market Surplus Redistribution)",
-    "description": "API RESTful Multi-Agen untuk deteksi, penetapan harga dinamis, matchmaking, dan penyelamatan surplus sayur & buah pasar tradisional.",
-    "version": "1.1.0",
-    "contact": {
-      "name": "Tim PASARIN (Marshal Aufa & Zahir)",
-      "email": "pasarin@ui.ac.id"
-    }
+    "title": "Pasarin API",
+    "version": "1.2.0",
+    "description": "API redistribusi surplus pasar. Pembayaran menggunakan ledger simulasi."
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
-      "description": "Local Development Server"
+      "url": "/"
     }
   ],
   "paths": {
     "/api/health": {
       "get": {
-        "summary": "Pemeriksaan kesehatan sistem dan daftar tools agen",
+        "summary": "Periksa status proses API",
         "responses": {
-          "200": { "description": "Sistem sehat dan beroperasi normal" }
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
         }
       }
     },
-    "/api/orchestrator/run": {
-      "post": {
-        "summary": "Memicu siklus otonom terjadwal harian (Cron 14:30 WIB)",
+    "/api/cron/afternoon-sweep": {
+      "get": {
+        "summary": "Evaluasi stok dan buat usulan penawaran",
         "responses": {
-          "200": { "description": "Siklus otonom selesai dieksekusi" }
-        }
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "CronBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Evaluasi stok dan buat usulan penawaran",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "CronBearer": []
+          }
+        ]
       }
     },
-    "/api/orchestrator/query": {
+    "/api/escrow/qris": {
+      "get": {
+        "summary": "Informasi simulasi pembayaran",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      },
       "post": {
-        "summary": "Kueri dinamis goal-driven (ReAct multi-agen)",
+        "summary": "Buat payload QRIS simulasi",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -42,61 +106,898 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "query": { "type": "string", "example": "Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?" }
+                  "amountIdr": {
+                    "type": "number"
+                  },
+                  "invoiceRef": {
+                    "type": "string"
+                  },
+                  "merchantName": {
+                    "type": "string"
+                  },
+                  "merchantId": {
+                    "type": "string"
+                  }
                 },
-                "required": ["query"]
+                "required": [
+                  "amountIdr"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Evaluasi transisi escrow simulasi sebagai admin",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "confirm_payment",
+                      "release_to_vendor",
+                      "refund"
+                    ]
+                  },
+                  "currentStatus": {
+                    "type": "string"
+                  },
+                  "amountIdr": {
+                    "type": "number"
+                  },
+                  "qrisPayload": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kinetics/decay": {
+      "get": {
+        "summary": "Hitung susut komoditas",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commodityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hoursElapsed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "temperatureC",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "humidityPercent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Hitung susut beberapa lot",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "commodityId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "commodityId"
+                      ]
+                    }
+                  },
+                  "hoursElapsed": {
+                    "type": "number"
+                  },
+                  "temperatureC": {
+                    "type": "number"
+                  },
+                  "humidityPercent": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "items"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/matchmaking": {
+      "get": {
+        "summary": "Cari calon mitra untuk satu lot",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commodityId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quantityKg",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "targetTier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "radiusKm",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Cari calon mitra untuk beberapa lot",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "offers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "required": [
+                  "offers"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/offers/claim": {
+      "get": {
+        "summary": "Baca katalog sesuai peran pembeli",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Klaim lot sebagai akun pembeli terverifikasi",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          },
+          "404": {
+            "description": "Lot tidak ditemukan"
+          },
+          "409": {
+            "description": "Lot sudah tidak tersedia"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "offerId": {
+                    "type": "string"
+                  },
+                  "donated": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "offerId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orchestrator/query": {
+      "get": {
+        "summary": "Baca ringkasan operasional pasar",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Jalankan kueri manajerial",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "forceHeuristic": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/orchestrator/run": {
+      "get": {
+        "summary": "Baca beban kerja pasar saat ini",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Evaluasi stok aktual sebagai admin",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/orchestrator/tools": {
+      "get": {
+        "summary": "Lihat daftar alat orkestrator",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/quality-gate/validate": {
+      "get": {
+        "summary": "Evaluasi kesesuaian mutu dan tier",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        },
+        "parameters": [
+          {
+            "name": "commodityId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hoursOnDisplay",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "requestedTier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vendorId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "temperatureC",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "humidityPercent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "chlorophyllRatio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Evaluasi mutu dari data lot",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "commodityId": {
+                    "type": "string"
+                  },
+                  "hoursOnDisplay": {
+                    "type": "number"
+                  },
+                  "requestedTier": {
+                    "type": "string"
+                  },
+                  "vendorId": {
+                    "type": "string"
+                  },
+                  "temperatureC": {
+                    "type": "number"
+                  },
+                  "humidityPercent": {
+                    "type": "number"
+                  },
+                  "chlorophyllRatio": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "commodityId",
+                  "vendorId",
+                  "requestedTier",
+                  "hoursOnDisplay"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/simulation/metabolism-trial": {
+      "get": {
+        "summary": "Jalankan simulasi 24 jam dari data contoh",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      },
+      "post": {
+        "summary": "Jalankan simulasi 24 jam dari data contoh",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/simulation/state": {
+      "get": {
+        "summary": "Baca state sesuai peran",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Mutasi state sesuai peran",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "stock",
+                      "publish",
+                      "vendor_decision",
+                      "payment",
+                      "delivery"
+                    ]
+                  },
+                  "commodityId": {
+                    "type": "string"
+                  },
+                  "quantityKg": {
+                    "type": "number"
+                  },
+                  "stockId": {
+                    "type": "string"
+                  },
+                  "offerId": {
+                    "type": "string"
+                  },
+                  "approved": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telegram/webhook": {
+      "get": {
+        "summary": "Baca status konfigurasi webhook",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      },
+      "post": {
+        "summary": "Terima update Telegram",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          }
+        },
+        "security": [
+          {
+            "TelegramSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "update_id": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "type": "object"
+                  },
+                  "callback_query": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "update_id"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/telemetry/weather": {
+      "get": {
+        "summary": "Baca telemetri atau profil cuaca cadangan",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        },
+        "parameters": [
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ]
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/test/suite": {
+      "get": {
+        "summary": "Jalankan testbench terisolasi sebagai admin",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "403": {
+            "description": "Peran tidak diizinkan"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ]
+      },
+      "head": {
+        "summary": "Periksa ketersediaan rute",
+        "responses": {
+          "200": {
+            "description": "Berhasil"
+          }
+        }
+      }
+    },
+    "/api/auth/local-test": {
+      "get": {
+        "summary": "Pulihkan sesi tes lokal",
+        "responses": {
+          "200": {
+            "description": "Sesi atau pengguna kosong"
+          },
+          "404": {
+            "description": "Hanya tersedia di localhost dengan penyimpanan lokal."
+          }
+        }
+      },
+      "post": {
+        "summary": "Masuk dengan akun demo kelas di localhost",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Jawaban dan rencana alokasi multi-agen" }
+          "200": {
+            "description": "Sesi tes tersimpan dalam cookie HttpOnly"
+          },
+          "401": {
+            "description": "Kata sandi tidak cocok"
+          },
+          "404": {
+            "description": "Hanya tersedia di localhost dengan penyimpanan lokal."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Akhiri sesi tes lokal",
+        "responses": {
+          "204": {
+            "description": "Cookie sesi dihapus"
+          },
+          "404": {
+            "description": "Hanya tersedia di localhost dengan penyimpanan lokal."
+          }
         }
       }
-    },
-    "/api/stocks": {
-      "get": { "summary": "Audit seluruh stok aktif dan tingkat kelayuan" },
-      "post": { "summary": "Menambahkan lot stok komoditas baru" }
-    },
-    "/api/surplus/predict": {
-      "post": { "summary": "Kalkulasi proyeksi surplus kuantitatif per tier" }
-    },
-    "/api/matchmaking": {
-      "post": { "summary": "Pencocokan pembeli dengan verifikasi Quality Gate" }
-    },
-    "/api/dispatch": {
-      "get": { "summary": "Daftar penawaran surplus" },
-      "post": { "summary": "Klaim atau pengiriman penawaran ke Telegram" }
-    },
-    "/api/logistics/fleet": {
-      "post": { "summary": "Perhitungan alokasi armada pickup vs truk bak" }
-    },
-    "/api/pricing/negotiate": {
-      "post": { "summary": "Mesin tawar-menawar otomatis warteg" }
-    },
-    "/api/payments/qris": {
-      "post": { "summary": "Pembuatan QRIS, penahanan escrow, dan pencairan" }
-    },
-    "/api/delivery/handover": {
-      "post": { "summary": "Verifikasi serah terima digital QR (Proof-of-Delivery)" }
-    },
-    "/api/sensors/ingest": {
-      "post": { "summary": "Ingest data sensor IoT suhu, kelembapan, dan etilen kios" }
-    },
-    "/api/vision/inspect": {
-      "post": { "summary": "Inspeksi visual foto sayuran via AI Vision" }
-    },
-    "/api/analytics/impact": {
-      "get": { "summary": "Metrik agregat sampah dialihkan dan emisi metana terhindar" }
-    },
-    "/api/analytics/leaderboard": {
-      "get": { "summary": "Klasemen reputasi sosial pedagang dan lencana hijau" }
-    },
-    "/api/analytics/export": {
-      "get": { "summary": "Ekspor berkas CSV/JSON audit resmi DLH DKI Jakarta" }
-    },
-    "/api/simulation/benchmark": {
-      "get": { "summary": "Suite pengujian otomatis 5 skenario ekstrem" }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "SupabaseBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "CronBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Nilai CRON_SECRET yang dikonfigurasi pada server."
+      },
+      "TelegramSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Telegram-Bot-Api-Secret-Token"
+      }
     }
   }
 }

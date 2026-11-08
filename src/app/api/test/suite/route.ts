@@ -4,7 +4,8 @@
  * dan mengembalikan rekapitulasi status kelulusan (DoD) dalam bentuk JSON terstruktur.
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/apiAuth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { runMasterInClassTestSuite } from "@/lib/inClassTestbench";
 
@@ -15,7 +16,9 @@ export const dynamic = "force-dynamic";
  *
  * @returns Respons JSON berisi jumlah total kasus uji, jumlah lulus, dan status 100% kelulusan.
  */
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireApiRole(req, ["admin"]);
+  if (auth.response) return auth.response;
   try {
     const report = await runMasterInClassTestSuite({ silent: true });
     return successResponse(report, 200);

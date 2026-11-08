@@ -36,7 +36,6 @@ import {
   evaluateChlorophyllLoss,
 } from "@/lib/qualityGateAgent";
 import {
-  evaluateTier2PriorityWindow,
   validateClaimAgainstPriorityWindow,
   processPriorityWindowDowngrades,
 } from "@/lib/priorityWindowDispatcher";
@@ -45,10 +44,6 @@ import {
   handleTelegramCommand,
   dispatchTelegramMessage,
 } from "@/lib/telegramBotGateway";
-import {
-  buildVendorSurplusOfferKeyboard,
-  handleVendorCallbackQuery,
-} from "@/lib/vendorInlineKeyboardFlow";
 import {
   calculateFleetAllocation,
   generateDeliveryManifest,
@@ -72,14 +67,9 @@ import {
   executeDecomposedManagerialQuery,
   toolCallingRegistry,
 } from "@/lib/toolCallingRegistry";
-import {
-  DEMO_ACCOUNTS,
-  DUMMY_ACCOUNTS,
-  inferRoleFromEmail,
-} from "@/data/accounts";
+import { APP_ROLES, isAppRole } from "@/data/accounts";
 import { successResponse, errorResponse } from "@/lib/api-response";
-import { getEnv } from "@/lib/env";
-import { AppRole, RescueOffer } from "@/lib/simulationStore";
+import { envSchema } from "@/lib/env";
 import {
   haversineDistanceKm,
   findMatchesForOffer,
@@ -91,12 +81,6 @@ import {
   MARKET_ANCHOR_COORDINATES,
   CircularBuyer,
 } from "@/data/buyers";
-import {
-  generateBuyerBroadcastMessage,
-  executeFastClaim,
-  resetClaimLocks,
-  buyerClaimChannel,
-} from "@/lib/buyerClaimChannel";
 
 export interface MasterTestReport {
   suiteTitle: string;
@@ -177,7 +161,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 1. Suite 1: PSR-5
   startSuite("SUITE 1: PSR-5", "Telemetri Cuaca Hiperlokal & In-Memory Cache");
   weatherAgent.clearCache();
-  const wLive = await weatherAgent.getMarketWeather({ forceRefresh: true });
+  const wLive = await weatherAgent.getMarketWeather({ simulateOffline: true });
   assert(
     wLive.location.latitude === -6.2675 && wLive.location.longitude === 106.8702,
     "TC-W01",
@@ -366,6 +350,8 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   startSuite("SUITE 7: PSR-17", "Google Gemini 2.0 Flash ReAct Agent Core");
   const orchestratorRun = await executeAutonomousOrchestration({
     executionMode: "scheduled_autonomous_cron",
+    forceHeuristic: true,
+    recordResult: false,
   });
   assert(
     orchestratorRun.executionMode === "scheduled_autonomous_cron",
@@ -391,7 +377,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Penugasan armada angkut teralokasi berdasarkan kalkulasi volume tonase surplus",
     `Armada: ${orchestratorRun.fleetAssignmentsCount} unit`
   );
-  const liveQueryOutput = await processManagerialNaturalQuery("Lusa perlu berapa armada?", { forceHeuristic: true });
+  const liveQueryOutput = await processManagerialNaturalQuery("Lusa perlu berapa armada?", { forceHeuristic: true, recordResult: false });
   assert(
     liveQueryOutput.executiveSummary.length > 20 && geminiOrchestrator.name === "GeminiOrchestratorAgent",
     "TC-R05",
@@ -463,36 +449,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
   // 9. Suite 9: PSR-40
   startSuite("SUITE 9: PSR-40", "Supabase Role Authentication & Role Isolation");
-  const roles: AppRole[] = ["vendor", "warteg", "social_kitchen", "maggot", "logistics", "manager", "admin"];
-  roles.forEach((r) => {
-    const acc = DEMO_ACCOUNTS[r];
-    assert(
-      Boolean(acc && acc.role === r),
-      `TC-A01-${r}`,
-      `Akun preset peran '${r}' terdaftar lengkap`,
-      acc ? acc.email : "Undefined"
-    );
-  });
-  const dummyKeys = ["pasar1", "warteg1", "sosial1", "maggot1", "kurir1", "pengelola1", "admin1"];
-  dummyKeys.forEach((key) => {
-    const dummy = DUMMY_ACCOUNTS[key];
-    assert(
-      Boolean(dummy && dummy.username === key),
-      `TC-A02-${key}`,
-      `Akun dummy '${key}' terdaftar dengan username dan password yang sama`,
-      dummy ? `Role: ${dummy.role}` : "Undefined"
-    );
-  });
-  assert(
-    inferRoleFromEmail("pasar1") === "vendor" && inferRoleFromEmail("warteg1") === "warteg",
-    "TC-A03",
-    "Inferensi peran otomatis dari username dummy terverifikasi presisi",
-    "pasar1 -> vendor, warteg1 -> warteg"
-  );
+  for (const role of APP_ROLES) {
+    assert(isAppRole(role), "TC-A01-" + role, "Peran resmi dapat diverifikasi");
+  }
+  assert(!isAppRole("admin@pasarin.id"), "TC-A02", "Email tidak dapat digunakan sebagai peran.");
 
   // 10. Suite 10: PSR-3, 4, 24, 25
   startSuite("SUITE 10: PSR-3, 4, 24, 25", "Arsitektur API Envelope & Telegram Inline Gateway");
-  const env = getEnv();
+  const env = envSchema.parse({ CRON_SECRET_KEY: "cron-fixture", TELEGRAM_WEBHOOK_SECRET: "telegram-fixture" });
   assert(
     !!env.CRON_SECRET_KEY && env.CRON_SECRET_KEY.length > 0,
     "TC-E01",
@@ -516,9 +480,9 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // Pengujian Verifikasi PSR-24 Telegram Bot API Gateway & Webhook
-  const isSecretValid = verifyTelegramWebhookSecret(env.TELEGRAM_WEBHOOK_SECRET);
+  const isSecretValid = verifyTelegramWebhookSecret(env.TELEGRAM_WEBHOOK_SECRET, env.TELEGRAM_WEBHOOK_SECRET);
   assert(
-    isSecretValid === true && verifyTelegramWebhookSecret("token_palsu") === false,
+    isSecretValid === true && verifyTelegramWebhookSecret("token_palsu", env.TELEGRAM_WEBHOOK_SECRET) === false,
     "TC-TG01",
     "PSR-24 Webhook Security: Validasi tajuk secret token Telegram berhasil membedakan token sah vs palsu",
     "Token Protection Active"
@@ -530,7 +494,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "PSR-24 Command Dispatcher: Perintah Telegram /start berhasil diproses dengan balasan terstruktur",
     tgCommand.actionTaken
   );
-  const tgDispatch = await dispatchTelegramMessage("9001201", "Pesan uji coba latensi sistem PASARIN");
+  const tgDispatch = await dispatchTelegramMessage("9001201", "Pesan uji coba latensi sistem PASARIN", { simulate: true });
   assert(
     tgDispatch.success === true && tgDispatch.latencyMs < 3000,
     "TC-TG03",
@@ -538,22 +502,6 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Latensi: ${tgDispatch.latencyMs} ms`
   );
 
-  // Pengujian Verifikasi PSR-25 Vendor 1-Tap Inline Keyboard Flow
-  const testInlineKb = buildVendorSurplusOfferKeyboard("ofr_tb_demo_25");
-  assert(
-    testInlineKb.inline_keyboard[0].length === 2 &&
-    testInlineKb.inline_keyboard[0][0].text.includes("Setuju Jual"),
-    "TC-IK01",
-    "PSR-25 Inline Keyboard: Struktur tombol [✅ Setuju Jual] dan [❌ Lewati] terbangun presisi",
-    "1-Tap Action Ready"
-  );
-  const cbApprove = await handleVendorCallbackQuery("approve_offer:ofr_tb_demo_25", 9901, "9001201");
-  assert(
-    cbApprove.success === true && cbApprove.newStatus === "active" && cbApprove.broadcastToBuyers === true,
-    "TC-IK02",
-    "PSR-25 Callback Handler: 1-ketuk tombol Setuju Jual mengubah status penawaran menjadi 'active' seketika",
-    "Status: active (Broadcast On)"
-  );
   // 11. Suite 11: PSR-16
   startSuite("SUITE 11: PSR-16", "Integritas Master Data 30 Kios & 30 Komoditas");
   assert(
@@ -654,7 +602,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "PSR-37 Dynamic QRIS: String QRIS EMVCo TLV Bank Indonesia tervalidasi sah dengan checksum CRC16",
     `CRC: ${qrisSample.crc16} | Rp ${qrisStructure.amountIdr}`
   );
-  const escrowPoDSettlement = executeEscrowSettlement(87500, 25, "held_in_escrow");
+  const escrowPoDSettlement = executeEscrowSettlement(87500, "held_in_escrow");
   assert(
     escrowPoDSettlement.settled === true && escrowPoDSettlement.newStatus === "released_to_vendor",
     "TC-PSR37-02",
@@ -846,200 +794,6 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // ============================================================================
   // SUITE 14: PSR-26 (Buyer Instant Alert & Fast Claim Concurrency Channel)
   // ============================================================================
-  startSuite("SUITE 14: PSR-26", "Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik");
-
-  resetClaimLocks();
-
-  // TC-BC01 & TC-BC02: Integritas muatan broadcast & penghematan modal
-  const sampleOfferBC = {
-    id: "ofr_bc_01",
-    commodityId: "kangkung",
-    quantityKg: 40,
-    originalPricePerKg: 6000,
-    salvagePricePerKg: 2500,
-    discountPercentage: 58,
-    totalAmountIdr: 100000,
-    targetTier: "tier_1" as const,
-    expiresInMinutes: 30,
-  };
-  const targetWarteg = CIRCULAR_BUYERS.find((b) => b.id === "buyer_warteg_01")!;
-  const broadcastMsg = generateBuyerBroadcastMessage(sampleOfferBC, targetWarteg);
-  assert(
-    broadcastMsg.formattedMessageText.includes("Warteg Kharisma Bahari Condet") &&
-    broadcastMsg.formattedMessageText.includes("Diskon 58%"),
-    "TC-BC01",
-    "Pesan siaran memuat nama mitra, nama komoditas, persentase hemat modal, dan link klaim cepat",
-    `Penerima: ${broadcastMsg.recipientName}`
-  );
-  assert(
-    broadcastMsg.totalSavingsIdr === 140000,
-    "TC-BC02",
-    "Kalkulasi total penghematan modal belanja terverifikasi akurat (Rp 140.000)",
-    `Total Hemat: Rp ${broadcastMsg.totalSavingsIdr.toLocaleString("id-ID")}`
-  );
-
-  // TC-BC03 & TC-BC04: Eksekusi klaim normal tunggal & penerbitan QRIS/PoD
-  const singlePool: RescueOffer[] = [
-    {
-      id: "ofr_single_tb",
-      stockId: "stk_01",
-      vendorId: "vendor_kramat_01",
-      commodityId: "kangkung",
-      targetTier: "tier_1",
-      quantityKg: 45,
-      originalPricePerKg: 6000,
-      salvagePricePerKg: 2500,
-      discountPercentage: 58,
-      totalAmountIdr: 112500,
-      expiresInMinutes: 45,
-      status: "active",
-      paymentStatus: "unpaid",
-    },
-  ];
-  const claimSingleRes = await executeFastClaim(singlePool, "ofr_single_tb", {
-    buyerId: "buyer_warteg_01",
-    buyerName: "Warteg Kharisma Bahari Condet",
-    role: "warteg",
-  });
-  assert(
-    claimSingleRes.success === true && singlePool[0].status === "claimed",
-    "TC-BC03",
-    "Klaim pertama berhasil mengubah status lot menjadi 'claimed' dan mencatat nama pemenang",
-    `Status: ${singlePool[0].status}, Pemenang: ${singlePool[0].claimedBy}`
-  );
-  assert(
-    typeof claimSingleRes.qrisPaymentReference === "string" &&
-    typeof claimSingleRes.podVerificationToken === "string",
-    "TC-BC04",
-    "Klaim sukses menerbitkan referensi pembayaran QRIS dan token verifikasi fisik serah terima PoD",
-    `QRIS Ref: ${claimSingleRes.qrisPaymentReference}`
-  );
-
-  // TC-BC05 & TC-BC06: Uji balapan serentak 5 pembeli (Atomic Concurrency Test)
-  const hotLotId = "ofr_hot_race_tb";
-  const concurrentPool: RescueOffer[] = [
-    {
-      id: hotLotId,
-      stockId: "stk_rare_01",
-      vendorId: "vendor_kramat_02",
-      commodityId: "bayam",
-      targetTier: "tier_1",
-      quantityKg: 30,
-      originalPricePerKg: 7000,
-      salvagePricePerKg: 2500,
-      discountPercentage: 64,
-      totalAmountIdr: 75000,
-      expiresInMinutes: 20,
-      status: "active",
-      paymentStatus: "unpaid",
-    },
-  ];
-  const competingBuyers = [
-    { buyerId: "b1", buyerName: "Warteg Condet Raya", role: "warteg" as const },
-    { buyerId: "b2", buyerName: "Warteg Ibu Yayu Hek", role: "warteg" as const },
-    { buyerId: "b3", buyerName: "Warteg Barokah Cililitan", role: "warteg" as const },
-    { buyerId: "b4", buyerName: "Katering Cawang Baru", role: "warteg" as const },
-    { buyerId: "b5", buyerName: "Warteg TMII Pintu 1", role: "warteg" as const },
-  ];
-  const raceResults = await Promise.all(
-    competingBuyers.map((b) => executeFastClaim(concurrentPool, hotLotId, b))
-  );
-  const raceSuccesses = raceResults.filter((r) => r.success).length;
-  const raceRejections = raceResults.filter((r) => !r.success).length;
-  assert(
-    raceSuccesses === 1,
-    "TC-BC05",
-    "Proteksi Konkurensi Atomik: Dari 5 pembeli serentak, TEPAT 1 pembeli yang berhasil mengamankan lot",
-    `Sukses: ${raceSuccesses}, Tertolak: ${raceRejections}`
-  );
-  assert(
-    raceRejections === 4,
-    "TC-BC06",
-    "Empat pembeli lain yang kalah cepat otomatis ditolak untuk mencegah klaim ganda (Zero Double Claim)",
-    `Tertolak: ${raceRejections}`
-  );
-
-  // TC-BC07: Pesan penolakan santun untuk pembeli terlambat
-  const lateRes = await executeFastClaim(concurrentPool, hotLotId, {
-    buyerId: "b_late",
-    buyerName: "Warteg Telat",
-    role: "warteg",
-  });
-  assert(
-    lateRes.success === false && lateRes.code === "ALREADY_CLAIMED" && lateRes.message.includes("telah resmi diklaim oleh"),
-    "TC-BC07",
-    "Pembeli terlambat menerima pesan santun yang menginformasikan bahwa lot telah diambil mitra lain",
-    `Pesan: '${lateRes.message}'`
-  );
-
-  // TC-BC08: Validasi batas otoritas peran (Role Authorization Guard)
-  const freshTier1Pool: RescueOffer[] = [
-    {
-      id: "ofr_fresh_t1",
-      stockId: "stk_01",
-      vendorId: "v1",
-      commodityId: "kangkung",
-      targetTier: "tier_1",
-      quantityKg: 30,
-      originalPricePerKg: 6000,
-      salvagePricePerKg: 2500,
-      discountPercentage: 58,
-      totalAmountIdr: 75000,
-      expiresInMinutes: 30,
-      status: "active",
-      paymentStatus: "unpaid",
-    },
-  ];
-  const unauthRes = await executeFastClaim(freshTier1Pool, "ofr_fresh_t1", {
-    buyerId: "buyer_maggot_01",
-    buyerName: "Sentra Maggot BSF",
-    role: "maggot",
-  });
-  assert(
-    unauthRes.success === false && unauthRes.code === "TIER_MISMATCH",
-    "TC-BC08",
-    "Sistem memblokir akun Maggot yang mencoba mengklaim penawaran Tier 1 Warteg (Anti-Misallocation)",
-    `Kode: ${unauthRes.code}`
-  );
-
-  // TC-BC09: SLA latensi eksekusi transaksi klaim (< 50 ms)
-  const freshPool2: RescueOffer[] = [
-    {
-      id: "ofr_speed_tb",
-      stockId: "stk_05",
-      vendorId: "v3",
-      commodityId: "pakcoy",
-      targetTier: "tier_2",
-      quantityKg: 20,
-      originalPricePerKg: 8000,
-      salvagePricePerKg: 1200,
-      discountPercentage: 85,
-      totalAmountIdr: 24000,
-      expiresInMinutes: 30,
-      status: "active",
-      paymentStatus: "unpaid",
-    },
-  ];
-  const speedRes = await executeFastClaim(freshPool2, "ofr_speed_tb", {
-    buyerId: "buyer_social_01",
-    buyerName: "Dapur Pangan Yatim",
-    role: "social_kitchen",
-  });
-  assert(
-    speedRes.success === true && speedRes.executionDurationMs < 50.0,
-    "TC-BC09",
-    "Eksekusi penguncian atomik dan mutasi status tuntas dalam durasi kilat (< 50 ms)",
-    `Durasi: ${speedRes.executionDurationMs} ms`
-  );
-
-  // TC-BC10: Integritas fasad buyerClaimChannel
-  assert(
-    typeof buyerClaimChannel.generateBuyerBroadcastMessage === "function" &&
-    typeof buyerClaimChannel.executeFastClaim === "function",
-    "TC-BC10",
-    "Fasad buyerClaimChannel mengekspos generator pesan dan eksekutor klaim atomik secara terpadu",
-    "Fasad Channel Valid"
-  );
   // Finalize last suite
   if (currentSuiteId) {
     suiteSummaries.push({

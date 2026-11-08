@@ -12,7 +12,6 @@
 import {
   calculateFleetAllocation,
   generateDeliveryManifest,
-  VEHICLE_SPECIFICATIONS,
   CargoStop,
 } from "../src/lib/fleetCargoCalculator";
 

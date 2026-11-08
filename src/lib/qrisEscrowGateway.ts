@@ -219,11 +219,10 @@ export function transitionEscrowPaymentStatus(
 }
 
 /**
- * Mengeksekusi verifikasi pelepasan dana escrow otomatis (Zero-Click Settlement) berbasis token PoD HMAC.
+ * Menghitung pelepasan dana simulasi untuk pesanan yang telah dibayar.
  */
 export function executeEscrowSettlement(
   amountIdr: number,
-  _unusedDistance?: number,
   currentStatus: EscrowPaymentStatus = "held_in_escrow"
 ): {
   settled: boolean;
@@ -231,7 +230,14 @@ export function executeEscrowSettlement(
   newStatus: EscrowPaymentStatus;
   message: string;
 } {
-  // 2. Transisikan status pembayaran
+  if (!Number.isFinite(amountIdr) || amountIdr < 0) {
+    return {
+      settled: false,
+      newStatus: currentStatus,
+      creditedAmountIdr: 0,
+      message: "Nominal transaksi tidak valid.",
+    };
+  }
   const transition = transitionEscrowPaymentStatus(currentStatus, "release_to_vendor");
   if (!transition.success) {
     return {

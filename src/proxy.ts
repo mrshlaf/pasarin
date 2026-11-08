@@ -1,5 +1,5 @@
 /**
- * Middleware Global Edge Server (PSR-3).
+ * Proxy header keamanan HTTP.
  * Menerapkan header keamanan HTTP ketat (nosniff, DENY framing, strict-origin referrer)
  * serta mengonfigurasi header CORS dan penanganan preflight OPTIONS untuk seluruh rute `/api`.
  */
@@ -14,7 +14,7 @@ import type { NextRequest } from "next/server";
  * @param request - Objek NextRequest masuk dari klien.
  * @returns Respons NextResponse termodifikasi dengan header keamanan dan CORS.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   // Header keamanan standar
@@ -23,15 +23,8 @@ export function middleware(request: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Service-Identity", "PASARIN-Engine-v0.1.0");
 
-  // CORS headers untuk route /api
-  if (request.nextUrl.pathname.startsWith("/api")) {
-    response.headers.set("Access-Control-Allow-Origin", "*");
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
-
-    if (request.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: response.headers });
-    }
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    response.headers.set("Cache-Control", "no-store");
   }
 
   return response;

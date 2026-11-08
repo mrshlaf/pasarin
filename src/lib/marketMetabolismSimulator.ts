@@ -5,7 +5,7 @@
  * 2. Terik Siang (12:00 WIB): Puncak suhu los (34°C) & akselerasi laju respirasi kinetika Arrhenius-Q10.
  * 3. Evaluasi Mutu (14:30 WIB): Pemicuan Cron Sweep, penalaran ReAct AI Gemini 2.0 Flash, & Dynamic Pricing.
  * 4. Hujan Sore (15:30 WIB): Redaman pembeli 48%, alokasi prioritas 30m Dapur Sosial & klaim QRIS Escrow.
- * 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, verifikasi PoD GPS <= 50m, pelepasan escrow, & akuntansi emisi karbon.
+ * 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, konfirmasi serah terima, pelepasan escrow, & akuntansi emisi karbon.
  */
 
 import { KIOSKS } from "@/data/kiosks";
@@ -20,9 +20,8 @@ import {
   evaluateTier2PriorityWindow,
   validateClaimAgainstPriorityWindow,
 } from "@/lib/priorityWindowDispatcher";
-import { calculateFleetAllocation, generateDeliveryManifest } from "@/lib/fleetCargoCalculator";
+import { generateDeliveryManifest } from "@/lib/fleetCargoCalculator";
 import {
-  generateBankIndonesiaQrisPayload,
   executeEscrowSettlement,
 } from "@/lib/qrisEscrowGateway";
 
@@ -69,12 +68,9 @@ export interface MetabolismTrialReport {
 /**
  * Menjalankan uji coba komprehensif simulasi siklus 24 jam metabolisme pasar (PSR-31 Trial).
  *
- * @param verbose - Apakah mencetak log langkah ke konsol (default: false).
  * @returns Laporan performa uji coba metabolisme pasar lengkap.
  */
-export async function run24HourMarketMetabolismTrial(
-  verbose: boolean = false
-): Promise<MetabolismTrialReport> {
+export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialReport> {
   const trialStartTime = Date.now();
   const trialId = `TRL-24H-${Date.now().toString().slice(-6)}`;
   const phaseLogs: PhaseLogEntry[] = [];
@@ -83,9 +79,7 @@ export async function run24HourMarketMetabolismTrial(
   // FASE 1: Penerimaan Pasokan Grosir Subuh (04:30 WIB)
   // ===========================================================================
   let totalIntakeKg = 0;
-  KIOSKS.forEach((kiosk, idx) => {
-    const c1 = COMMODITIES[idx % COMMODITIES.length];
-    const c2 = COMMODITIES[(idx + 7) % COMMODITIES.length];
+  KIOSKS.forEach((_, idx) => {
     const kg1 = 70 + ((idx * 5) % 40);
     const kg2 = 50 + ((idx * 3) % 30);
     totalIntakeKg += kg1 + kg2;
@@ -133,7 +127,7 @@ export async function run24HourMarketMetabolismTrial(
   // ===========================================================================
   // FASE 3: Evaluasi Mutu Harian & ReAct AI Cron Sweep (14:30 WIB)
   // ===========================================================================
-  const orchestrationDossier = await executeAutonomousOrchestration();
+  const orchestrationDossier = await executeAutonomousOrchestration({ forceHeuristic: true, recordResult: false });
   const projectedSurplusKg = 1329.0;
   const tier1WartegKg = 785.0;
   const tier2SocialKg = 284.0;
@@ -214,9 +208,8 @@ export async function run24HourMarketMetabolismTrial(
     distanceKm: 2.2,
   });
 
-  // Simulasi serah terima PoD kurir GPS <= 50 meter dan settlement QRIS escrow
-  const qrisData = generateBankIndonesiaQrisPayload(112500, "INV-TRIAL-FINAL");
-  const podSettlement = executeEscrowSettlement(112500, 20, "held_in_escrow");
+  // Simulasi serah terima oleh kurir dan settlement QRIS escrow
+  const podSettlement = executeEscrowSettlement(112500, "held_in_escrow");
 
   phaseLogs.push({
     phase: "Fase 5: Distribusi Armada & Handover PoD",
@@ -224,7 +217,7 @@ export async function run24HourMarketMetabolismTrial(
     temperatureC: 28.0,
     humidityPercent: 82,
     status: "COMPLETED",
-    actionSummary: "Pengantaran logistik armada Viar/GranMax, validasi GPS Geofence <= 50m, dan pelepasan escrow otomatis.",
+    actionSummary: "Pengantaran logistik armada Viar/GranMax, konfirmasi serah terima, dan pelepasan escrow otomatis.",
     metrics: {
       allocatedVehicle: manifest.allocatedVehicle.displayName,
       driverAssigned: manifest.driverName,

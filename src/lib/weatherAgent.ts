@@ -159,6 +159,7 @@ function returnFallbackProfile(
     recordedAt: new Date(currentTimestampMs).toISOString(),
     cacheExpiresAt: new Date(currentTimestampMs + WEATHER_CACHE_TTL_MS).toISOString(),
     source: sourceLabel,
+    isEstimated: true,
     temperatureCelsius: 32.0,
     relativeHumidityPercent: 75.0,
     location: {

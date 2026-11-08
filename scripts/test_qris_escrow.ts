@@ -4,13 +4,12 @@
  * 1. Pembangkitan string payload QRIS Dinamis EMVCo TLV dengan checksum CRC16-CCITT (0x1021).
  * 2. Validasi struktur QRIS dan pendeteksian payload cacat/manipulatif.
  * 3. Mesin Transisi Status Rekening Escrow (unpaid -> held_in_escrow -> released_to_vendor).
- * 4. Pelepasan dana otomatis ke dompet pedagang saat validasi GPS geofence <= 50m terpenuhi.
+ * 4. Pelepasan dana otomatis ke dompet pedagang saat konfirmasi serah terima terpenuhi.
  */
 
 import {
   generateBankIndonesiaQrisPayload,
   validateQrisPayloadStructure,
-  calculateQrisCrc16,
   transitionEscrowPaymentStatus,
   executeEscrowSettlement,
 } from "../src/lib/qrisEscrowGateway";
@@ -31,7 +30,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
 async function runQrisEscrowTests() {
   console.log("================================================================================");
   console.log("  PENGUJIAN UNIT MANDIRI: PSR-37 (DYNAMIC QRIS ESCROW PAYMENT GATEWAY)");
-  console.log("  Fokus: Format EMVCo TLV, Checksum CRC16, & Pelepasan Dana Escrow PoD <= 50m");
+  console.log("  Fokus: Format EMVCo TLV, Checksum CRC16, & Pelepasan Dana Escrow");
   console.log("================================================================================\n");
 
   // Test 1: Pembangkitan Payload QRIS Dinamis Berstandar Nasional
@@ -99,19 +98,19 @@ async function runQrisEscrowTests() {
     invalidTransition.reason
   );
 
-  // Test 4: Eksekusi Pelepasan Dana Escrow dengan Validasi Geofence PoD <= 50m
-  console.log("\n[Test 4] Eksekusi Pelepasan Dana Escrow Berbasis Sensor Jarak GPS");
-  const failSettlement = executeEscrowSettlement(112500, 75, "held_in_escrow");
+  // Test 4: Eksekusi Pelepasan Dana Escrow setelah konfirmasi serah terima
+  console.log("\n[Test 4] Eksekusi Pelepasan Dana Escrow Setelah Serah Terima");
+  const failSettlement = executeEscrowSettlement(112500, "unpaid");
   assert(
-    failSettlement.settled === false && failSettlement.newStatus === "held_in_escrow",
-    "Pencairan ditolak ketika jarak kurir 75m melebihi radius batas geofence aman (50m)",
+    failSettlement.settled === false && failSettlement.newStatus === "unpaid",
+    "Pencairan ditolak jika pesanan belum dibayar",
     failSettlement.message
   );
 
-  const successSettlement = executeEscrowSettlement(112500, 20, "held_in_escrow");
+  const successSettlement = executeEscrowSettlement(112500, "held_in_escrow");
   assert(
     successSettlement.settled === true && successSettlement.creditedAmountIdr === 112500,
-    "Pencairan berhasil: Saat kurir terverifikasi pada jarak 20m (<= 50m), dana Rp 112.500 dilepas ke dompet pedagang",
+    "Pencairan berhasil: Saat serah terima dikonfirmasi, dana Rp 112.500 dilepas ke dompet pedagang",
     `Status: ${successSettlement.newStatus} | Kredit: Rp ${successSettlement.creditedAmountIdr}`
   );
 

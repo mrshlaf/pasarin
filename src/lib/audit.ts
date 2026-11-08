@@ -4,7 +4,7 @@
  * Mengimplementasikan buffer memori sirkular lokal (kapasitas 100 entri) sebagai fail-safe saat jaringan database terputus.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getServiceRoleClient } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
 
 const inMemoryAuditRingBuffer: SystemAuditTrailRecord[] = [];
@@ -56,11 +56,11 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
 
   // Coba persist ke Supabase jika URL sudah diset
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseLive = Boolean(supabaseUrl) && !supabaseUrl?.includes("placeholder");
+  const isSupabaseLive = Boolean(supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (isSupabaseLive) {
     try {
-      const { error } = await supabase.from("system_audit_trail").insert([
+      const { error } = await getServiceRoleClient().from("system_audit_trail").insert([
         {
           event_id: record.event_id,
           subsystem: record.subsystem,

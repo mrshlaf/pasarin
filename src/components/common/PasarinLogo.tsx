@@ -41,7 +41,7 @@ export function PasarinLogo({
       <div className="relative shrink-0 flex items-center justify-center">
         <Image
           src={iconSrc}
-          alt="PASARIN Logo"
+          alt=""
           width={iconDimensions.w}
           height={iconDimensions.h}
           className="object-contain"
@@ -54,16 +54,15 @@ export function PasarinLogo({
         <div className="flex items-center gap-1.5">
           <span
             className={`font-black uppercase leading-none font-sans ${titleSize} ${
-              variant === "white" ? "text-white" : "text-pine"
+              variant === "white" ? "text-white" : "text-[#214d43]"
             }`}
           >
             PASARIN
           </span>
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-600 shrink-0" />
         </div>
         {showSubtitle && (
           <span
-            className={`font-medium leading-none mt-1.5 whitespace-nowrap ${subtitleSize} ${
+            className={`mt-1.5 hidden whitespace-nowrap font-medium leading-none sm:block ${subtitleSize} ${
               variant === "white" ? "text-slate-200" : "text-slate-500"
             }`}
           >

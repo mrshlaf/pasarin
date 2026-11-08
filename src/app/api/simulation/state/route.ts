@@ -1,141 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
-import { DEMO_SEED_OFFERS, DEMO_SEED_TRANSACTIONS } from "@/data/seedData";
-import { getServerSimulationState, saveServerSimulationState } from "@/lib/serverSimulationState";
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-response";
+import { requireApiRole } from "@/lib/apiAuth";
+import {
+  addVendorStockServer, decideVendorOffer, readMarketSnapshot, payOfferServer,
+  publishMarketOffers, confirmDeliveryServer,
+} from "@/lib/serverSimulationState";
 
-const STATE_FILE_PATH = path.join(process.cwd(), "src", "data", "simulationState.json");
+const offerId = z.string().min(1).max(100);
+const actions = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("stock"), commodityId: z.string().min(1).max(100), quantityKg: z.number().positive().max(10000) }),
+  z.object({ action: z.literal("publish"), stockId: offerId }),
+  z.object({ action: z.literal("vendor_decision"), offerId, approved: z.boolean() }),
+  z.object({ action: z.literal("payment"), offerId }),
+  z.object({ action: z.literal("delivery"), offerId }),
+]);
 
-interface SimulationSavedState {
-  offers: typeof DEMO_SEED_OFFERS;
-  transactions: typeof DEMO_SEED_TRANSACTIONS;
-}
-
-function readPersistentState(): SimulationSavedState {
+/** Returns the current data and decay visible to this account. */
+export async function GET(req: NextRequest) {
+  const auth = await requireApiRole(req);
+  if (auth.response) return auth.response;
   try {
-    if (fs.existsSync(STATE_FILE_PATH)) {
-      const content = fs.readFileSync(STATE_FILE_PATH, "utf-8");
-      const parsed = JSON.parse(content);
-      return {
-        offers: Array.isArray(parsed.offers) ? parsed.offers : [],
-        transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
-      };
-    }
-  } catch (err) {
-    console.warn("[SimulationState Read Warning]:", err);
-  }
-  return { offers: [], transactions: [] };
-}
-
-function writePersistentState(state: SimulationSavedState) {
-  try {
-    fs.writeFileSync(STATE_FILE_PATH, JSON.stringify(state, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[SimulationState Write Error]:", err);
+    return successResponse(await readMarketSnapshot(auth.user));
+  } catch (error) {
+    console.error("Cannot read simulation state", error);
+    return errorResponse("Data pasar sedang tidak tersedia.", 503);
   }
 }
 
-export async function GET() {
-  const current = getServerSimulationState();
-  return NextResponse.json({
-    success: true,
-    data: current,
-  });
-}
-
+/** Validates a market action before executing the authorized state transition. */
 export async function POST(req: NextRequest) {
+  const auth = await requireApiRole(req);
+  if (auth.response) return auth.response;
+
+  const validation = await validateJsonBody(req, actions);
+  if (!validation.success) return validation.errorResponse;
+  const { data } = validation;
+  const { user } = auth;
+  const forbidden = () => errorResponse("Peran ini tidak dapat menjalankan tindakan tersebut.", 403);
+
   try {
-    const body = await req.json().catch(() => ({ action: "clear" }));
-    const action = body.action || "clear";
-
-    if (action === "clear") {
-      const emptyState = {
-        offers: [],
-        transactions: [],
-        vendorWalletIdr: 345000,
-        biomassProcessedKg: 0,
-        socialMealsServed: 0,
-        lastUpdated: new Date().toISOString(),
-      };
-      saveServerSimulationState(emptyState);
-      writePersistentState({ offers: [], transactions: [] });
-      return NextResponse.json({
-        success: true,
-        message: "Status simulasi berhasil di-reset total dari nol (Kondisi Awal Pagi Hari).",
-        data: emptyState,
-      });
+    let result;
+    switch (data.action) {
+      case "stock":
+      case "publish":
+      case "vendor_decision":
+        if (user.role !== "vendor" || !user.vendorId) return forbidden();
+        if (data.action === "stock") {
+          result = await addVendorStockServer(data.commodityId, data.quantityKg, user.vendorId);
+        } else if (data.action === "publish") {
+          result = await publishMarketOffers(user.vendorId, data.stockId);
+        } else {
+          result = await decideVendorOffer(data.offerId, user.vendorId, data.approved);
+        }
+        break;
+      case "payment":
+        if (user.role !== "warteg") return forbidden();
+        result = await payOfferServer(data.offerId, user.id);
+        break;
+      case "delivery":
+        if (user.role !== "logistics") return forbidden();
+        result = await confirmDeliveryServer(data.offerId);
+        break;
     }
 
-    if (action === "seed" || action === "seed_all") {
-      const seededState = {
-        offers: [...DEMO_SEED_OFFERS],
-        transactions: [...DEMO_SEED_TRANSACTIONS],
-      };
-      writePersistentState(seededState);
-      return NextResponse.json({
-        success: true,
-        message: "Seluruh 8 lot demo 3-tier berhasil dimuat untuk pengujian komprehensif.",
-        data: seededState,
-      });
-    }
-
-    if (action === "seed_warteg") {
-      const state = {
-        offers: DEMO_SEED_OFFERS.filter((o) => o.targetTier === "tier_1"),
-        transactions: [],
-      };
-      writePersistentState(state);
-      return NextResponse.json({
-        success: true,
-        message: "Katalog Warteg (Tier 1) berhasil dimuat (Kangkung, Bayam, Tomat).",
-        data: state,
-      });
-    }
-
-    if (action === "seed_social") {
-      const state = {
-        offers: DEMO_SEED_OFFERS.filter((o) => o.targetTier === "tier_2"),
-        transactions: [],
-      };
-      writePersistentState(state);
-      return NextResponse.json({
-        success: true,
-        message: "Alokasi Dapur Sosial & Panti (Tier 2) berhasil dimuat (Pakcoy, Buncis).",
-        data: state,
-      });
-    }
-
-    if (action === "seed_maggot") {
-      const state = {
-        offers: DEMO_SEED_OFFERS.filter((o) => o.targetTier === "tier_3"),
-        transactions: [],
-      };
-      writePersistentState(state);
-      return NextResponse.json({
-        success: true,
-        message: "Muatan Organik Maggot BSF (Tier 3) berhasil dimuat (Sawi Afkir, Terung).",
-        data: state,
-      });
-    }
-
-    if (action === "seed_courier") {
-      const state = {
-        offers: DEMO_SEED_OFFERS.filter((o) => o.status === "claimed"),
-        transactions: [...DEMO_SEED_TRANSACTIONS],
-      };
-      writePersistentState(state);
-      return NextResponse.json({
-        success: true,
-        message: "Tugas Pengantaran Kurir Viar aktif & Rekening Escrow berhasil disiapkan.",
-        data: state,
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: "Aksi tidak dikenal. Pilihan: clear, seed, seed_warteg, seed_social, seed_maggot, seed_courier" },
-      { status: 400 }
-    );
-  } catch (err) {
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    if (!result.success) return errorResponse(result.message, result.status);
+    return successResponse({
+      message: result.message,
+      state: await readMarketSnapshot(user),
+    });
+  } catch (error) {
+    console.error("Cannot update simulation state", error);
+    return errorResponse("Penyimpanan data pasar sedang tidak tersedia.", 503);
   }
 }

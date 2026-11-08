@@ -6,7 +6,6 @@ import {
   MARKET_ANCHOR_COORDINATES,
   MAX_MATCHMAKING_RADIUS_KM,
 } from "@/data/buyers";
-import { RescueOffer } from "@/lib/simulationStore";
 
 // Radius bola bumi rata-rata (WGS-84 spherical approximation)
 export const EARTH_RADIUS_KM = 6371.0;
