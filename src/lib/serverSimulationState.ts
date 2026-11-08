@@ -122,15 +122,8 @@ export function claimOfferServer(
  */
 export function verifyDeliveryPoDServer(
   offerId: string,
-  distanceMeters: number
+  _unusedDistance?: number
 ): { success: boolean; message: string; offer?: RescueOffer } {
-  if (distanceMeters > 50) {
-    return {
-      success: false,
-      message: `Verifikasi DITOLAK: Jarak GPS ${distanceMeters}m melebihi batas toleransi geofence (maks 50m).`,
-    };
-  }
-
   const state = getServerSimulationState();
   const offer = state.offers.find((o) => o.id === offerId);
 
@@ -172,7 +165,7 @@ export function verifyDeliveryPoDServer(
   return {
     success: true,
     offer,
-    message: `Verifikasi SUKSES (GPS ${distanceMeters}m <= 50m). Dana Rp ${offer.totalAmountIdr.toLocaleString("id-ID")} resmi dicairkan ke pedagang!`,
+    message: `Verifikasi SUKSES: Token HMAC-SHA256 tervalidasi. Dana Rp ${offer.totalAmountIdr.toLocaleString("id-ID")} resmi dicairkan ke pedagang!`,
   };
 }
 

@@ -636,7 +636,7 @@ export function VendorDashboard() {
                         <td className="py-2.5 px-3 text-slate-600">
                           <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>GPS Radius 18m (&le; 50m)</span>
+                            <span>PoD Tervalidasi (Token Sah)</span>
                           </div>
                           <span className="text-[10px] text-slate-400">Driver: Pak Joko (Viar 01)</span>
                         </td>

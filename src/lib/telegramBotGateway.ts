@@ -490,7 +490,7 @@ export async function handleTelegramCommand(
         responseText:
           `🚚 *BERHASIL BERGANTI PERAN: Kurir Armada Viar 01 (Pak Joko)*\n\n` +
           `• Armada: Viar Listrik (Plat B 3482 UIL) · Kapasitas 300 kg\n` +
-          `• Geofence: Validasi GPS Geofence otomatis (18m <= 50m)\n\n` +
+          `• Otorisasi: Verifikasi Kode Token PoD HMAC\n\n` +
           `Ketik /tugas untuk melihat antrean jemputan atau validasi PoD di bawah:`,
         replyMarkup: buildLogisticsTasksKeyboard(),
       };
@@ -615,7 +615,7 @@ export async function handleTelegramCommand(
             `• *Kendaraan*: Viar Karya Listrik (Plat B 3482 UIL)\n` +
             `• *Pangkalan*: Parkir Barat Pasar Induk Kramat Jati\n` +
             `• *Radius Operasi*: <= 5.0 km (Condet, Cililitan, Cawang)\n` +
-            `• *Toleransi PoD*: Sensor GPS Geofence <= 50 meter\n\n` +
+            `• *Otorisasi PoD*: Kunci Kriptografi Token HMAC\n\n` +
             `👉 *Perintah Kurir:*\n` +
             `• Ketik \`/tugas\` (atau \`/surplus\`) untuk melihat antrean pengantaran\n` +
             `• Ketik \`/role\` untuk beralih peran\n` +

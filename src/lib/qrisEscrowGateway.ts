@@ -219,29 +219,18 @@ export function transitionEscrowPaymentStatus(
 }
 
 /**
- * Mengeksekusi verifikasi pelepasan dana escrow otomatis (Zero-Click Settlement).
- * Wajib memenuhi validasi GPS geofence <= 50 meter dari los pedagang.
+ * Mengeksekusi verifikasi pelepasan dana escrow otomatis (Zero-Click Settlement) berbasis token PoD HMAC.
  */
 export function executeEscrowSettlement(
   amountIdr: number,
-  gpsDistanceMeters: number,
-  currentStatus: EscrowPaymentStatus
+  _unusedDistance?: number,
+  currentStatus: EscrowPaymentStatus = "held_in_escrow"
 ): {
   settled: boolean;
   creditedAmountIdr: number;
   newStatus: EscrowPaymentStatus;
   message: string;
 } {
-  // 1. Validasi jarak fisik kurir
-  if (gpsDistanceMeters > 50) {
-    return {
-      settled: false,
-      creditedAmountIdr: 0,
-      newStatus: currentStatus,
-      message: `Pencairan Ditolak: Jarak pengantaran kurir ${gpsDistanceMeters}m di luar batas toleransi geofence (maks 50m).`,
-    };
-  }
-
   // 2. Transisikan status pembayaran
   const transition = transitionEscrowPaymentStatus(currentStatus, "release_to_vendor");
   if (!transition.success) {

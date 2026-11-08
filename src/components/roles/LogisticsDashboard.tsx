@@ -36,8 +36,8 @@ export function LogisticsDashboard() {
 
   const handleVerifyPoD = () => {
     if (!selectedOfferForPoD) return;
-    // Otomatis verifikasi jarak GPS riil kurir yang terdeteksi berada di radius aman (18m <= 50m)
-    const result = verifyDeliveryPoD(selectedOfferForPoD.id, 18);
+    // Verifikasi serah terima fisik komoditas berbasis token otorisasi digital PoD
+    const result = verifyDeliveryPoD(selectedOfferForPoD.id, 0);
     setPodFeedback(result);
     if (result.success) {
       setTimeout(() => {
@@ -125,21 +125,20 @@ export function LogisticsDashboard() {
 
         <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs mb-1">
-            <span className="font-medium">Geofence Validasi</span>
+            <span className="font-medium">Otorisasi Serah Terima</span>
             <ShieldCheck className="w-4 h-4 text-[#047857]" />
           </div>
-          <p className="text-lg font-black font-mono text-[#047857]">&le; 50 meter</p>
-          <span className="text-[10px] text-slate-500 mt-0.5 block">Proteksi kecurangan serah terima</span>
+          <p className="text-lg font-black font-mono text-[#047857]">Token PoD</p>
+          <span className="text-[10px] text-slate-500 mt-0.5 block">Proteksi keabsahan serah terima</span>
         </div>
       </div>
-
       {/* Active Delivery Queue */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
         <h3 className="text-sm font-bold text-slate-900 mb-0.5">
           Daftar Penugasan Pengantaran & Validasi PoD
         </h3>
         <p className="text-xs text-slate-500 mb-4 font-medium">
-          Konfirmasi serah terima fisik di los pedagang dengan validasi geofence GPS radius &le; 50 meter
+          Konfirmasi serah terima fisik komoditas dengan verifikasi kode otorisasi Proof of Delivery (PoD)
         </p>
 
         {dispatchableOffers.length === 0 ? (
@@ -209,7 +208,7 @@ export function LogisticsDashboard() {
           <span>Riwayat Pengantaran Selesai & Pelepasan Escrow ({settledOffers.length} Lot)</span>
         </h3>
         <p className="text-xs text-slate-500 mb-4 font-medium">
-          Daftar pengantaran armada yang telah tervalidasi PoD Geofence GPS &le; 50m dan dana telah dicairkan ke pedagang
+          Daftar pengantaran armada yang telah tervalidasi Proof of Delivery (PoD) dan dana telah dicairkan ke pedagang
         </p>
 
         {settledOffers.length === 0 ? (
@@ -224,7 +223,7 @@ export function LogisticsDashboard() {
                   <th className="py-2.5 px-3">Komoditas & Muatan</th>
                   <th className="py-2.5 px-3">Asal Kios</th>
                   <th className="py-2.5 px-3">Tujuan Pengantaran</th>
-                  <th className="py-2.5 px-3">Validasi GPS PoD</th>
+                  <th className="py-2.5 px-3">Validasi Serah Terima (PoD)</th>
                   <th className="py-2.5 px-3">Status Escrow</th>
                 </tr>
               </thead>
@@ -258,7 +257,7 @@ export function LogisticsDashboard() {
                       <td className="py-2.5 px-3 text-slate-600">
                         <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
                           <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>GPS 18m (&le; 50m)</span>
+                          <span>PoD Tervalidasi</span>
                         </div>
                         <span className="text-[10px] font-mono text-[#075985]">
                           Token: {ofr.podToken || "POD-HMAC-VERIFY"}
@@ -290,10 +289,10 @@ export function LogisticsDashboard() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-900">
-                  Validasi Serah Terima PoD
+                  Validasi Serah Terima Fisik (Proof of Delivery)
                 </h4>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Verifikasi kunci HMAC & geofence GPS &le; 50 meter dari los pedagang
+                  Verifikasi kode otorisasi token PoD saat komoditas diserahterimakan
                 </p>
               </div>
             </div>
@@ -317,19 +316,19 @@ export function LogisticsDashboard() {
               </div>
             </div>
 
-            {/* Sensor GPS Otomatis (Clean Real-World Verification) */}
+            {/* Status Otorisasi Serah Terima */}
             <div className="mb-4 p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-slate-600 font-medium flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-emerald-700" />
-                  Sensor GPS Geofence:
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                  Status Otorisasi:
                 </span>
                 <span className="font-mono font-bold text-[#047857] bg-white px-2 py-0.5 rounded border border-emerald-200">
-                  18 meter (Lolos &le; 50m)
+                  Siap Serah Terima Fisik
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
-                Posisi kurir terdeteksi berada di titik serah terima terdaftar. Kunci HMAC siap divalidasi.
+                Paket komoditas telah tiba di lokasi tujuan. Kunci token siap diverifikasi untuk pelepasan dana.
               </p>
             </div>
             {/* Feedback message */}

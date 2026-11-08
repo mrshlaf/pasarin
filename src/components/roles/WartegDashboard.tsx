@@ -347,7 +347,7 @@ export function WartegDashboard() {
                       <th className="py-2.5 px-3">Volume Diterima</th>
                       <th className="py-2.5 px-3">Asal Kios Lapak</th>
                       <th className="py-2.5 px-3">Pelepasan Escrow (QRIS BI)</th>
-                      <th className="py-2.5 px-3">Validasi GPS PoD Kurir</th>
+                      <th className="py-2.5 px-3">Validasi Serah Terima (PoD)</th>
                       <th className="py-2.5 px-3">Status Pesanan</th>
                     </tr>
                   </thead>
@@ -388,7 +388,7 @@ export function WartegDashboard() {
                           <td className="py-2.5 px-3 text-slate-600">
                             <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
                               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>GPS Radius 18m (&le; 50m)</span>
+                              <span>PoD Tervalidasi (Token Sah)</span>
                             </div>
                             <span className="text-[10px] text-slate-400 font-mono block">
                               Driver: Pak Joko (Viar 01) · Token: {ofr.podToken || "POD-HMAC-VERIFY"}
