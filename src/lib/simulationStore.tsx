@@ -263,8 +263,7 @@ function generateMarketWideInitialStocks(): StockItem[] {
 
 const INITIAL_STOCKS: StockItem[] = generateMarketWideInitialStocks();
 
-
-export const INITIAL_OFFERS: RescueOffer[] = [];
+export const INITIAL_OFFERS: RescueOffer[] = [...DEMO_SEED_OFFERS];
 export const INITIAL_TRANSACTIONS: EscrowTransaction[] = [];
 
 /**
@@ -309,8 +308,12 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
             setTransactionsState([]);
             setVendorWalletBalanceIdrState(345000);
           } else {
-            setOffersState(json.data.offers);
-            setTransactionsState(json.data.transactions);
+            // Pertahankan state aktif pengguna di localStorage jika sudah ada sesi transaksi berjalan
+            const localSavedOffers = typeof window !== "undefined" ? localStorage.getItem("pasarin_sim_offers") : null;
+            if (!localSavedOffers) {
+              setOffersState(json.data.offers);
+              setTransactionsState(json.data.transactions);
+            }
           }
         }
       })
@@ -324,13 +327,18 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(saved) as StockItem[];
           let needsUpdate = false;
           const hydrated = parsed.map((item) => {
+            let updated = { ...item };
             if (!item.createdAt) {
               needsUpdate = true;
               const isOvernight = item.arrivalClock?.toLowerCase().includes("inap") || item.arrivalClock?.toLowerCase().includes("kemarin");
-              const defaultCreatedMs = isOvernight ? Date.now() - 25 * 3600 * 1000 : Date.now() - 14 * 3600 * 1000;
-              return { ...item, createdAt: new Date(defaultCreatedMs).toISOString() };
+              const defaultCreatedMs = isOvernight ? Date.now() - 75 * 3600 * 1000 : Date.now() - 14 * 3600 * 1000;
+              updated.createdAt = new Date(defaultCreatedMs).toISOString();
             }
-            return item;
+            if (item.id === "stk_09" && (!item.hoursOffset || item.hoursOffset < 75)) {
+              needsUpdate = true;
+              updated.hoursOffset = 75;
+            }
+            return updated;
           });
           if (needsUpdate) {
             localStorage.setItem("pasarin_sim_stocks", JSON.stringify(hydrated));
@@ -566,12 +574,51 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
               claimedBy: buyerName,
               claimedAt: stageConfig.clockTime,
               claimantRole,
-              allocatedDriver: "Armada Viar 01 (Pak Joko)",
+              paymentStatus:
+                claimantRole === "social_kitchen" || claimantRole === "maggot"
+                  ? "held_in_escrow"
+                  : o.paymentStatus,
+              allocatedDriver:
+                claimantRole === "maggot"
+                  ? "Armada TPS 3R (Pak Joko)"
+                  : "Armada Viar 01 (Pak Joko)",
               podToken: `POD-HMAC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
             }
           : o
       )
     );
+
+    // Otomatis catat penjaminan dana / subsidi di rekening penampungan bersama
+    if (claimantRole === "social_kitchen" || claimantRole === "maggot") {
+      const vendor = KIOSKS.find((k) => k.id === targetOffer.vendorId);
+      const comm = COMMODITIES.find((c) => c.id === targetOffer.commodityId);
+      const newTx: EscrowTransaction = {
+        id: `tx_${claimantRole}_${Date.now()}`,
+        offerId,
+        buyerName,
+        vendorName: vendor?.name || "H. Rohmat Sayur Daun",
+        commodityName: comm?.localName || targetOffer.commodityId,
+        amountIdr: targetOffer.totalAmountIdr,
+        status: "held_in_escrow",
+        createdAt: stageConfig.clockTime,
+        qrisPayload: `PASARIN-SUBSIDI-${claimantRole.toUpperCase()}-${offerId}`,
+      };
+      setTransactions((prev) => [newTx, ...prev]);
+    }
+
+    setNotifications((prev) => [
+      {
+        id: `notif_${Date.now()}`,
+        recipient: targetOffer.vendorId,
+        role: "vendor",
+        message: `🚚 Kurir Armada ditugaskan menjemput lot #${offerId} (${targetOffer.quantityKg} kg) untuk diantar ke ${buyerName}.`,
+        timestamp: stageConfig.clockTime,
+        actionRequired: false,
+        offerId,
+        type: "dispatch",
+      },
+      ...prev,
+    ]);
   };
 
   // Pembayaran Escrow via QRIS
@@ -814,8 +861,8 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("pasarin_sim_wallet");
     }
     setStockItems(generateMarketWideInitialStocks());
-    setOffers(INITIAL_OFFERS);
-    setTransactions(INITIAL_TRANSACTIONS);
+    setOffers([...DEMO_SEED_OFFERS]);
+    setTransactions([]);
     setVendorWalletBalanceIdr(345000);
   };
 

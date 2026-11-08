@@ -10,6 +10,7 @@
 
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { COMMODITIES } from "@/data/commodities";
+import { KIOSKS } from "@/data/kiosks";
 import {
   Recycle,
   Scale,
@@ -17,24 +18,32 @@ import {
   Layers,
   MapPin,
   Check,
+  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
-
 export function MaggotDashboard() {
-  const { offers, claimOfferByBuyer } = useMarketSimulation();
+  const { offers, stockItems, getEvaluationForStock, claimOfferByBuyer } = useMarketSimulation();
 
-  const tier3Offers = offers.filter(
-    (o) => o.targetTier === "tier_3" && o.status === "active"
-  );
-
+  const tier3Offers = offers.filter((o) => {
+    if (o.status !== "active") return false;
+    if (o.targetTier === "tier_3") return true;
+    const linkedStock = stockItems.find((s) => s.id === o.stockId);
+    if (linkedStock) {
+      const evaluation = getEvaluationForStock(linkedStock);
+      if (evaluation.decayScore >= 0.85) return true;
+    }
+    return false;
+  });
   const claimedTier3Offers = offers.filter(
-    (o) => o.claimantRole === "maggot" || (o.status === "claimed" && o.targetTier === "tier_3")
+    (o) => o.claimantRole === "maggot" || (o.targetTier === "tier_3" && (o.status === "claimed" || o.status === "settled"))
   );
+
+  const settledMaggotLots = claimedTier3Offers.filter((o) => o.status === "settled");
 
   const totalBiomassIntakeKg = claimedTier3Offers.reduce(
     (acc, o) => acc + o.quantityKg,
     180
   );
-
   const estLarvaHarvestKg = Number((totalBiomassIntakeKg / 5.0).toFixed(1));
   const estKasgotFertilizerKg = Number((totalBiomassIntakeKg * 0.24).toFixed(1));
 
@@ -191,6 +200,105 @@ export function MaggotDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Riwayat Biokonversi & Pakan Maggot Selesai (Tracking History) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Riwayat Biokonversi & Pakan Maggot Selesai ({settledMaggotLots.length} Lot)</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Pelacakan transparan seluruh muatan limbah organik pasar yang telah terurai di bak biopond larva BSF
+            </p>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-emerald-50 text-[#047857] px-2.5 py-1 rounded-md border border-emerald-200 self-start sm:self-center">
+            {settledMaggotLots.reduce((acc, o) => acc + o.quantityKg, 0)} kg Terolah di TPS 3R
+          </span>
+        </div>
+
+        {settledMaggotLots.length === 0 ? (
+          <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
+            Belum ada muatan limbah afkir yang selesai diantar ke biopond hari ini.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50/70">
+                  <th className="py-2.5 px-3">Komoditas Afkir & No. Lot</th>
+                  <th className="py-2.5 px-3">Volume Biomassa</th>
+                  <th className="py-2.5 px-3">Asal Kios Los</th>
+                  <th className="py-2.5 px-3">Hasil Biokonversi</th>
+                  <th className="py-2.5 px-3">Validasi Pengangkutan</th>
+                  <th className="py-2.5 px-3">Status Pengolahan</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {settledMaggotLots.map((ofr) => {
+                  const comm = COMMODITIES.find((c) => c.id === ofr.commodityId);
+                  const vendor = KIOSKS.find((k) => k.id === ofr.vendorId);
+                  const larvaKg = (ofr.quantityKg / 5.0).toFixed(1);
+                  const kasgotKg = (ofr.quantityKg * 0.24).toFixed(1);
+
+                  return (
+                    <tr key={ofr.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900">
+                          {comm?.localName || ofr.commodityId}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400">
+                          ID: {ofr.id} · Non-Food Grade
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200">
+                          {ofr.quantityKg} kg Biomassa
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-slate-700">
+                        <div className="font-semibold text-slate-900">{vendor?.name}</div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Kios {vendor?.stallNumber} (Blok {vendor?.block})
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <div className="font-mono font-bold text-[#047857]">
+                          +{larvaKg} kg Larva Protein
+                        </div>
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          +{kasgotKg} kg Pupuk Kasgot
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-slate-600">
+                        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Armada TPS 3R</span>
+                        </div>
+                        <span className="text-[10px] font-mono text-slate-400">
+                          Token: {ofr.podToken || "POD-HMAC-VERIFY"}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          Terurai di Biopond
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
