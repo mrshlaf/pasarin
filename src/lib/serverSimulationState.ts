@@ -10,9 +10,21 @@ import fs from "node:fs";
 import { DEMO_SEED_OFFERS, DEMO_SEED_TRANSACTIONS, RescueOffer, EscrowTransaction } from "@/data/seedData";
 const TMP_STATE_FILE = path.join(os.tmpdir(), "pasarin_server_state_v1.json");
 
+export interface ServerStockItem {
+  id: string;
+  vendorId: string;
+  commodityId: string;
+  initialKg: number;
+  remainingKg: number;
+  arrivalClock: string;
+  lotNumber: string;
+  createdAt: string;
+}
+
 export interface ServerState {
   offers: RescueOffer[];
   transactions: EscrowTransaction[];
+  stocks?: ServerStockItem[];
   vendorWalletIdr: number;
   biomassProcessedKg: number;
   socialMealsServed: number;
@@ -194,4 +206,35 @@ export function getSurplusOffersForRole(role: "warteg" | "social_kitchen" | "mag
     return state.offers.filter((o) => o.targetTier === "tier_3" && o.status === "active");
   }
   return [];
+}
+
+/**
+ * Mencatat pasokan masuk baru (Bongkar Subuh) untuk pedagang lapak.
+ */
+export function addVendorStockServer(
+  commodityId: string,
+  quantityKg: number,
+  vendorId: string = "vendor_kramat_01"
+): { success: boolean; stock: ServerStockItem; message: string } {
+  const state = getServerSimulationState();
+  if (!state.stocks) {
+    state.stocks = [];
+  }
+  const newStock: ServerStockItem = {
+    id: `stk_tele_${Date.now()}`,
+    vendorId,
+    commodityId,
+    initialKg: quantityKg,
+    remainingKg: quantityKg,
+    arrivalClock: "04:30 WIB",
+    lotNumber: `LOT-A12-${Math.floor(Math.random() * 89 + 10)}`,
+    createdAt: new Date().toISOString(),
+  };
+  state.stocks.unshift(newStock);
+  saveServerSimulationState(state);
+  return {
+    success: true,
+    stock: newStock,
+    message: `Berhasil mencatat pasokan masuk: ${quantityKg} kg ${commodityId}.`,
+  };
 }
