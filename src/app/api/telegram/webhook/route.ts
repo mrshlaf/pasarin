@@ -225,9 +225,8 @@ export async function POST(req: NextRequest) {
           await dispatchTelegramMessage(
             chatId,
             `🔒 *Otentikasi Peran Wajib (Role Isolation)*\n\n` +
-            `Untuk masuk sebagai *${roleName}* dan mencegah penyalahgunaan peran, silakan masukkan kata sandi:\n\n` +
-            `👉 \`/login ${targetUser} <password>\`\n\n` +
-            `_Contoh: \`/login ${targetUser} ${targetUser}123\`_`,
+            `Untuk masuk sebagai akun resmi *${roleName}*, silakan masukkan kata sandi terdaftar Anda:\n\n` +
+            `👉 \`/login ${targetUser} <password>\``,
             { parseMode: "Markdown" }
           );
 
