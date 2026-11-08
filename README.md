@@ -152,7 +152,29 @@ npm run dev -- --hostname 127.0.0.1
 
 Buka http://localhost:3000/login. Masuk menggunakan email lengkap akun Supabase Auth yang sudah diberi peran. Untuk akun berdomain `@pasarin.id`, cukup masukkan nama penggunanya. Lingkungan lokal memakai penyimpanan server berbasis berkas. Atur `PASARIN_STATE_FILE` untuk memakai berkas terpisah dan mulai dengan inventaris kosong.
 
-Untuk demo kelas di localhost, akun `admin1`, `pasar1`, `warteg1`, `sosial1`, `maggot1`, `kurir1`, dan `pengelola1` memakai nama pengguna sebagai kata sandi. Akun ini aktif dalam mode pengembangan dengan penyimpanan lokal.
+Untuk demo kelas, semua akun memakai nama pengguna sebagai kata sandi:
+
+| Peran | Akun |
+| --- | --- |
+| Pedagang kios | `pasar1` sampai `pasar30` |
+| Warteg | `warteg1` sampai `warteg5` |
+| Dapur sosial | `sosial1` sampai `sosial3` |
+| Maggot BSF | `maggot1` sampai `maggot2` |
+| Kurir | `kurir1` sampai `kurir5` |
+| Pengelola | `pengelola1` |
+| Admin | `admin1` |
+
+Di localhost, akun tersebut aktif lewat sesi tes. Di deployment, akun yang sama dibuat di Supabase Auth oleh endpoint seed. Setiap kios memiliki enam lot dengan umur simpan berbeda, dan penawaran aktif dari seluruh kios terlihat oleh semua warteg, dapur sosial, atau maggot sesuai tier.
+
+Untuk mengisi ulang data demo di deployment, set `PASARIN_SEED_SECRET` di Vercel, deploy ulang, lalu jalankan:
+
+```sh
+curl -X POST https://pasarin.vercel.app/api/admin/seed \
+  -H "x-pasarin-seed-secret: $PASARIN_SEED_SECRET" \
+  -H "content-type: application/json" -d "{}"
+```
+
+Endpoint seed membuat 47 akun Supabase, 180 lot stok, 90 penawaran, dan contoh transaksi. Di localhost, admin dapat memicu endpoint yang sama tanpa secret setelah masuk sebagai `admin1`.
 
 ```sh
 npm run lint
@@ -182,7 +204,7 @@ npm run build
 
 Kontrak HTTP tersedia di [public/openapi.json](public/openapi.json). Pembayaran dicatat dalam ledger simulasi. Serah terima dikonfirmasi oleh akun kurir untuk pesanan yang sudah dibayar.
 
-Berkas di `qa_reports/` dan `opt/output/` menyimpan bukti pengujian terdahulu. Hasil terbaru dapat diperoleh melalui CI atau perintah verifikasi di atas.
+Hasil pengujian terbaru dapat diperoleh melalui CI atau perintah verifikasi di atas.
 
 ---
 

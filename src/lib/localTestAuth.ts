@@ -1,19 +1,10 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
-import type { AppRole, AuthUser } from "@/data/accounts";
+import type { AuthUser } from "@/data/accounts";
+import { DEMO_ACCOUNT_BY_USERNAME, demoActorId } from "@/data/demoAccounts";
 
 export const LOCAL_TEST_COOKIE = "pasarin_local_test";
 export const LOCAL_TEST_SESSION_SECONDS = 8 * 60 * 60;
-
-const accounts = new Map<string, AppRole>([
-  ["admin1", "admin"],
-  ["pasar1", "vendor"],
-  ["warteg1", "warteg"],
-  ["sosial1", "social_kitchen"],
-  ["maggot1", "maggot"],
-  ["kurir1", "logistics"],
-  ["pengelola1", "manager"],
-]);
 
 declare global {
   var pasarinLocalTestSigningKey: Buffer | undefined;
@@ -30,17 +21,17 @@ export function isLocalTestRequest(req: NextRequest) {
   return !origin || origin === `${req.nextUrl.protocol}//${host}`;
 }
 
-/** Returns a role-bound identity from the server-side test account list. */
+/** Returns a role-bound identity from the shared demo account directory. */
 export function localTestProfile(username: string): AuthUser | null {
-  const role = accounts.get(username);
-  if (!role) return null;
+  const account = DEMO_ACCOUNT_BY_USERNAME.get(username);
+  if (!account) return null;
   return {
-    id: `demo:${username}`,
-    email: `${username}@pasarin.id`,
-    name: username,
-    organization: "Akun tes lokal",
-    role,
-    vendorId: role === "vendor" ? "vendor_kramat_01" : undefined,
+    id: demoActorId(account.username),
+    email: `${account.username}@pasarin.id`,
+    name: account.name,
+    organization: account.organization,
+    role: account.role,
+    vendorId: account.vendorId,
   };
 }
 

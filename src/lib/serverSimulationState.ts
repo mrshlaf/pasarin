@@ -11,6 +11,7 @@ import { getRealtimeWIBTimeString } from "@/lib/marketClock";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
 import { executeEscrowSettlement } from "@/lib/qrisEscrowGateway";
 import { getServiceRoleClient } from "@/lib/supabase";
+import { buildDemoMarketState } from "@/lib/demoMarketSeed";
 
 export const BUYER_TIERS = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" } as const;
 export type BuyerRole = keyof typeof BUYER_TIERS;
@@ -110,16 +111,23 @@ export async function getServerSimulationState() {
   return (await readDatabaseState(databaseClient()))?.state ?? newState();
 }
 
+/** Serializes local file mutations so two concurrent claims cannot both win. */
+let localMutationQueue: Promise<void> = Promise.resolve();
+
 /** Applies one mutation atomically, retrying if a concurrent Supabase update wins. */
 async function updateState(mutate: (state: ServerState) => MutationResult): Promise<MutationResult> {
   if (!storesStateInDatabase()) {
-    const state = readLocalState();
-    const result = mutate(state);
-    if (result.success) {
-      state.lastUpdated = new Date().toISOString();
-      writeLocalState(state);
-    }
-    return result;
+    const run = localMutationQueue.then(() => {
+      const state = readLocalState();
+      const result = mutate(state);
+      if (result.success) {
+        state.lastUpdated = new Date().toISOString();
+        writeLocalState(state);
+      }
+      return result;
+    });
+    localMutationQueue = run.then(() => undefined, () => undefined);
+    return run;
   }
 
   const client = databaseClient();
@@ -144,6 +152,15 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
     }
   }
   return { success: false, status: 409, message: "Data pasar baru berubah. Coba lagi." };
+}
+
+/** Replaces the market with the full demo population in one atomic revision. */
+export async function seedMarketStateServer(actorIds: Record<string, string> = {}) {
+  const seeded = buildDemoMarketState(actorIds);
+  return updateState((state) => {
+    Object.assign(state, seeded);
+    return { success: true as const, message: "Data pasar demo berhasil dibuat ulang." };
+  });
 }
 
 /** Scopes inventory, offers and the ledger to the authenticated workspace. */
