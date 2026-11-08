@@ -17,23 +17,37 @@ import {
   MapPin,
   Utensils,
   Gift,
+  Check,
+  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
-
 export function SocialKitchenDashboard() {
-  const { offers, claimOfferByBuyer } = useMarketSimulation();
+  const { offers, stockItems, getEvaluationForStock, claimOfferByBuyer } = useMarketSimulation();
 
-  const tier2Offers = offers.filter(
-    (o) => o.targetTier === "tier_2" && o.status === "active"
-  );
-
+  const tier2Offers = offers.filter((o) => {
+    if (o.targetTier !== "tier_2" || o.status !== "active") return false;
+    const linkedStock = stockItems.find((s) => s.id === o.stockId);
+    if (!linkedStock) return true;
+    const evaluation = getEvaluationForStock(linkedStock);
+    // Invarian 1 & 3: Makanan yang sudah Tidak Layak (decayScore >= 0.85) dilarang masuk Dapur Sosial!
+    return evaluation.decayScore < 0.85;
+  });
   const claimedSocialOffers = offers.filter(
-    (o) => o.claimantRole === "social_kitchen" || (o.status === "claimed" && o.targetTier === "tier_2")
+    (o) => o.claimantRole === "social_kitchen" || (o.status === "claimed" && o.targetTier === "tier_2") || (o.status === "settled" && o.targetTier === "tier_2")
   );
 
-  const handleClaim = (offer: RescueOffer) => {
+  const handleTebusSubsidi = (offer: RescueOffer) => {
     claimOfferByBuyer(
       offer.id,
-      "Dapur Sosial & Panti Asuhan Al-Hidayah",
+      "Dapur Sosial Al-Hidayah (Tebus Subsidi)",
+      "social_kitchen"
+    );
+  };
+
+  const handleKlaimDonasi = (offer: RescueOffer) => {
+    claimOfferByBuyer(
+      offer.id,
+      "Dapur Sosial Al-Hidayah (Hibah CSR Rp 0)",
       "social_kitchen"
     );
   };
@@ -201,17 +215,19 @@ export function SocialKitchenDashboard() {
 
                   <div className="grid grid-cols-2 gap-2 pt-1.5">
                     <button
-                      onClick={() => handleClaim(ofr)}
+                      onClick={() => handleTebusSubsidi(ofr)}
                       type="button"
                       className="py-2 rounded-lg bg-[#BE123C] hover:bg-[#9F1239] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                      title="Tebus murah dengan subsidi 85% dari kas panti"
                     >
                       <Utensils className="w-3.5 h-3.5" />
                       Tebus Subsidi
                     </button>
                     <button
-                      onClick={() => handleClaim(ofr)}
+                      onClick={() => handleKlaimDonasi(ofr)}
                       type="button"
                       className="py-2 rounded-lg border border-[#2A5C5F] hover:bg-[#F0F6F6] text-[#2A5C5F] font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs"
+                      title="Klaim gratis Rp 0 didanai program CSR BUMD Pasar Jaya"
                     >
                       <Gift className="w-3.5 h-3.5" />
                       Klaim Donasi
@@ -220,6 +236,110 @@ export function SocialKitchenDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Riwayat Penyaluran Pangan Selesai (Completed Relief History) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Riwayat Penyaluran Pangan Selesai ({claimedSocialOffers.length} Paket)</span>
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Pelacakan transparan paket pangan yang telah diselamatkan untuk konsumsi 250 anak yatim dan lansia dhuafa
+            </p>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-rose-50 text-[#BE123C] px-2.5 py-1 rounded-md border border-rose-200 self-start sm:self-center">
+            {totalPortionsNutritious} Porsi Makanan Bergizi
+          </span>
+        </div>
+
+        {claimedSocialOffers.length === 0 ? (
+          <div className="text-center py-6 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
+            Belum ada paket pangan yang diklaim hari ini. Pilih lot di atas untuk mulai menyalurkan.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50/70">
+                  <th className="py-2.5 px-3">Komoditas & No. Lot</th>
+                  <th className="py-2.5 px-3">Volume & Porsi</th>
+                  <th className="py-2.5 px-3">Asal Kios Lapak</th>
+                  <th className="py-2.5 px-3">Skema Penebusan</th>
+                  <th className="py-2.5 px-3">Validasi GPS PoD Kurir</th>
+                  <th className="py-2.5 px-3">Status Penyaluran</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {claimedSocialOffers.map((ofr) => {
+                  const comm = COMMODITIES.find((c) => c.id === ofr.commodityId);
+                  const vendor = KIOSKS.find((k) => k.id === ofr.vendorId);
+                  const portions = ofr.quantityKg * 4;
+                  const isDonation = ofr.claimedBy?.includes("Donasi") || ofr.totalAmountIdr === 0;
+
+                  return (
+                    <tr key={ofr.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-2.5 px-3">
+                        <div className="font-bold text-slate-900">
+                          {comm?.localName || ofr.commodityId}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400">
+                          ID: {ofr.id} · Tier 2 Sosial
+                        </div>
+                      </td>
+
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-[#BE123C] border border-rose-200">
+                          {ofr.quantityKg} kg ({portions} Porsi)
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 text-slate-700">
+                        <div className="font-semibold text-slate-900">{vendor?.name}</div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Kios {vendor?.stallNumber} (Blok {vendor?.block})
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3 font-mono">
+                        {isDonation ? (
+                          <div>
+                            <span className="font-bold text-emerald-700">Rp 0 (Donasi Penuh)</span>
+                            <span className="text-[10px] text-slate-400 font-sans block">Didanai CSR Pasar Jaya</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="font-bold text-[#1E4345]">Rp {ofr.totalAmountIdr.toLocaleString("id-ID")}</span>
+                            <span className="text-[10px] text-slate-400 font-sans block">Subsidi 85% Kas Panti</span>
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="py-2.5 px-3 text-slate-600">
+                        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>GPS Radius 18m (&le; 50m)</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono block">
+                          Driver: Pak Joko (Viar 01) · Token: {ofr.podToken || "POD-HMAC-VERIFY"}
+                        </span>
+                      </td>
+
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          {ofr.status === "settled" ? "Tuntas di Dapur Panti" : "Dalam Pengantaran Viar"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

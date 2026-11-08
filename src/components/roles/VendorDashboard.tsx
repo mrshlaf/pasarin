@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Plus,
   Check,
+  CheckCircle2,
   X,
   Clock,
   Sparkles,
@@ -48,6 +49,10 @@ export function VendorDashboard() {
   const vendorStocks = stockItems.filter(
     (s) => s.vendorId === selectedVendorId
   );
+
+  const activeStocks = vendorStocks.filter((s) => s.remainingKg > 0);
+  const completedStocks = vendorStocks.filter((s) => s.remainingKg === 0);
+  const [stockViewTab, setStockViewTab] = useState<"aktif" | "riwayat">("aktif");
 
   const vendorOffers = offers.filter(
     (o) => o.vendorId === selectedVendorId
@@ -289,22 +294,44 @@ export function VendorDashboard() {
       {/* Stock Matrix Table */}
       <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <span>Inventaris Stok di Lapak Anda</span>
-              <span className="px-2 py-0.2 rounded text-[11px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                {vendorStocks.length} Komoditas
-              </span>
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-bold text-slate-900">
+              Inventaris Lapak & Riwayat Penjualan
             </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              Evaluasi kesegaran biologis otomatis berdasarkan jam simpan di los pasar
-            </p>
+            {/* Segment Tabs: Stok Aktif vs Riwayat Selesai */}
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 w-fit">
+              <button
+                onClick={() => setStockViewTab("aktif")}
+                type="button"
+                className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  stockViewTab === "aktif"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Package className="w-3.5 h-3.5 text-pine" />
+                <span>Stok Aktif di Lapak ({activeStocks.length})</span>
+              </button>
+
+              <button
+                onClick={() => setStockViewTab("riwayat")}
+                type="button"
+                className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                  stockViewTab === "riwayat"
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Riwayat Penjualan Selesai ({completedStocks.length} Lot)</span>
+              </button>
+            </div>
           </div>
 
           <button
             onClick={() => setShowAddStock(!showAddStock)}
             type="button"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2A5C5F] hover:bg-[#1E4345] text-white text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2A5C5F] hover:bg-[#1E4345] text-white text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs self-start sm:self-center"
           >
             <Plus className="w-4 h-4" />
             Catat Pasokan Masuk
@@ -364,26 +391,28 @@ export function VendorDashboard() {
           </form>
         )}
 
-        {/* Table of stocks */}
-        {vendorStocks.length === 0 ? (
-          <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
-            Belum ada inventaris tercatat untuk kios ini.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50/70">
-                  <th className="py-2.5 px-3">Komoditas & Lot</th>
-                  <th className="py-2.5 px-3">Jam Masuk</th>
-                  <th className="py-2.5 px-3">Sisa Stok</th>
-                  <th className="py-2.5 px-3">Kondisi Fisik</th>
-                  <th className="py-2.5 px-3">Sisa Waktu Aman</th>
-                  <th className="py-2.5 px-3">Rekomendasi Tindakan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {vendorStocks.map((stk) => {
+        {/* Tab 1: Stok Aktif di Lapak */}
+        {stockViewTab === "aktif" && (
+          <div>
+            {activeStocks.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
+                Seluruh stok lapak telah habis terjual / terselamatkan! Buka tab &apos;Riwayat Penjualan Selesai&apos; untuk melihat detail transaksi.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50/70">
+                      <th className="py-2.5 px-3">Komoditas & Lot</th>
+                      <th className="py-2.5 px-3">Jam Masuk</th>
+                      <th className="py-2.5 px-3">Sisa Stok</th>
+                      <th className="py-2.5 px-3">Kondisi Fisik</th>
+                      <th className="py-2.5 px-3">Sisa Waktu Aman</th>
+                      <th className="py-2.5 px-3">Rekomendasi Tindakan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {activeStocks.map((stk) => {
                   const comm = COMMODITIES.find((c) => c.id === stk.commodityId);
                   const evalResult = getEvaluationForStock(stk);
                   const decayPercent = Math.round(evalResult.decayScore * 100);
@@ -426,29 +455,54 @@ export function VendorDashboard() {
                         )}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span
-                          className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border capitalize ${badgeBadge}`}
-                        >
-                          {evalResult.condition.replace("_", " ")}
-                        </span>
+                        {stk.remainingKg === 0 ? (
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-50 text-[#065F46] border-emerald-200">
+                            Terselamatkan
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border capitalize ${badgeBadge}`}
+                          >
+                            {evalResult.condition.replace("_", " ")}
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-2.5 px-3 min-w-32">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
-                          <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
-                            <Clock className="w-3 h-3 text-slate-400" />
-                            {evalResult.hoursRemaining} jam
-                          </span>
-                          <span className="font-mono text-[10px] text-slate-400">
-                            {evalResult.decayScore.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full ${decayColor} transition-all duration-300`}
-                            style={{ width: `${decayPercent}%` }}
-                          />
-                        </div>
+                        {stk.remainingKg === 0 ? (
+                          <div>
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-0.5">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                Terdistribusi Aman
+                              </span>
+                              <span className="font-mono text-[10px] text-emerald-700 font-bold">
+                                100%
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-emerald-600 w-full" />
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="text-[10px] text-slate-500 font-medium flex items-center gap-0.5">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                {evalResult.hoursRemaining} jam
+                              </span>
+                              <span className="font-mono text-[10px] text-slate-400">
+                                {evalResult.decayScore.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${decayColor} transition-all duration-300`}
+                                style={{ width: `${decayPercent}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       <td className="py-2.5 px-3 text-slate-700 text-xs font-medium">
@@ -456,43 +510,149 @@ export function VendorDashboard() {
                           <span className="text-emerald-700 font-semibold">
                             ✓ Sukses Terdistribusi (Dana Masuk Dompet)
                           </span>
-                        ) : offers.some(
-                            (o) =>
-                              o.stockId === stk.id &&
-                              (o.status === "active" || o.status === "claimed" || o.status === "settled")
-                          ) ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            <Check className="w-3 h-3 text-emerald-600" />
-                            {offers.find((o) => o.stockId === stk.id)?.targetTier === "tier_1"
-                              ? "Sudah Terbit di Warteg"
-                              : offers.find((o) => o.stockId === stk.id)?.targetTier === "tier_2"
-                              ? "Sudah Terbit di Dapur Sosial"
-                              : "Sudah Masuk Antrean Maggot"}
-                          </span>
-                        ) : evalResult.decayScore >= 0.35 ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-xs text-slate-700">{evalResult.tierLabel}</span>
-                            <button
-                              onClick={() => createInstantSurplusOffer(stk.id)}
-                              type="button"
-                              className="px-2.5 py-1 bg-pine hover:bg-pine-dark text-white rounded-md text-[11px] font-bold shadow-2xs transition-colors duration-150 cursor-pointer shrink-0"
-                            >
-                              {evalResult.recommendedTier === "tier_1"
-                                ? "Tawarkan ke Warteg"
-                                : evalResult.recommendedTier === "tier_2"
-                                ? "Salurkan ke Sosial"
-                                : "Alihkan ke Maggot"}
-                            </button>
-                          </div>
-                        ) : (
-                          evalResult.tierLabel
-                        )}
+                        ) : (() => {
+                          const linkedOffer = offers.find((o) => o.stockId === stk.id);
+                          const isOfferActiveOrSettled =
+                            linkedOffer &&
+                            (linkedOffer.status === "active" ||
+                              linkedOffer.status === "claimed" ||
+                              linkedOffer.status === "settled");
+
+                          // Penegakan Invarian 1 (Zero Inedible to Food):
+                          // Jika mutu sayur telah jatuh ke 'Tidak Layak' (decayScore >= 0.85):
+                          // DILARANG KERAS berstatus "Sudah Terbit di Warteg" atau "Sudah Terbit di Dapur Sosial"!
+                          // Harus dialihkan ke Sentra Maggot BSF!
+                          if (evalResult.decayScore >= 0.85) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
+                                <Check className="w-3 h-3 text-amber-600" />
+                                {linkedOffer?.targetTier === "tier_3"
+                                  ? "Sudah Masuk Antrean Maggot"
+                                  : "Dialihkan ke Maggot (Mutu Turun)"}
+                              </span>
+                            );
+                          }
+
+                          if (isOfferActiveOrSettled) {
+                            return (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                {linkedOffer.targetTier === "tier_1"
+                                  ? "Sudah Terbit di Warteg"
+                                  : linkedOffer.targetTier === "tier_2"
+                                  ? "Sudah Terbit di Dapur Sosial"
+                                  : "Sudah Masuk Antrean Maggot"}
+                              </span>
+                            );
+                          }
+
+                          if (evalResult.decayScore >= 0.35) {
+                            return (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs text-slate-700">{evalResult.tierLabel}</span>
+                                <button
+                                  onClick={() => createInstantSurplusOffer(stk.id)}
+                                  type="button"
+                                  className="px-2.5 py-1 bg-pine hover:bg-pine-dark text-white rounded-md text-[11px] font-bold shadow-2xs transition-colors duration-150 cursor-pointer shrink-0"
+                                >
+                                  {evalResult.recommendedTier === "tier_1"
+                                    ? "Tawarkan ke Warteg"
+                                    : evalResult.recommendedTier === "tier_2"
+                                    ? "Salurkan ke Sosial"
+                                    : "Alihkan ke Maggot"}
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          return evalResult.tierLabel;
+                        })()}
                       </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Riwayat Penjualan Selesai (Trade History) */}
+        {stockViewTab === "riwayat" && (
+          <div className="overflow-x-auto">
+            {completedStocks.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-slate-200 rounded-lg text-slate-500 text-xs font-medium">
+                Belum ada transaksi penjualan yang selesai hari ini.
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold tracking-wider bg-slate-50/70">
+                    <th className="py-2.5 px-3">Komoditas & No. Lot</th>
+                    <th className="py-2.5 px-3">Volume Terselamatkan</th>
+                    <th className="py-2.5 px-3">Penyaluran / Pembeli</th>
+                    <th className="py-2.5 px-3">Pelepasan Escrow (QRIS BI)</th>
+                    <th className="py-2.5 px-3">Validasi Serah Terima (PoD)</th>
+                    <th className="py-2.5 px-3">Status Saldo Dompet</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {completedStocks.map((stk) => {
+                    const comm = COMMODITIES.find((c) => c.id === stk.commodityId);
+                    const linkedOffer = offers.find((o) => o.stockId === stk.id);
+                    const amountIdr = linkedOffer?.totalAmountIdr || (comm ? Math.round(comm.baseWholesalePricePerKg * stk.initialKg * 0.45) : 112500);
+                    const buyerName = linkedOffer?.claimedBy || "Warteg Kharisma Bahari (Tier 1)";
+
+                    return (
+                      <tr key={stk.id} className="hover:bg-slate-50/80 transition">
+                        <td className="py-2.5 px-3">
+                          <div className="font-bold text-slate-900">
+                            {comm?.localName || stk.commodityId}
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-400">
+                            {stk.lotNumber} · Masuk: {stk.arrivalClock}
+                          </div>
+                        </td>
+
+                        <td className="py-2.5 px-3 font-semibold text-slate-900 font-mono">
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            {stk.initialKg} kg Terselamatkan (100%)
+                          </span>
+                        </td>
+
+                        <td className="py-2.5 px-3 text-slate-700">
+                          <div className="font-semibold text-slate-900">{buyerName}</div>
+                          <span className="text-[10px] text-slate-500 font-medium">
+                            Redistribusi Pangan Tier 1
+                          </span>
+                        </td>
+
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#047857]">
+                          <div>Rp {amountIdr.toLocaleString("id-ID")}</div>
+                          <span className="text-[10px] text-slate-400 font-normal">Escrow BI Terverifikasi</span>
+                        </td>
+
+                        <td className="py-2.5 px-3 text-slate-600">
+                          <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-800">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>GPS Radius 18m (&le; 50m)</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400">Driver: Pak Joko (Viar 01)</span>
+                        </td>
+
+                        <td className="py-2.5 px-3">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                            <Check className="w-3 h-3 text-emerald-600" />
+                            Dana Cair ke Dompet
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
