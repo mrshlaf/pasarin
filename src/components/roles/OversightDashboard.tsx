@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Boxes, Clock, FileCheck, Receipt, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { apiFetch } from "@/lib/apiFetch";
@@ -9,17 +9,14 @@ import { MarketDialog } from "@/components/common/MarketDialog";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
   EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
-  commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
+  commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
 /** Gives supervisors the same live inventory and ledger with role-appropriate actions. */
 export function OversightDashboard() {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
-  const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState<{ summary: string; source: string } | null>(null);
   const [error, setError] = useState("");
-  const [asking, setAsking] = useState(false);
   const [showAllOffers, setShowAllOffers] = useState(false);
   const [dlhModalOpen, setDlhModalOpen] = useState(false);
   const [dlhLoading, setDlhLoading] = useState(false);
@@ -41,27 +38,6 @@ export function OversightDashboard() {
     }
   }
 
-  /** Uses the shared read-only orchestration endpoint and reports the answer source. */
-  async function ask(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setAsking(true);
-    setError("");
-    try {
-      const response = await apiFetch("/api/orchestrator/query", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
-      setAnswer(result.data);
-    } catch {
-      setError("Ringkasan pasar belum bisa dimuat. Coba lagi.");
-    } finally {
-      setAsking(false);
-    }
-  }
-
   const ready = offers.filter(isReadyForDelivery);
   const risk = stockItems.filter((item) => item.remainingKg > 0 && (stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
   const settled = offers.filter((offer) => offer.status === "settled");
@@ -80,35 +56,25 @@ export function OversightDashboard() {
         { label: "Selesai", value: settled.length },
       ]} />
 
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-ink">Tindakan Pengawasan & Audit Pasar</h3>
+          <p className="text-xs text-ink-muted">Pemicuan evaluasi berkala otonom dan verifikasi kepatuhan lingkungan hidup DLH DKI Jakarta</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {user?.role === "admin" && (
+            <button className={marketSecondary} type="button" disabled={busy} onClick={triggerCronSweepNow}>
+              <RefreshCw size={16} aria-hidden /> Evaluasi stok
+            </button>
+          )}
+          <button className={marketSecondary} type="button" disabled={dlhLoading} onClick={openDlhReport}>
+            <FileCheck size={16} aria-hidden /> {dlhLoading ? "Menjalankan Simulasi…" : "Laporan Kepatuhan DLH"}
+          </button>
+        </div>
+      </div>
+
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
-          <MarketSection title="Tanya pasar">
-            <form onSubmit={ask} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-              <input aria-label="Pertanyaan" className="market-input min-w-0" value={query} required maxLength={1000}
-                onChange={(event) => setQuery(event.target.value)} placeholder="Berapa pesanan siap diantar?" />
-              <button className={marketButton} type="submit" disabled={asking}>{asking ? "Memproses…" : "Tanya"}</button>
-            </form>
-            {error && <p role="alert" className="mt-3 text-sm font-medium text-danger">{error}</p>}
-            {answer && (
-              <div role="status" className="mt-4 border-t border-line pt-4">
-                <p className="text-[13px] font-medium text-brand-ink">
-                  {answer.source === "gemini" ? "Gemini, data pasar" : "Ringkasan data pasar"}
-                </p>
-                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{answer.summary}</p>
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap gap-2">
-              {user?.role === "admin" && (
-                <button className={marketSecondary} type="button" disabled={busy} onClick={triggerCronSweepNow}>
-                  <RefreshCw size={16} aria-hidden /> Evaluasi stok
-                </button>
-              )}
-              <button className={marketSecondary} type="button" disabled={dlhLoading} onClick={openDlhReport}>
-                <FileCheck size={16} aria-hidden /> {dlhLoading ? "Menjalankan Simulasi…" : "Laporan Kepatuhan DLH"}
-              </button>
-            </div>
-          </MarketSection>
-
           <MarketSection title="Penawaran"
             action={<span className="text-[12px] font-semibold tabular-nums text-ink-muted">{activeOffers} aktif, {stockItems.length} lot</span>}>
             {offers.length === 0 ? (
