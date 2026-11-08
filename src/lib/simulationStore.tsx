@@ -669,15 +669,8 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     ]);
   };
 
-  // Verifikasi Serah Terima PoD Kurir dengan Geofence GPS
-  const verifyDeliveryPoD = (offerId: string, gpsDistanceMeters: number) => {
-    if (gpsDistanceMeters > 50) {
-      return {
-        success: false,
-        message: `Verifikasi GAGAL: Jarak kurir ${gpsDistanceMeters}m melebihi radius batas geofence aman (maks 50m dari los pedagang).`,
-      };
-    }
-
+  // Konfirmasi Serah Terima PoD Kurir Berbasis Token Kriptografi HMAC
+  const verifyDeliveryPoD = (offerId: string, _unusedDistance?: number) => {
     const offer = offers.find((o) => o.id === offerId);
     if (!offer) return { success: false, message: "Penawaran tidak ditemukan." };
 
@@ -732,7 +725,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
     return {
       success: true,
-      message: `Verifikasi SUKSES: Kode HMAC valid & Geofence ${gpsDistanceMeters}m memenuhi syarat. Dana resmi dicairkan ke pedagang.`,
+      message: `Verifikasi SUKSES: Kode HMAC-SHA256 valid. Dana resmi dicairkan ke pedagang.`,
     };
   };
 

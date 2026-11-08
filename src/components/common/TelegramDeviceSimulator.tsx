@@ -21,6 +21,10 @@ export function TelegramDeviceSimulator({
 }: TelegramDeviceSimulatorProps) {
   const { notifications, approveOfferByVendor, rejectOfferByVendor } = useMarketSimulation();
   const [chatFilter, setChatFilter] = useState<"all" | "vendor" | "warteg">("all");
+  const filteredNotifs = notifications.filter((n) => {
+    if (chatFilter === "all") return true;
+    return n.role === chatFilter;
+  });
   const [inputCommand, setInputCommand] = useState("");
   const [chatFeed, setChatFeed] = useState<Array<{ id: string; sender: "user" | "bot"; text: string; time: string }>>([
     {
@@ -221,6 +225,7 @@ export function TelegramDeviceSimulator({
               <Send className="w-3.5 h-3.5" />
             </button>
           </form>
+        </div>
       </div>
     </div>
   );

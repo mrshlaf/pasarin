@@ -37,7 +37,7 @@ const STEPS: WorkflowStep[] = [
   {
     step: 4,
     title: "4. Serah Terima Fisik PoD",
-    subtitle: "Verifikasi kurir 50m & audit emisi",
+    subtitle: "Verifikasi kurir PoD & audit emisi",
     agentLabel: "Logistics & Audit",
   },
 ];

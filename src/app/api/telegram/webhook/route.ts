@@ -181,7 +181,7 @@ export async function POST(req: NextRequest) {
             `🚚 *DASBOR ARMADA: Viar Roda 3 Listrik 01 (Pak Joko)*\n\n` +
             `• *Kendaraan*: Viar Listrik (Plat B 3482 UIL) · 300 kg\n` +
             `• *Pangkalan*: Parkir Barat Pasar Induk Kramat Jati\n` +
-            `• *Geofence*: Validasi GPS Geofence otomatis (18m <= 50m)\n\n` +
+            `• *Otorisasi*: Token Kriptografi PoD HMAC\n\n` +
             `📦 *PENUGASAN PENGANTARAN AKTIF:*\n` +
             `• *Ambil di Kios*: H. Rohmat Sayur Daun (Kios A-12 Blok A)\n` +
             `• *Tujuan*: Warteg Kharisma Bahari (Jl. Raya Condet No. 42)\n` +
@@ -317,7 +317,6 @@ export async function POST(req: NextRequest) {
           actionMsg =
             `✅ *VALIDASI SERAH TERIMA PoD SUKSES!*\n\n` +
             `• *Status*   : ${res.message}\n` +
-            `• *Geofence* : GPS 18 meter (Lolos <= 50m)\n` +
             `• *Kripto*   : Kunci HMAC-SHA256 Tervalidasi\n` +
             `• *Escrow*   : Dana otomatis dicairkan ke saldo dompet pedagang!\n\n` +
             `Tugas pengantaran ini telah selesai dan dipindahkan ke Riwayat.`;
