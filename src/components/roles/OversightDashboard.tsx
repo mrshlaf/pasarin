@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Boxes, Receipt, RefreshCw } from "lucide-react";
+import { Boxes, Clock, Receipt, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { useMarketSimulation } from "@/lib/simulationStore";
+import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
-  EmptyState, MarketMetrics, MarketSection, StatusPill, TierChip,
-  kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
+  EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
+  commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
 /** Gives supervisors the same live inventory and ledger with role-appropriate actions. */
 export function OversightDashboard() {
   const { user } = useAuth();
-  const { offers, stockItems, stockHealth, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
+  const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState<{ summary: string; source: string } | null>(null);
   const [error, setError] = useState("");
@@ -41,10 +42,11 @@ export function OversightDashboard() {
     }
   }
 
-  const ready = offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "held_in_escrow");
+  const ready = offers.filter(isReadyForDelivery);
   const risk = stockItems.filter((item) => item.remainingKg > 0 && (stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
   const settled = offers.filter((offer) => offer.status === "settled");
-  const activeOffers = offers.filter((offer) => offer.status === "active").length;
+  const stockById = new Map(stockItems.map((item) => [item.id, item]));
+  const activeOffers = offers.filter((offer) => offer.status === "active" && stockById.get(offer.stockId)?.verifiedAt).length;
   const offerRank = { pending_vendor: 0, active: 1, claimed: 2, settled: 3, rejected: 4 } as const;
   const sortedOffers = [...offers].sort((a, b) => offerRank[a.status] - offerRank[b.status]);
   const visibleOffers = showAllOffers ? sortedOffers : sortedOffers.slice(0, 12);
@@ -59,7 +61,7 @@ export function OversightDashboard() {
       ]} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
-        <div className="grid min-w-0 gap-4">
+        <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
           <MarketSection title="Tanya pasar">
             <form onSubmit={ask} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input aria-label="Pertanyaan" className="market-input min-w-0" value={query} required maxLength={1000}
@@ -87,22 +89,38 @@ export function OversightDashboard() {
             {offers.length === 0 ? (
               <EmptyState icon={Boxes} title="Belum ada penawaran" description="Lot muncul dari pasokan pedagang." />
             ) : (
-              <ul>{visibleOffers.map((offer) => (
-                <li key={offer.id} className="grid min-w-0 gap-3 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="break-words font-semibold">{offerTitle(offer)}</p>
-                      <TierChip tier={offer.targetTier} />
+              <ul>{visibleOffers.map((offer) => {
+                const stock = stockById.get(offer.stockId);
+                const pending = offer.status === "pending_vendor" || (offer.status === "active" && !stock?.verifiedAt);
+                return (
+                  <li key={offer.id} className="grid min-w-0 gap-3 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="break-words font-semibold">{commodityName(offer.commodityId)}</p>
+                        <TierChip tier={offer.targetTier} />
+                      </div>
+                      <p className="mt-1 break-words text-[13px] leading-5 text-ink-muted">
+                        {kioskLabel(offer.vendorId)}{stock?.lotNumber ? " · " + stock.lotNumber : ""}
+                      </p>
+                      <LotFacts items={[
+                        ...(stock ? [{ label: "Stok awal lot", value: kg(stock.initialKg) }] : []),
+                        { label: pending ? "Perkiraan sisa" : offer.status === "active" ? "Kuota penawaran" : "Berat tercatat",
+                          value: kg(pending ? estimatedUnsoldKg[offer.stockId] ?? offer.quantityKg : offer.quantityKg) },
+                        ...(!pending ? [{ label: "Nilai", value: isFreeMaggotOffer(offer) ? "Gratis" : isDonation(offer) ? "Donasi" : rupiah(offer.totalAmountIdr) }] : []),
+                      ]} />
+                      {stockHealth[offer.stockId] && (
+                        <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
+                          <Clock size={12} aria-hidden className="text-brand shrink-0" />
+                          <span>Mutu {stockHealth[offer.stockId]?.tierLabel || stockHealth[offer.stockId]?.condition} · Sisa simpan: <strong className="font-semibold text-ink">{formatRemainingShelfLife(stockHealth[offer.stockId]?.hoursRemaining ?? 0, stockHealth[offer.stockId]?.decayScore)}</strong></span>
+                        </p>
+                      )}
                     </div>
-                    <p className="mt-1 break-words text-[13px] leading-5 text-ink-muted">
-                      {kioskLabel(offer.vendorId)}, {rupiah(offer.totalAmountIdr)}, potongan {Math.round(offer.discountPercentage)}%
-                    </p>
-                  </div>
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <StatusPill label={orderStatus(offer)} />
-                  </div>
-                </li>
-              ))}</ul>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <StatusPill label={pending ? "Perlu timbang" : orderStatus(offer)} />
+                    </div>
+                  </li>
+                );
+              })}</ul>
             )}
             {sortedOffers.length > visibleOffers.length && (
               <button type="button" className={marketSecondary + " mt-3 w-full justify-center"}
@@ -113,8 +131,8 @@ export function OversightDashboard() {
           </MarketSection>
         </div>
 
-        <div className="xl:sticky xl:top-20 xl:self-start">
-          <MarketSection title="Pembayaran">
+        <div className="col-start-1 row-start-2 min-w-0 xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:self-start">
+          <MarketSection title="Riwayat transaksi & pembayaran">
             {transactions.length === 0 ? (
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
             ) : (
@@ -125,7 +143,9 @@ export function OversightDashboard() {
                     <p className="font-semibold tabular-nums">{rupiah(item.amountIdr)}</p>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="min-w-0 break-words text-[13px] leading-5 text-ink-muted">{item.buyerName} ke {item.vendorName}</p>
+                    <p className="min-w-0 break-words text-[13px] leading-5 text-ink-muted">
+                      {item.buyerName} ke {item.vendorName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
+                    </p>
                     <StatusPill label={item.status === "released" ? "Selesai" : item.status === "refunded" ? "Dikembalikan" : "Ditahan"} />
                   </div>
                 </li>

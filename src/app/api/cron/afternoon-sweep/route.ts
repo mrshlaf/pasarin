@@ -29,8 +29,8 @@ function isAuthorizedCronRequest(req: NextRequest): boolean {
 
 /**
  * Mengeksekusi siklus sapuan inventaris sore hari (Afternoon Sweep) pukul 14.30 WIB.
- * Memindai katalog kios terdaftar di Pasar Kramat Jati, mengagregasi volume surplus terdeteksi,
- * mendistribusikannya ke 3-Tier sirkular, dan mencatat transaksi ke audit trail.
+ * Mengagregasi perkiraan surplus per jalur dari usulan yang menunggu konfirmasi pedagang
+ * dan mencatat ringkasan ke audit trail.
  *
  * @returns Ringkasan hasil sapuan AfternoonSweepResult beserta verifikasi audit trail.
  */

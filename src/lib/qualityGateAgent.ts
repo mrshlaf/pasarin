@@ -41,7 +41,8 @@ export const SOCIAL_RESERVATION_WINDOW_MINUTES = 30;
  * @returns Hasil evaluasi gerbang kendali mutu beserta status kelulusan dan tindakan perbaikan.
  */
 export async function verifyHumanGradeIntegrity(
-  params: QualityGateRequestPayload
+  params: QualityGateRequestPayload,
+  options: { recordIncident?: boolean } = {},
 ): Promise<QualityGateEvaluationResult> {
   const {
     commodityId,
@@ -103,8 +104,7 @@ export async function verifyHumanGradeIntegrity(
     const correctiveAction =
       `Komoditas dialihkan secara otomatis ke antrean ${recommendedTier === "tier_1" ? "Tier 1 (Warteg & UMKM)" : "Tier 2 (Dapur Sosial & Panti Asuhan)"}.`;
 
-    // Rekam insiden moral hazard ke audit trail sistem
-    const auditRecord = await recordAuditLog({
+    const auditRecord = options.recordIncident === false ? undefined : await recordAuditLog({
       subsystem: "QUALITY_GATE",
       action_type: "MORAL_HAZARD_VIOLATION_BLOCKED",
       payload: {
@@ -132,9 +132,9 @@ export async function verifyHumanGradeIntegrity(
       violationReason,
       correctiveAction,
       socialReservationWindowMinutes: recommendedTier === "tier_2" ? SOCIAL_RESERVATION_WINDOW_MINUTES : 0,
-      reputationPenaltyApplied: 5,
+      reputationPenaltyApplied: auditRecord ? 5 : 0,
       visualVerification,
-      auditEventId: auditRecord.eventId,
+      auditEventId: auditRecord?.eventId,
       evaluatedAt: new Date().toISOString(),
     };
   }

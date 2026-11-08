@@ -8,10 +8,14 @@ import {
 } from "@/lib/serverSimulationState";
 
 const offerId = z.string().min(1).max(100);
+const confirmation = z.strictObject({
+  confirmedKg: z.number().nonnegative().max(10_000),
+  mode: z.enum(["sale", "donation"]).optional(),
+});
 const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("stock"), commodityId: z.string().min(1).max(100), quantityKg: z.number().positive().max(10000) }),
-  z.object({ action: z.literal("publish"), stockId: offerId }),
-  z.object({ action: z.literal("vendor_decision"), offerId, approved: z.boolean() }),
+  z.object({ action: z.literal("publish"), stockId: offerId, confirmation }),
+  z.object({ action: z.literal("vendor_decision"), offerId, approved: z.boolean(), confirmation: confirmation.optional() }),
   z.object({ action: z.literal("payment"), offerId }),
   z.object({ action: z.literal("delivery"), offerId }),
 ]);
@@ -49,13 +53,13 @@ export async function POST(req: NextRequest) {
         if (data.action === "stock") {
           result = await addVendorStockServer(data.commodityId, data.quantityKg, user.vendorId);
         } else if (data.action === "publish") {
-          result = await publishMarketOffers(user.vendorId, data.stockId);
+          result = await publishMarketOffers(user.vendorId, data.stockId, data.confirmation);
         } else {
-          result = await decideVendorOffer(data.offerId, user.vendorId, data.approved);
+          result = await decideVendorOffer(data.offerId, user.vendorId, data.approved, data.confirmation);
         }
         break;
       case "payment":
-        if (user.role !== "warteg") return forbidden();
+        if (user.role !== "warteg" && user.role !== "social_kitchen") return forbidden();
         result = await payOfferServer(data.offerId, user.id);
         break;
       case "delivery":

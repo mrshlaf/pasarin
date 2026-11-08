@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { isAppRole, type AuthUser } from "@/data/accounts";
+import { isAppRole, resolveLoginEmail, type AuthUser } from "@/data/accounts";
 import { MARKET_ACCOUNTS, accountEmail } from "@/data/marketAccounts";
 import { getDatabasePool } from "@/lib/database";
 
@@ -104,10 +104,21 @@ export async function authenticateAccount(username: string, password: string): P
        and encrypted_password is not null
        and encrypted_password = extensions.crypt($2, encrypted_password)
      limit 1`,
-    [accountEmail(username.trim().toLowerCase()), password],
+    [resolveLoginEmail(username), password],
   );
   const row = result.rows[0];
   return row ? profileFromRow(row) : null;
+}
+
+/** Rechecks the current permissions of an existing database-backed account. */
+export async function findActiveAccount(id: string): Promise<AuthUser | null> {
+  const { rows } = await getDatabasePool().query<AccountRow>(
+    `select id, email, raw_app_meta_data, raw_user_meta_data
+     from auth.users
+     where id = $1 and deleted_at is null and (banned_until is null or banned_until < now())`,
+    [id],
+  );
+  return rows[0] ? profileFromRow(rows[0]) : null;
 }
 
 /** Creates or refreshes every market account inside Supabase Auth. */

@@ -52,6 +52,7 @@ next-env.d.ts
 /MoU_Page_*.png
 /Slide_*.png
 /.backup_local/
+/qa_reports/
 
 # academic PRD documents & course notes
 *PRD*.md

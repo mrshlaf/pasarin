@@ -4,11 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
-import type { RescueOffer, EscrowTransaction, StockItem } from "@/types/market";
+import { distributionTierForDecay, isDonation, isFreeMaggotOffer, isReadyForDelivery, roundKg, type RescueOffer, type EscrowTransaction, type StockConfirmation, type StockItem } from "@/types/market";
 import type { AuthUser } from "@/data/accounts";
 import { calculateDecay } from "@/lib/decayEngine";
 import { getRealtimeWIBTimeString } from "@/lib/marketClock";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
+import { calculateRainFootfallAttenuation, predictRetailSurplusKg } from "@/lib/pasarinCore";
 import { executeEscrowSettlement } from "@/lib/qrisEscrowGateway";
 import { getServiceRoleClient } from "@/lib/supabase";
 import { buildMarketSeedState } from "@/lib/marketSeed";
@@ -49,12 +50,16 @@ function newState(): ServerState {
   };
 }
 
-/** Drops the old handover token when loading previously saved state. */
+/** Removes old handover tokens and makes legacy unpaid Maggot orders free. */
 function normalizeState(state: ServerState): ServerState {
   return {
     ...state,
     offers: state.offers.map((offer: RescueOffer & { podToken?: string }) => {
       const { podToken, ...safe } = offer;
+      if (offer.targetTier === "tier_3" && offer.paymentStatus === "unpaid" && offer.status !== "settled" && offer.status !== "rejected") {
+        return { ...safe, distributionMode: "free", salvagePricePerKg: 0, totalAmountIdr: 0, discountPercentage: 100,
+          paymentStatus: offer.status === "claimed" ? "not_required" : "unpaid" };
+      }
       return podToken === undefined ? offer : safe;
     }),
   };
@@ -210,11 +215,12 @@ export async function seedMarketStateServer(actorIds: Record<string, string> = {
 export function visibleMarketState(state: ServerState, user: Pick<AuthUser, "id" | "role" | "vendorId">) {
   const { role } = user;
   const supervisor = role === "admin" || role === "manager";
+  const weighed = new Set(state.stocks.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
   const visible = state.offers.filter((offer) => {
     if (supervisor) return true;
     if (role === "vendor") return offer.vendorId === user.vendorId;
     if (role === "logistics") return offer.paymentStatus !== "unpaid";
-    return offer.claimedById === user.id || (offer.status === "active" && offer.targetTier === BUYER_TIERS[role]);
+    return offer.claimedById === user.id || (offer.status === "active" && offer.targetTier === BUYER_TIERS[role] && weighed.has(offer.stockId));
   });
   const visibleIds = new Set(visible.map((offer) => offer.id));
   const stockIds = new Set(visible.map((offer) => offer.stockId));
@@ -226,9 +232,17 @@ export function visibleMarketState(state: ServerState, user: Pick<AuthUser, "id"
     ...state,
     vendorWalletIdr,
     stocks: state.stocks.filter((stock) => supervisor || (role === "vendor" ? stock.vendorId === user.vendorId : stockIds.has(stock.id))),
-    offers: visible.map(({ claimedById, ...offer }) => ({ ...offer, isMine: claimedById === user.id })),
+    offers: visible.map((offer) => marketOfferForUser(offer, user.id)),
     transactions,
   };
+}
+
+/** Strips internal order ownership and retry keys from API responses. */
+export function marketOfferForUser(offer: RescueOffer, userId: string) {
+  const visible = { ...offer, isMine: offer.claimedById === userId };
+  delete visible.claimedById;
+  delete visible.reservationKey;
+  return visible;
 }
 
 /** Records ownership and creates the unpaid order before settlement. */
@@ -255,26 +269,54 @@ function holdPayment(state: ServerState, offer: RescueOffer) {
   state.transactions.unshift(transaction);
 }
 
-/** Reserves one eligible lot; the state revision prevents competing buyers from both succeeding. */
-export async function claimOfferServer(offerId: string, buyer: Actor & { role: BuyerRole }, donated = false) {
+/** Reserves a measured share of a listing and retains the rest for other buyers. */
+export async function claimOfferServer(
+  offerId: string, buyer: Actor & { role: BuyerRole }, quantityKg?: number, reservationKey?: string,
+) {
   const weather = await getHyperlocalMarketWeather();
   return updateState((state) => {
+    const prior = reservationKey && state.offers.find((item) => item.reservationKey === reservationKey && item.claimedById === buyer.id);
+    if (prior) {
+      return (prior.listingId ?? prior.id) === offerId && (quantityKg === undefined || prior.quantityKg === quantityKg)
+        ? { success: true, offer: prior, message: "Pesanan ini sudah tercatat." }
+        : { success: false, status: 409, message: "Permintaan sebelumnya sudah tercatat. Buka ulang penawaran." };
+    }
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
-    if (BUYER_TIERS[buyer.role] !== offer.targetTier || (donated && buyer.role !== "social_kitchen")) {
+    if (BUYER_TIERS[buyer.role] !== offer.targetTier) {
       return { success: false, status: 403, message: "Peran ini tidak dapat mengklaim penawaran tersebut." };
     }
     if (offer.status !== "active") {
       return { success: false, status: 409, message: "Penawaran sudah tidak tersedia." };
     }
     const stock = state.stocks.find((item) => item.id === offer.stockId);
-    if (!stock || stock.remainingKg < offer.quantityKg || !isOfferSuitable(offer, evaluateMarketStock(stock, weather)?.decayScore)) {
+    const requested = quantityKg ?? offer.quantityKg;
+    if (!validWeight(requested) || requested === 0 || requested > offer.quantityKg) {
+      return { success: false, status: 422, message: "Pilih berat yang tersedia pada penawaran." };
+    }
+    if (!stock?.verifiedAt || roundKg(stock.remainingKg - reservedStockKg(state, stock.id)) < requested ||
+      !isOfferSuitable(offer, evaluateMarketStock(stock, weather)?.decayScore)) {
       return { success: false, status: 422, message: "Stok atau mutu lot sudah berubah. Pilih penawaran lain." };
     }
-    reserveOffer(offer, buyer);
-    if (donated) offer.totalAmountIdr = 0;
-    if (buyer.role !== "warteg") holdPayment(state, offer);
-    return { success: true, offer, message: "Penawaran berhasil diklaim." };
+    const donation = isDonation(offer);
+    const free = isFreeMaggotOffer(offer);
+    const order = requested === offer.quantityKg
+      ? offer
+      : { ...offer, id: randomUUID(), listingId: offer.id, quantityKg: requested };
+    if (order !== offer) {
+      offer.quantityKg = roundKg(offer.quantityKg - requested);
+      offer.totalAmountIdr = donation || free ? 0 : Math.round(offer.salvagePricePerKg * offer.quantityKg);
+      state.offers.unshift(order);
+    }
+    order.distributionMode = free ? "free" : donation ? "donation" : "sale";
+    order.totalAmountIdr = donation || free ? 0 : Math.round(order.salvagePricePerKg * requested);
+    order.reservationKey = reservationKey;
+    reserveOffer(order, buyer);
+    if (free) order.paymentStatus = "not_required";
+    else if (donation) holdPayment(state, order);
+    const message = free ? "Lot Maggot gratis diklaim dan siap diantar."
+      : donation ? "Donasi diklaim dan siap diantar." : "Pesanan diklaim. Lanjutkan ke pembayaran simulasi.";
+    return { success: true, offer: order, message };
   });
 }
 
@@ -284,6 +326,7 @@ export function payOfferServer(offerId: string, buyerId: string) {
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
     if (offer.claimedById !== buyerId) return { success: false, status: 403, message: "Pesanan ini milik akun lain." };
+    if (offer.targetTier === "tier_3") return { success: false, status: 403, message: "Lot Maggot gratis dan tidak memerlukan pembayaran." };
     if (offer.status !== "claimed" || offer.paymentStatus !== "unpaid") {
       return { success: false, status: 409, message: "Pesanan sudah diproses atau belum dapat dibayar." };
     }
@@ -292,31 +335,36 @@ export function payOfferServer(offerId: string, buyerId: string) {
   });
 }
 
-/** Settles a paid order once and updates inventory and the ledger together. */
+/** Completes a delivery once and settles the ledger only when it has an escrow entry. */
 export function confirmDeliveryServer(offerId: string) {
   return updateState((state) => {
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
     if (offer.status === "settled") return { success: true, message: "Pengantaran sudah dikonfirmasi." };
 
-    const transaction = state.transactions.find((item) => item.offerId === offerId && item.status === "held_in_escrow");
-    if (offer.status !== "claimed" || !transaction) {
+    if (!isReadyForDelivery(offer)) {
       return { success: false, status: 409, message: "Pesanan belum siap diserahterimakan." };
     }
-    const result = executeEscrowSettlement(transaction.amountIdr, offer.paymentStatus);
-    if (!result.settled) return { success: false, status: 422, message: result.message };
+    if (offer.paymentStatus === "held_in_escrow") {
+      const transaction = state.transactions.find((item) => item.offerId === offerId && item.status === "held_in_escrow");
+      if (!transaction) return { success: false, status: 409, message: "Catatan pembayaran belum tersedia." };
+      const result = executeEscrowSettlement(transaction.amountIdr, offer.paymentStatus);
+      if (!result.settled) return { success: false, status: 422, message: result.message };
+      offer.paymentStatus = "released_to_vendor";
+      transaction.status = "released";
+      transaction.releasedAt = getRealtimeWIBTimeString();
+      state.vendorWalletIdr += result.creditedAmountIdr;
+    }
 
     offer.status = "settled";
     offer.deliveredOn = new Date().toISOString();
-    offer.paymentStatus = "released_to_vendor";
-    transaction.status = "released";
-    transaction.releasedAt = getRealtimeWIBTimeString();
-    state.vendorWalletIdr += result.creditedAmountIdr;
     if (offer.targetTier === "tier_3") state.biomassProcessedKg += offer.quantityKg;
     if (offer.targetTier === "tier_2") state.socialMealsServed += offer.quantityKg * 4;
     const stock = state.stocks.find((item) => item.id === offer.stockId);
-    if (stock) stock.remainingKg = Math.max(0, stock.remainingKg - offer.quantityKg);
-    return { success: true, message: "Serah terima dikonfirmasi. Saldo simulasi pedagang diperbarui." };
+    if (stock) stock.remainingKg = Math.max(0, roundKg(stock.remainingKg - offer.quantityKg));
+    return { success: true, message: isFreeMaggotOffer(offer) ? "Serah terima lot Maggot gratis dikonfirmasi." : isDonation(offer)
+      ? "Donasi telah diserahterimakan. Reputasi kios diperbarui."
+      : "Serah terima dikonfirmasi. Saldo simulasi pedagang diperbarui." };
   });
 }
 
@@ -325,7 +373,7 @@ export function addVendorStockServer(commodityId: string, quantityKg: number, ve
   return updateState((state) => {
     const kiosk = KIOSKS.find((item) => item.id === vendorId);
     if (!kiosk || !COMMODITIES.some((item) => item.id === commodityId) ||
-      !Number.isFinite(quantityKg) || quantityKg <= 0 || quantityKg > 10000) {
+      !validWeight(quantityKg) || quantityKg === 0) {
       return { success: false, status: 422, message: "Pasokan harus memiliki kios, komoditas, dan berat yang valid." };
     }
     if (sourceId && state.stocks.some((stock) => stock.id === sourceId)) {
@@ -355,16 +403,83 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
   const visible = visibleMarketState(state, user);
   const now = Date.now();
   const stockHealth = Object.fromEntries(visible.stocks.map((stock) => [stock.id, evaluateMarketStock(stock, weather, now)]));
+  const estimatesVisible = user.role === "vendor" || user.role === "admin" || user.role === "manager";
+  const { footfallDropPercentage } = calculateRainFootfallAttenuation(weather.rainfallMm);
+  const estimatedUnsoldKg = estimatesVisible
+    ? Object.fromEntries(visible.stocks.filter((stock) => !stock.verifiedAt)
+      .map((stock) => [stock.id, estimateUnsoldStockKg(state, stock, footfallDropPercentage)]))
+    : {};
   if (user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot") {
+    const stockById = new Map(visible.stocks.map((stock) => [stock.id, stock]));
     visible.offers = visible.offers.filter((offer) => offer.status !== "active" ||
-      isOfferSuitable(offer, stockHealth[offer.stockId]?.decayScore));
+      canClaimStock(state, offer, stockById.get(offer.stockId), stockHealth[offer.stockId]?.decayScore));
   }
-  return { ...visible, stockHealth, weather: { isEstimated: weather.isEstimated ?? false, temperatureC: weather.temperatureC, humidityPercent: weather.humidityPercent } };
+  return { ...visible, stockHealth, estimatedUnsoldKg, weather: { isEstimated: weather.isEstimated ?? false, temperatureC: weather.temperatureC, humidityPercent: weather.humidityPercent } };
 }
 
-/** Keeps inedible produce out of food channels and edible produce out of feed. */
+/** Publishes only totals by lane and commodity. Account and transaction records stay private. */
+export async function readPublicMarketOverview() {
+  const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
+  const now = Date.now();
+  const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+  const lanes = { tier_1: { lots: 0, kg: 0 }, tier_2: { lots: 0, kg: 0 }, tier_3: { lots: 0, kg: 0 } };
+  const commodities = new Map<string, number>();
+  let availableLots = 0;
+  let availableKg = 0;
+  let distributedKg = 0;
+  let completedDeliveries = 0;
+  for (const offer of state.offers) {
+    if (offer.status === "settled") {
+      distributedKg += offer.quantityKg;
+      completedDeliveries++;
+    }
+    if (offer.status !== "active") continue;
+    const stock = stockById.get(offer.stockId);
+    const score = stock && evaluateMarketStock(stock, weather, now)?.decayScore;
+    if (!canClaimStock(state, offer, stock, score)) continue;
+    const commodity = COMMODITIES.find((item) => item.id === offer.commodityId);
+    if (!commodity) continue;
+    lanes[offer.targetTier].lots++;
+    lanes[offer.targetTier].kg += offer.quantityKg;
+    availableLots++;
+    availableKg += offer.quantityKg;
+    commodities.set(commodity.localName, (commodities.get(commodity.localName) ?? 0) + offer.quantityKg);
+  }
+  const topCommodities = [...commodities].map(([name, kg]) => ({ name, kg }))
+    .sort((a, b) => b.kg - a.kg || a.name.localeCompare(b.name, "id")).slice(0, 5);
+  return { availableLots, availableKg, distributedKg, completedDeliveries, lanes, topCommodities };
+}
+
+/** Rejects listings whose physical stock or current quality no longer supports a claim. */
+function canClaimStock(state: ServerState, offer: RescueOffer, stock: StockItem | undefined, score: number | undefined) {
+  return Boolean(stock?.verifiedAt && roundKg(stock.remainingKg - reservedStockKg(state, stock.id)) >= offer.quantityKg && isOfferSuitable(offer, score));
+}
+
+/** Keeps stock that already belongs to an order separate from available kilograms. */
+function reservedStockKg(state: ServerState, stockId: string) {
+  return roundKg(state.offers.reduce((sum, offer) => sum + (offer.stockId === stockId && offer.status === "claimed" ? offer.quantityKg : 0), 0));
+}
+
+/** Counts kilograms already handed over from the same intake lot. */
+function distributedStockKg(state: ServerState, stockId: string) {
+  return roundKg(state.offers.reduce((sum, offer) => sum + (offer.stockId === stockId && offer.status === "settled" ? offer.quantityKg : 0), 0));
+}
+
+/** Estimates unreserved stock without changing the last recorded physical weight. */
+function estimateUnsoldStockKg(state: ServerState, stock: StockItem, footfallDropPercentage: number) {
+  const reserved = reservedStockKg(state, stock.id);
+  const estimated = predictRetailSurplusKg(stock.initialKg, footfallDropPercentage) - distributedStockKg(state, stock.id) - reserved;
+  return Math.max(0, roundKg(Math.min(stock.remainingKg - reserved, estimated)));
+}
+
+/** Validates the common precision and bounds used by both web and Telegram. */
+function validWeight(weight: number) {
+  return Number.isFinite(weight) && weight >= 0 && weight <= 10_000 && roundKg(weight) === weight;
+}
+
+/** Hides listings when a change in quality moves the remainder to a different lane. */
 function isOfferSuitable(offer: RescueOffer, score: number | undefined) {
-  return score !== undefined && (offer.targetTier === "tier_3" ? score >= 0.85 : score < 0.85);
+  return score !== undefined && offer.targetTier === distributionTierForDecay(score);
 }
 
 /** Derives an offer from the stock evaluation shared by the live inventory view. */
@@ -373,9 +488,9 @@ function evaluateStockOffer(stock: StockItem, weather: { temperatureC: number; h
   const evaluation = evaluateMarketStock(stock, weather);
   if (!commodity || !evaluation || stock.remainingKg <= 0) return null;
   if (automatic && evaluation.decayScore < 0.35) return null;
-  const tier = evaluation.recommendedTier === "tier_2" || evaluation.recommendedTier === "tier_3" ? evaluation.recommendedTier : "tier_1";
+  const tier = distributionTierForDecay(evaluation.decayScore);
   const floor = tier === "tier_1" ? commodity.minimumSalvagePricePerKg : 0;
-  const price = Math.max(floor, evaluation.estimatedSalvagePrice);
+  const price = tier === "tier_3" ? 0 : Math.max(floor, evaluation.estimatedSalvagePrice);
   return {
     id: randomUUID(), stockId: stock.id, vendorId: stock.vendorId, commodityId: commodity.id,
     targetTier: tier, quantityKg: stock.remainingKg, originalPricePerKg: commodity.baseWholesalePricePerKg,
@@ -385,41 +500,111 @@ function evaluateStockOffer(stock: StockItem, weather: { temperatureC: number; h
   };
 }
 
-/** Creates a sale offer or scheduled approval proposal from current conditions. */
-export async function publishMarketOffers(vendorId?: string, stockId?: string) {
+/** Records the seller's physical count and publishes the offer in the same revision. */
+function publishConfirmedStock(
+  state: ServerState, stock: StockItem, weather: { temperatureC: number; humidityPercent: number },
+  confirmation: StockConfirmation | undefined, proposal?: RescueOffer,
+): MutationResult {
+  const reserved = reservedStockKg(state, stock.id);
+  const max = Math.max(0, roundKg(stock.initialKg - distributedStockKg(state, stock.id) - reserved));
+  if (!confirmation || !validWeight(confirmation.confirmedKg) || confirmation.confirmedKg > max) {
+    return { success: false, status: 422, message: "Konfirmasi berat sisa yang belum dipesan, maksimal " + max.toLocaleString("id-ID") + " kg." };
+  }
+  const { confirmedKg, mode } = confirmation;
+  if (confirmedKg === 0) {
+    stock.remainingKg = reserved;
+    stock.verifiedAt = new Date().toISOString();
+    if (proposal) proposal.status = "rejected";
+    return { success: true, message: "Hasil timbang tersimpan. Tidak ada penawaran yang diterbitkan." };
+  }
+  const listing = evaluateStockOffer({ ...stock, remainingKg: confirmedKg }, weather, false);
+  if (!listing) return { success: false, status: 422, message: "Mutu lot belum dapat dievaluasi." };
+  if (listing.targetTier === "tier_2" && !mode) {
+    return { success: false, status: 422, message: "Pilih jual atau donasi untuk lot dapur sosial." };
+  }
+  if (listing.targetTier !== "tier_2" && mode === "donation") {
+    return { success: false, status: 422, message: "Donasi hanya berlaku untuk lot dapur sosial." };
+  }
+  listing.distributionMode = listing.targetTier === "tier_3" ? "free" : mode ?? "sale";
+  if (listing.distributionMode === "donation") {
+    listing.salvagePricePerKg = 0;
+    listing.totalAmountIdr = 0;
+    listing.discountPercentage = 100;
+  }
+  stock.remainingKg = roundKg(confirmedKg + reserved);
+  stock.verifiedAt = new Date().toISOString();
+  if (proposal) Object.assign(proposal, listing, { id: proposal.id });
+  else state.offers.unshift(listing);
+  const message = listing.distributionMode === "free" ? "Lot Maggot gratis diterbitkan."
+    : listing.distributionMode === "donation" ? "Penawaran donasi diterbitkan." : "Penawaran jual diterbitkan.";
+  return { success: true, message };
+}
+
+/** Creates scheduled proposals or publishes one lot confirmed by its owner. */
+export async function publishMarketOffers(vendorId?: string, stockId?: string, confirmation?: StockConfirmation) {
   const weather = await getHyperlocalMarketWeather();
   return updateState((state) => {
-    const candidates = state.stocks.filter((stock) => (!stockId || stock.id === stockId) && (!vendorId || stock.vendorId === vendorId));
-    const published = candidates
-      .filter((stock) => !state.offers.some((offer) => offer.stockId === stock.id && offer.status !== "rejected" && offer.status !== "settled"))
-      .map((stock) => evaluateStockOffer(stock, weather, !stockId)).filter((offer) => offer !== null);
-    if (stockId && published.length === 0) {
-      return { success: false, status: 409, message: "Stok ini tidak tersedia atau sudah memiliki penawaran." };
+    if (vendorId || stockId) {
+      const stock = state.stocks.find((item) => item.id === stockId && item.vendorId === vendorId);
+      if (!stock || state.offers.some((offer) => offer.stockId === stock.id && (offer.status === "active" || offer.status === "pending_vendor"))) {
+        return { success: false, status: 409, message: "Stok ini tidak tersedia atau sudah memiliki penawaran." };
+      }
+      return publishConfirmedStock(state, stock, weather, confirmation);
     }
-    state.offers.unshift(...published);
-    return { success: true, message: published.length + " penawaran berhasil disiapkan." };
+
+    const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+    for (const offer of state.offers) {
+      if (offer.status !== "active") continue;
+      const stock = stockById.get(offer.stockId);
+      const score = stock && evaluateMarketStock(stock, weather)?.decayScore;
+      if (stock && !stock.verifiedAt) offer.status = "pending_vendor";
+      else if (score !== undefined && !isOfferSuitable(offer, score)) offer.status = "rejected";
+    }
+
+    const active = new Set(state.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));
+    const pending = new Map(state.offers.filter((offer) => offer.status === "pending_vendor").map((offer) => [offer.stockId, offer]));
+    const { footfallDropPercentage } = calculateRainFootfallAttenuation(weather.rainfallMm);
+    const newProposals: RescueOffer[] = [];
+    let updated = 0;
+    for (const stock of state.stocks) {
+      if (active.has(stock.id)) continue;
+      const proposedKg = estimateUnsoldStockKg(state, stock, footfallDropPercentage);
+      const proposal = evaluateStockOffer({ ...stock, remainingKg: proposedKg }, weather, true);
+      const existing = pending.get(stock.id);
+      if (proposal && existing) {
+        Object.assign(existing, proposal, { id: existing.id, createdAt: existing.createdAt });
+        updated++;
+      } else if (proposal) {
+        newProposals.push(proposal);
+      } else if (existing) {
+        existing.status = "rejected";
+      }
+    }
+    state.offers.unshift(...newProposals);
+    return { success: true, message: newProposals.length + " usulan baru, " + updated + " diperbarui. Menunggu konfirmasi pedagang." };
   });
 }
 
 /** Publishes a pending proposal or withdraws an unclaimed listing for the owner. */
-export function decideVendorOffer(offerId: string, vendorId: string, approved: boolean) {
+export async function decideVendorOffer(offerId: string, vendorId: string, approved: boolean, confirmation?: StockConfirmation) {
+  const weather = approved ? await getHyperlocalMarketWeather() : undefined;
   return updateState((state) => {
     const offer = state.offers.find((item) => item.id === offerId && item.vendorId === vendorId);
     if (!offer) return { success: false, status: 404, message: "Penawaran kios tidak ditemukan." };
-    if (offer.status !== "pending_vendor" && (approved || offer.status !== "active")) {
+    if (offer.status !== "pending_vendor" && offer.status !== "active") {
       return { success: false, status: 409, message: "Penawaran sudah diproses." };
     }
-    offer.status = approved ? "active" : "rejected";
-    if (approved) offer.createdAt = new Date().toISOString();
-    return { success: true, message: approved ? "Penawaran diterbitkan." : "Penawaran ditolak." };
+    if (weather) {
+      const stock = state.stocks.find((item) => item.id === offer.stockId && item.vendorId === vendorId);
+      if (!stock) return { success: false, status: 404, message: "Stok penawaran tidak ditemukan." };
+      if (offer.status === "active" && stock.verifiedAt) {
+        return { success: false, status: 409, message: "Penawaran sudah aktif. Tarik sebelum menimbang ulang." };
+      }
+      return publishConfirmedStock(state, stock, weather, confirmation, offer);
+    }
+    offer.status = "rejected";
+    return { success: true, message: "Penawaran ditarik atau ditolak." };
   });
-}
-
-/** Returns only paid orders that can be handed over. */
-export async function getActiveCourierTasks() {
-  return (await getServerSimulationState()).offers.filter(
-    (offer) => offer.status === "claimed" && offer.paymentStatus === "held_in_escrow"
-  );
 }
 
 /** Lists the same eligible catalog shown in the buyer workspace. */
