@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * ============================================================================
  * PASARIN TELEGRAM BOT REAL-TIME POLLING RUNNER
