@@ -19,7 +19,7 @@ const STAGES = [
 
 type OfferTier = NonNullable<(typeof STAGES)[number]["offerTier"]>;
 
-/** Finds commodity records that match the kiosk's written specialization, then fills the stall. */
+/** Finds commodity records that match the kiosk's written specialization, prioritizing the same category. */
 function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
   const selected: Commodity[] = [];
   for (const specialization of kiosk.specialization) {
@@ -30,7 +30,21 @@ function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
       commodity.name.toLowerCase().includes(needle));
     if (match && !selected.includes(match)) selected.push(match);
   }
+
+  // Prioritaskan komoditas yang se-kategori dengan spesialisasi lapak (misal Sayur Daun -> leafy_vegetable)
+  const primaryCategory = selected[0]?.category;
+  const categoryPool = primaryCategory
+    ? COMMODITIES.filter((c) => c.category === primaryCategory)
+    : COMMODITIES;
+
   let cursor = 0;
+  while (selected.length < STAGES.length && cursor < categoryPool.length * 2) {
+    const candidate = categoryPool[(kioskIndex * 7 + cursor * 11) % categoryPool.length];
+    if (!selected.includes(candidate)) selected.push(candidate);
+    cursor++;
+  }
+
+  cursor = 0;
   while (selected.length < STAGES.length) {
     const candidate = COMMODITIES[(kioskIndex * 7 + cursor * 11) % COMMODITIES.length];
     if (!selected.includes(candidate)) selected.push(candidate);

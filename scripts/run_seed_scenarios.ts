@@ -24,6 +24,7 @@ import path from "node:path";
 import { Client } from "pg";
 import type { ServerState } from "../src/lib/serverSimulationState";
 import type { RescueOffer, StockItem, EscrowTransaction } from "../src/types/market";
+import { buildMarketSeedState } from "../src/lib/marketSeed";
 
 // Muat env lokal jika ada
 try {
@@ -315,33 +316,21 @@ async function seedTestingScenarios() {
   console.log("         PASARIN TESTING SCENARIOS INJECTION & VERIFICATION ENGINE              ");
   console.log("================================================================================\n");
 
-  // 1. Perbarui Local File Simulation State
-  let currentState: ServerState = {
-    offers: [],
-    transactions: [],
-    stocks: [],
+  // 1. Buat Fresh Seed State untuk seluruh 30 Kios pasar berstandar sirkular
+  const baseSeed = buildMarketSeedState();
+  const currentState: ServerState = {
+    ...baseSeed,
     vendorWalletIdr: 50000,
     biomassProcessedKg: 100,
     socialMealsServed: 100,
     lastUpdated: new Date().toISOString(),
   };
 
-  if (fs.existsSync(stateFile)) {
-    try {
-      currentState = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
-    } catch {}
-  }
-
-  // Bersihkan ID test lama jika ada
-  currentState.stocks = currentState.stocks.filter((s) => !s.id.startsWith("stk_test_"));
-  currentState.offers = currentState.offers.filter((o) => !o.id.startsWith("ofr_test_"));
-  currentState.transactions = currentState.transactions.filter((t) => !t.id.startsWith("tx_test_"));
-
   // Tambahkan skenario baru di urutan teratas (unshift)
   currentState.stocks.unshift(...scenarioStocks);
   currentState.offers.unshift(...scenarioOffers);
   currentState.transactions.unshift(...scenarioTransactions);
-  currentState.vendorWalletIdr = (currentState.vendorWalletIdr || 0) + 50000;
+  currentState.vendorWalletIdr = 50000;
   currentState.lastUpdated = new Date().toISOString();
 
   // Tulis kembali ke file state
