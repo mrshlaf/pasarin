@@ -110,7 +110,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Ends the active browser session and clears the matching cookie. */
   async function signOut() {
     if (serverUser) {
-      await fetch("/api/auth/session", { method: "DELETE" });
+      const response = await fetch("/api/auth/session", { method: "DELETE" });
+      if (!response.ok) throw new Error("Sesi belum bisa diakhiri.");
       setServerUser(null);
     }
     if (testUser) {

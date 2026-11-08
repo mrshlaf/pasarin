@@ -424,8 +424,14 @@
                   "offerId": {
                     "type": "string"
                   },
-                  "donated": {
-                    "type": "boolean"
+                  "quantityKg": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "description": "Berat yang akan diambil. Jika kosong, seluruh sisa penawaran diklaim."
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "description": "Kunci percobaan ulang agar klaim parsial tidak tercatat dua kali."
                   }
                 },
                 "required": [
@@ -581,7 +587,7 @@
     },
     "/api/quality-gate/validate": {
       "get": {
-        "summary": "Evaluasi kesesuaian mutu dan tier",
+        "summary": "Pratinjau kesesuaian mutu dan tier tanpa pencatatan audit",
         "responses": {
           "200": {
             "description": "Berhasil"
@@ -647,8 +653,11 @@
         ]
       },
       "post": {
-        "summary": "Evaluasi mutu dari data lot",
+        "summary": "Validasi mutu lot dan catat pelanggaran. Memerlukan sesi pedagang atau admin.",
+        "security": [{ "SupabaseBearer": [] }, { "PasarinSession": [] }],
         "responses": {
+          "401": { "description": "Sesi diperlukan" },
+          "403": { "description": "Peran tidak diizinkan" },
           "200": {
             "description": "Berhasil"
           },
@@ -795,6 +804,15 @@
                   },
                   "approved": {
                     "type": "boolean"
+                  },
+                  "confirmation": {
+                    "type": "object",
+                    "description": "Wajib untuk publish dan persetujuan. Lot dapur sosial memerlukan mode jika berat lebih dari nol.",
+                    "required": ["confirmedKg"],
+                    "properties": {
+                      "confirmedKg": { "type": "number", "minimum": 0 },
+                      "mode": { "type": "string", "enum": ["sale", "donation"] }
+                    }
                   }
                 },
                 "required": [
@@ -803,6 +821,102 @@
               }
             }
           }
+        }
+      }
+    },
+    "/api/market/overview": {
+      "get": {
+        "summary": "Baca ringkasan anonim untuk dasbor publik",
+        "responses": {
+          "200": {
+            "description": "Total lot dan volume tersedia, volume tersalurkan, jumlah pengantaran selesai, volume per tier, dan komoditas teratas"
+          },
+          "503": { "description": "Ringkasan pasar sementara tidak tersedia" }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "summary": "Baca sesi akun pada mode autentikasi server",
+        "responses": {
+          "200": { "description": "Profil sesi atau user null" },
+          "404": { "description": "Mode autentikasi server tidak aktif" }
+        }
+      },
+      "post": {
+        "summary": "Masuk dengan username atau email dan kata sandi",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string", "format": "password", "writeOnly": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Profil akun dan cookie sesi HttpOnly" },
+          "401": { "description": "Kredensial tidak valid" },
+          "404": { "description": "Mode autentikasi server tidak aktif" },
+          "503": { "description": "Layanan autentikasi sementara tidak tersedia" }
+        }
+      },
+      "delete": {
+        "summary": "Hapus cookie sesi server",
+        "responses": { "200": { "description": "Sesi browser diakhiri" } }
+      }
+    },
+    "/api/admin/seed": {
+      "get": {
+        "summary": "Baca status seed dan akun pasar",
+        "security": [{ "SeedSecret": [] }],
+        "responses": {
+          "200": { "description": "Status dan jumlah data pasar" },
+          "401": { "description": "Otorisasi seed diperlukan" },
+          "503": { "description": "Penyimpanan pasar tidak tersedia" }
+        }
+      },
+      "post": {
+        "summary": "Bangun ulang data demo dan akun pasar",
+        "security": [{ "SeedSecret": [] }],
+        "responses": {
+          "200": { "description": "Seed berhasil diterapkan" },
+          "401": { "description": "Otorisasi seed diperlukan" },
+          "503": { "description": "Penyimpanan pasar tidak tersedia" }
+        }
+      }
+    },
+    "/api/telegram/login": {
+      "post": {
+        "summary": "Masuk ke akun Pasarin dari Telegram Mini App",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["initData", "identifier", "password"],
+                "properties": {
+                  "initData": { "type": "string", "description": "Data peluncuran yang ditandatangani Telegram" },
+                  "identifier": { "type": "string" },
+                  "password": { "type": "string", "format": "password", "writeOnly": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sesi akun di chat aktif" },
+          "400": { "description": "Format permintaan tidak valid" },
+          "401": { "description": "Data Telegram atau kredensial tidak valid" },
+          "429": { "description": "Terlalu banyak percobaan" },
+          "503": { "description": "Layanan akun sementara tidak tersedia" }
         }
       }
     },
@@ -824,11 +938,11 @@
           "401": {
             "description": "Kredensial tidak valid"
           },
-          "403": {
-            "description": "Peran tidak diizinkan"
-          },
           "400": {
             "description": "Format permintaan tidak valid"
+          },
+          "503": {
+            "description": "Layanan Pasarin sementara tidak tersedia"
           }
         },
         "security": [
@@ -864,7 +978,7 @@
     },
     "/api/telemetry/weather": {
       "get": {
-        "summary": "Baca telemetri atau profil cuaca cadangan",
+        "summary": "Baca telemetri atau profil cuaca cadangan. Refresh paksa memerlukan sesi admin.",
         "responses": {
           "200": {
             "description": "Berhasil"
@@ -873,6 +987,7 @@
         "parameters": [
           {
             "name": "refresh",
+            "description": "Baca langsung dari sumber cuaca jika akun adalah admin.",
             "in": "query",
             "required": false,
             "schema": {
@@ -992,6 +1107,17 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Nilai CRON_SECRET yang dikonfigurasi pada server."
+      },
+      "SeedSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Pasarin-Seed-Secret",
+        "description": "Kunci server untuk deployment. Pengembangan lokal memerlukan sesi admin."
+      },
+      "PasarinSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "pasarin_session"
       },
       "TelegramSecret": {
         "type": "apiKey",

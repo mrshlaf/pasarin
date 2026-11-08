@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
+import { requireApiRole } from "@/lib/apiAuth";
 import { verifyHumanGradeIntegrity } from "@/lib/qualityGateAgent";
 import { QualityGateRequestPayload, CircularRescueTier } from "@/types/api";
 
@@ -22,8 +23,8 @@ const qualityGatePayloadSchema = z.object({
   requestedTier: z.enum(["fresh", "tier_1", "tier_2", "tier_3"]),
   vendorId: z.string().optional(),
   temperatureC: z.number().optional(),
-  humidityPercent: z.number().optional(),
-  imageBase64: z.string().optional(),
+  humidityPercent: z.number().min(0).max(100).optional(),
+  imageBase64: z.string().max(1_500_000).optional(),
   chlorophyllRatio: z.number().min(0).max(1).optional(),
 });
 
@@ -35,6 +36,9 @@ const qualityGatePayloadSchema = z.object({
  * @returns Respons JSON QualityGateEvaluationResult dengan rincian status kelulusan.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  const auth = await requireApiRole(req, ["vendor", "admin"]);
+  if (auth.response) return auth.response;
+  if (auth.user.role === "vendor" && !auth.user.vendorId) return errorResponse("Akun belum terhubung ke kios.", 403);
   try {
     const validation = await validateJsonBody(req, qualityGatePayloadSchema);
     if (!validation.success) {
@@ -45,7 +49,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       commodityId: validation.data.commodityId,
       hoursOnDisplay: validation.data.hoursOnDisplay,
       requestedTier: validation.data.requestedTier as CircularRescueTier,
-      vendorId: validation.data.vendorId,
+      vendorId: auth.user.role === "vendor" ? auth.user.vendorId : validation.data.vendorId,
       temperatureC: validation.data.temperatureC,
       humidityPercent: validation.data.humidityPercent,
       imageBase64: validation.data.imageBase64,
@@ -84,11 +88,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const humidityPercent = searchParams.has("humidityPercent") ? Number(searchParams.get("humidityPercent")) : undefined;
     const chlorophyllRatio = searchParams.has("chlorophyllRatio") ? Number(searchParams.get("chlorophyllRatio")) : undefined;
 
-    if (isNaN(hoursOnDisplay) || hoursOnDisplay < 0) {
-      return errorResponse("Parameter 'hoursOnDisplay' harus berupa angka positif", 400);
-    }
-
-    const payload: QualityGateRequestPayload = {
+    const input = qualityGatePayloadSchema.safeParse({
       commodityId,
       hoursOnDisplay,
       requestedTier,
@@ -96,8 +96,9 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       temperatureC,
       humidityPercent,
       chlorophyllRatio,
-    };
-    const evaluationResult = await verifyHumanGradeIntegrity(payload);
+    });
+    if (!input.success) return errorResponse("Parameter evaluasi mutu tidak valid.", 400);
+    const evaluationResult = await verifyHumanGradeIntegrity(input.data, { recordIncident: false });
 
     return successResponse(evaluationResult, 200);
   } catch (error) {

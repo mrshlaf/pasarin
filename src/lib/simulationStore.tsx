@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { apiFetch } from "@/lib/apiFetch";
 import { useAuth } from "@/lib/authContext";
 import type { AppRole } from "@/data/accounts";
-import type { EscrowTransaction, RescueOffer, StockItem } from "@/types/market";
+import type { EscrowTransaction, RescueOffer, StockConfirmation, StockItem } from "@/types/market";
 import type { readMarketSnapshot } from "@/lib/serverSimulationState";
 import type { ApiResponse } from "@/types/api";
 export type { AppRole, EscrowTransaction, RescueOffer, StockItem };
@@ -15,10 +15,11 @@ export interface SimulationContextType {
   role: AppRole;
   setRole: (role: AppRole) => void;
   stockHealth: ServerState["stockHealth"];
+  estimatedUnsoldKg: ServerState["estimatedUnsoldKg"];
   weather: ServerState["weather"] | null;
   stockItems: StockItem[];
   addStockItem: (item: Pick<StockItem, "commodityId" | "initialKg">) => Promise<MarketActionResult>;
-  createInstantSurplusOffer: (stockId: string) => Promise<MarketActionResult>;
+  createInstantSurplusOffer: (stockId: string, confirmation: StockConfirmation) => Promise<MarketActionResult>;
   busy: boolean;
   stateReady: boolean;
   feedback: MarketActionResult | null;
@@ -27,9 +28,9 @@ export interface SimulationContextType {
   offers: RescueOffer[];
   transactions: EscrowTransaction[];
   vendorWalletBalanceIdr: number;
-  approveOfferByVendor: (offerId: string) => Promise<MarketActionResult>;
+  approveOfferByVendor: (offerId: string, confirmation: StockConfirmation) => Promise<MarketActionResult>;
   rejectOfferByVendor: (offerId: string) => Promise<MarketActionResult>;
-  claimOfferByBuyer: (offerId: string, donated?: boolean) => Promise<MarketActionResult>;
+  claimOfferByBuyer: (offerId: string, quantityKg: number, requestId: string) => Promise<MarketActionResult>;
   payQrisForOffer: (offerId: string) => Promise<MarketActionResult>;
   confirmDelivery: (offerId: string) => Promise<MarketActionResult>;
   triggerCronSweepNow: () => Promise<MarketActionResult>;
@@ -37,8 +38,8 @@ export interface SimulationContextType {
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
-type MarketActionResult = { success: boolean; message: string };
-type MarketSnapshot = { userId: string; state: ServerState };
+type MarketActionResult = { success: boolean; message: string; offer?: RescueOffer };
+type MarketSnapshot = { userId: string; state: ServerState; syncedAt: number };
 
 /** Keeps a role-scoped market snapshot synchronized across sessions and channels. */
 export function SimulationProvider({ children }: { children: ReactNode }) {
@@ -51,14 +52,47 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const [feedback, setFeedback] = useState<(MarketActionResult & { userId: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const generation = useRef(0);
   const changing = useRef(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const data = userId && snapshot?.userId === userId ? snapshot.state : null;
   const stockItems = data?.stocks ?? [];
   const offers = data?.offers ?? [];
   const transactions = data?.transactions ?? [];
   const vendorWalletBalanceIdr = data?.vendorWalletIdr ?? 0;
+
+  // Real-time live decaying: recalculate remaining hours dynamically with actual clock seconds
+  const liveStockHealth = data?.stockHealth
+    ? Object.fromEntries(
+        Object.entries(data.stockHealth).map(([stockId, health]) => {
+          if (!health) return [stockId, null];
+          const deltaHours = Math.max(0, (now - (snapshot?.syncedAt ?? now)) / 3_600_000);
+          const liveHoursElapsed = health.hoursElapsed + deltaHours;
+          const liveHoursRemaining = Math.max(0, health.hoursRemaining - deltaHours);
+          const isSpoiled = health.decayScore >= 0.85 || (health.hoursRemaining > 0 && liveHoursRemaining <= 0);
+          return [
+            stockId,
+            {
+              ...health,
+              hoursElapsed: liveHoursElapsed,
+              hoursRemaining: liveHoursRemaining,
+              decayScore: isSpoiled ? Math.max(health.decayScore, 0.85) : health.decayScore,
+              condition: isSpoiled ? ("tidak_layak" as const) : health.condition,
+              recommendedTier: isSpoiled ? ("tier_3" as const) : health.recommendedTier,
+              tierLabel: isSpoiled
+                ? "Tier 3: Sentra Budidaya Maggot BSF & Kompos Organik"
+                : health.tierLabel,
+            },
+          ];
+        })
+      )
+    : {};
 
   useEffect(() => {
     if (!userId) return;
@@ -73,7 +107,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         const payload: ApiResponse<ServerState> = await response.json();
         if (controller.signal.aborted || generation.current !== version) return;
         if (response.ok && payload.data) {
-          setSnapshot({ userId, state: payload.data });
+          setSnapshot({ userId, state: payload.data, syncedAt: Date.now() });
         } else {
           setFeedback({ userId, success: false, message: payload.error ?? "Data pasar tidak dapat dimuat." });
         }
@@ -106,11 +140,11 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const payload: ApiResponse<{ message: string; state?: ServerState }> = await response.json();
+      const payload: ApiResponse<{ message: string; state?: ServerState; offer?: RescueOffer }> = await response.json();
       result = response.ok && payload.data
-        ? { success: true, message: payload.data.message }
+        ? { success: true, message: payload.data.message, offer: payload.data.offer }
         : { success: false, message: payload.error ?? "Tindakan tidak dapat diproses." };
-      if (payload.data?.state) setSnapshot({ userId, state: payload.data.state });
+      if (payload.data?.state) setSnapshot({ userId, state: payload.data.state, syncedAt: Date.now() });
     } catch {
       result = { success: false, message: "Koneksi terputus. Periksa data sebelum mencoba lagi." };
     } finally {
@@ -124,10 +158,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
   const addStockItem = (item: Pick<StockItem, "commodityId" | "initialKg">) =>
     mutate({ action: "stock", commodityId: item.commodityId, quantityKg: item.initialKg });
-  const createInstantSurplusOffer = (stockId: string) => mutate({ action: "publish", stockId });
-  const approveOfferByVendor = (offerId: string) => mutate({ action: "vendor_decision", offerId, approved: true });
+  const createInstantSurplusOffer = (stockId: string, confirmation: StockConfirmation) => mutate({ action: "publish", stockId, confirmation });
+  const approveOfferByVendor = (offerId: string, confirmation: StockConfirmation) => mutate({ action: "vendor_decision", offerId, approved: true, confirmation });
   const rejectOfferByVendor = (offerId: string) => mutate({ action: "vendor_decision", offerId, approved: false });
-  const claimOfferByBuyer = (offerId: string, donated = false) => mutate({ offerId, donated }, "/api/offers/claim");
+  const claimOfferByBuyer = (offerId: string, quantityKg: number, requestId: string) => mutate({ offerId, quantityKg, requestId }, "/api/offers/claim");
   const payQrisForOffer = (offerId: string) => mutate({ action: "payment", offerId });
   const confirmDelivery = (offerId: string) => mutate({ action: "delivery", offerId });
   const triggerCronSweepNow = () => mutate({}, "/api/orchestrator/run");
@@ -136,7 +170,8 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       value={{
         role,
         setRole,
-        stockHealth: data?.stockHealth ?? {},
+        stockHealth: liveStockHealth,
+        estimatedUnsoldKg: data?.estimatedUnsoldKg ?? {},
         weather: data?.weather ?? null,
         busy,
         stateReady: data !== null,
