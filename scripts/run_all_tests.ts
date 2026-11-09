@@ -1,3 +1,8 @@
+/**
+ * Skrip Pelaksana Rangkaian Pengujian Menyeluruh (Master Automated Test Orchestrator).
+ * Mengorkestrasi eksekusi seluruh berkas pengujian mandiri dalam lingkungan uji terisolasi.
+ */
+
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";

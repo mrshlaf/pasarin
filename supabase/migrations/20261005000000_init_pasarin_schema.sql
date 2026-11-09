@@ -1,18 +1,12 @@
--- ============================================================================
--- PASARIN DATABASE INITIAL MIGRATION (Supabase PostgreSQL DDL)
--- Task Key: PSR-101 (Supabase PostgreSQL Schema and DDL Design)
--- Deskripsi: Merancang skema relasional, indeks B-Tree, integritas referensial,
---            dan kebijakan Row Level Security (RLS) untuk sistem multi-agen PASARIN.
--- ============================================================================
+-- Migrasi Awal Skema Basis Data PASARIN (Supabase PostgreSQL DDL)
+-- PSR-101: Skema relasional, indeks B-Tree, integritas referensial, dan kebijakan RLS.
 
 -- Aktifkan ekstensi UUID dan Kriptografi
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- ============================================================================
--- 1. TABEL KIOSK PEDAGANG PASAR INDUK KRAMAT JATI (kiosks)
+-- 1. Tabel Kios Pedagang Pasar Induk Kramat Jati (kiosks)
 -- Direktori 30 pedagang pasar dengan verifikasi dokumen resmi
--- ============================================================================
 CREATE TABLE IF NOT EXISTS kiosks (
     id VARCHAR(64) PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
@@ -39,10 +33,8 @@ CREATE INDEX IF NOT EXISTS idx_kiosks_verification_status ON kiosks(verification
 CREATE INDEX IF NOT EXISTS idx_kiosks_stall_number ON kiosks(stall_number);
 
 
--- ============================================================================
--- 2. TABEL PROFIL BIOLOGIS KOMODITAS (commodities)
--- Katalog 30 komoditas lengkap dengan kinetika respirasi seluler & batas daya simpan
--- ============================================================================
+-- 2. Tabel Profil Biologis Komoditas (commodities)
+-- Katalog 30 komoditas lengkap dengan kinetika respirasi seluler dan batas daya simpan
 CREATE TABLE IF NOT EXISTS commodities (
     id VARCHAR(64) PRIMARY KEY,
     name VARCHAR(128) NOT NULL,
@@ -69,10 +61,8 @@ CREATE INDEX IF NOT EXISTS idx_commodities_category ON commodities(category);
 CREATE INDEX IF NOT EXISTS idx_commodities_name ON commodities(name);
 
 
--- ============================================================================
--- 3. TABEL INVENTARIS HARIAN LAPAK PEDAGANG (stock_items)
+-- 3. Tabel Inventaris Harian Lapak Pedagang (stock_items)
 -- Mengelola stok masuk subuh, peluruhan mutu, dan status keaktifan inventaris
--- ============================================================================
 CREATE TABLE IF NOT EXISTS stock_items (
     id VARCHAR(64) PRIMARY KEY,
     vendor_id VARCHAR(64) NOT NULL REFERENCES kiosks(id) ON DELETE CASCADE,
@@ -97,10 +87,8 @@ CREATE INDEX IF NOT EXISTS idx_stock_items_condition ON stock_items(physical_con
 CREATE INDEX IF NOT EXISTS idx_stock_items_is_active ON stock_items(is_active);
 
 
--- ============================================================================
--- 4. TABEL TIKET PENAWARAN SURPLUS SIRKULAR (offers)
--- Mengelola alokasi 3-tier, harga dinamis, countdown waktu, dan status klaim
--- ============================================================================
+-- 4. Tabel Tiket Penawaran Surplus Sirkular (offers)
+-- Mengelola alokasi 3-tier, harga dinamis, hitung mundur waktu, dan status klaim
 CREATE TABLE IF NOT EXISTS offers (
     id VARCHAR(64) PRIMARY KEY,
     stock_id VARCHAR(64) NOT NULL REFERENCES stock_items(id) ON DELETE CASCADE,
@@ -130,10 +118,8 @@ CREATE INDEX IF NOT EXISTS idx_offers_target_tier ON offers(target_tier);
 CREATE INDEX IF NOT EXISTS idx_offers_expires_at ON offers(expires_at);
 
 
--- ============================================================================
--- 5. TABEL KLAIM PESANAN PEMBELI (claims)
+-- 5. Tabel Klaim Pesanan Pembeli (claims)
 -- Transaksi serah terima oleh Warteg, Dapur Umum, atau Sentra Maggot
--- ============================================================================
 CREATE TABLE IF NOT EXISTS claims (
     id VARCHAR(64) PRIMARY KEY,
     offer_id VARCHAR(64) NOT NULL REFERENCES offers(id) ON DELETE RESTRICT,
@@ -158,12 +144,8 @@ CREATE INDEX IF NOT EXISTS idx_claims_buyer ON claims(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_claims_payment_status ON claims(payment_status);
 
 
--- ============================================================================
--- 6. PENGATURAN ROW LEVEL SECURITY (RLS)
+-- 6. Pengaturan Row Level Security (RLS)
 -- Mengisolasi data antar pedagang dan melindungi integritas transaksi
--- ============================================================================
-
--- Aktifkan RLS pada seluruh tabel
 ALTER TABLE kiosks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE commodities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_items ENABLE ROW LEVEL SECURITY;

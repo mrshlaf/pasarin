@@ -1,3 +1,9 @@
+/**
+ * Skrip Penyemaian Awal Akun Pasar dan State Simulasi ke Supabase Cloud (PSR-2 / PSR-4).
+ * Menghubungkan secara langsung ke kluster PostgreSQL Supabase untuk mendaftarkan 142 akun peran
+ * dan menginisialisasi snapshot state pasar awal.
+ */
+
 import { loadEnvFile } from "node:process";
 
 try {

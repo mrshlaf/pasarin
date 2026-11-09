@@ -1,5 +1,16 @@
+/**
+ * Modul Gerbang Pengiriman Pesan dan Penanganan Webhook Telegram Bot API (PSR-38).
+ * Mengatur kontrak data pembaruan Telegram (Update, Message, CallbackQuery),
+ * verifikasi rahasia token webhook (x-telegram-bot-api-secret-token),
+ * serta pengiriman pesan HTTP dengan mekanisme fallback ke teks polos jika parsing Markdown ditolak.
+ */
+
 import { getEnv } from "@/lib/env";
 import { matchesSecret } from "@/lib/apiAuth";
+
+/**
+ * Kontrak struktur objek Chat Telegram (PSR-24 / PSR-38).
+ */
 export interface TelegramChat {
   id: number | string;
   type: "private" | "group" | "supergroup" | "channel";
@@ -9,6 +20,9 @@ export interface TelegramChat {
   last_name?: string;
 }
 
+/**
+ * Kontrak struktur pesan teks masuk Telegram Bot API (PSR-24 / PSR-38).
+ */
 export interface TelegramMessage {
   message_id: number;
   from?: {
@@ -22,6 +36,9 @@ export interface TelegramMessage {
   text?: string;
 }
 
+/**
+ * Kontrak interaksi klik tombol inline keyboard Telegram (PSR-24 / PSR-38).
+ */
 export interface TelegramCallbackQuery {
   id: string;
   from: {
@@ -33,13 +50,23 @@ export interface TelegramCallbackQuery {
   data?: string;
 }
 
+/**
+ * Kontrak payload pembaruan webhook masuk dari server Telegram Bot API (PSR-24 / PSR-38).
+ */
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
   callback_query?: TelegramCallbackQuery;
 }
 
-/** Rejects Telegram requests when the configured webhook secret is absent or different. */
+/**
+ * Memvalidasi keaslian permintaan webhook masuk dari server Telegram.
+ * Membandingkan nilai header secret token dengan rahasia lingkungan secara timing-safe.
+ *
+ * @param secretHeader - Nilai header x-telegram-bot-api-secret-token dari permintaan.
+ * @param expectedSecret - Kunci rahasia yang diharapkan dari variabel lingkungan server.
+ * @returns Boolean bernilai true jika kunci cocok sempurna.
+ */
 export function verifyTelegramWebhookSecret(
   secretHeader: string | null | undefined,
   expectedSecret = getEnv().TELEGRAM_WEBHOOK_SECRET,
@@ -47,6 +74,15 @@ export function verifyTelegramWebhookSecret(
   return matchesSecret(secretHeader, expectedSecret);
 }
 
+/**
+ * Mengirimkan pesan teks atau balasan interaktif ke obrolan Telegram via REST API Telegram Bot.
+ * Dilengkapi mekanisme pengiriman ulang (fail-safe fallback) ke teks polos jika parsing Markdown gagal.
+ *
+ * @param chatId - ID unik obrolan target (pengguna atau grup).
+ * @param text - Isi teks pesan yang dikirimkan.
+ * @param options - Pilihan pemformatan teks (HTML/Markdown), keyboard interaktif, atau mode simulasi.
+ * @returns Status pengiriman, ID pesan terkirim, dan latensi jaringan dalam milidetik.
+ */
 export async function dispatchTelegramMessage(
   chatId: number | string,
   text: string,
@@ -59,7 +95,7 @@ export async function dispatchTelegramMessage(
   const startTime = Date.now();
   const env = getEnv();
 
-  // 1. Pengiriman nyata via Telegram Bot API jika token terpasang
+  // Pengiriman nyata via Telegram Bot API jika token terpasang
   if (!options?.simulate && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_BOT_TOKEN !== "dummy_telegram_token") {
     try {
       const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -127,7 +163,7 @@ export async function dispatchTelegramMessage(
 
   if (!options?.simulate) return { success: false, latencyMs: Date.now() - startTime, error: "Token bot belum diatur." };
 
-  // Testbench calls are isolated from the external bot.
+  // Pemanggilan testbench diisolasi dari bot eksternal nyata
   const latencyMs = Math.max(12, Date.now() - startTime);
 
   return {
@@ -137,7 +173,13 @@ export async function dispatchTelegramMessage(
   };
 }
 
-/** Acknowledges a button press after the shared operation returns. */
+/**
+ * Mengirimkan konfirmasi penerimaan interaksi tombol inline (callback query) ke Telegram.
+ *
+ * @param callbackQueryId - Pengenal unik callback query yang dijawab.
+ * @param message - Teks notifikasi ringkas yang ditampilkan kepada pengguna.
+ * @returns Status keberhasilan pengiriman konfirmasi.
+ */
 export async function answerTelegramCallbackQuery(callbackQueryId: string, message: string) {
   const token = getEnv().TELEGRAM_BOT_TOKEN;
   if (!token) return { success: false };

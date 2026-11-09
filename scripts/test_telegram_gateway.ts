@@ -11,7 +11,7 @@ const secret = "telegram-test-webhook";
 const site = "https://pasarin.example.test";
 const sent: { text: string; reply_markup?: { inline_keyboard: Record<string, unknown>[][] } }[] = [];
 
-/** Builds the signed launch payload a private Telegram Mini App sends to the server. */
+/** Membangun payload otentikasi initData tertandatangani HMAC-SHA256 sebagaimana dikirim Telegram Mini App ke server. */
 function launchData(chat: number, seconds = Math.floor(Date.now() / 1000)) {
   const user = JSON.stringify({ id: chat, first_name: "Tester" });
   const key = createHmac("sha256", "WebAppData").update(token).digest();
@@ -19,7 +19,7 @@ function launchData(chat: number, seconds = Math.floor(Date.now() / 1000)) {
   return new URLSearchParams({ user, auth_date: String(seconds), hash }).toString();
 }
 
-/** Calls the HTTPS credential route without placing credentials in a Telegram message. */
+/** Memanggil rute otentikasi HTTPS kredensial akun tanpa membocorkan kata sandi pada ruang obrolan Telegram. */
 function signIn(chat: number, identifier: string, password = identifier, initData = launchData(chat)) {
   return login(new NextRequest("http://localhost/api/telegram/login", {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -29,7 +29,7 @@ function signIn(chat: number, identifier: string, password = identifier, initDat
 
 let updateId = 0;
 
-/** Sends a private message or callback through the real webhook handler. */
+/** Mengirimkan pembaruan pesan privat atau callback tombol inline melalui handler webhook Telegram resmi. */
 async function telegram(chat: number, input: string, callback = false, sender = chat, type = "private") {
   const from = { id: sender };
   const message = { chat: { id: chat, type }, from, text: input };
@@ -42,7 +42,7 @@ async function telegram(chat: number, input: string, callback = false, sender = 
   return response.json();
 }
 
-/** Tests login, chat isolation, session switching and stale or forged actions. */
+/** Menguji alur otentikasi login, isolasi sesi chat, pergantian akun pasar, serta pencegahan aksi usang atau palsu. */
 async function run() {
   Object.assign(process.env, { NODE_ENV: "development", TELEGRAM_BOT_TOKEN: token, TELEGRAM_WEBHOOK_SECRET: secret });
   delete process.env.PASARIN_STATE_BACKEND;

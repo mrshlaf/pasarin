@@ -1,3 +1,9 @@
+/**
+ * Halaman Masuk Sesi Telegram Mini App (Telegram Mini App Login) (PSR-38).
+ * Mengumpulkan kredensial akun pasar secara aman di dalam container WebView Mini App
+ * sehingga kata sandi tidak pernah terpapar dalam riwayat obrolan teks bot Telegram.
+ */
+
 "use client";
 
 import Script from "next/script";
@@ -8,7 +14,9 @@ interface TelegramWindow extends Window {
   Telegram?: { WebApp?: { initData: string; ready: () => void; close: () => void } };
 }
 
-/** Collects credentials inside the Telegram Mini App so they never appear in chat. */
+/**
+ * Komponen halaman login Telegram Mini App.
+ */
 export default function TelegramLogin() {
   const [initData, setInitData] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -16,7 +24,9 @@ export default function TelegramLogin() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
 
-  /** Sends credentials to the Pasarin server with the signed Telegram launch data. */
+  /**
+   * Mengirimkan kredensial masuk akun pasar ke server bersama data validasi tanda tangan Telegram initData.
+   */
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;

@@ -9,8 +9,17 @@
  * 3. Estimasi konsumsi bahan bakar (BBM), jarak tempuh, dan durasi pengantaran.
  */
 
+/**
+ * Klasifikasi armada logistik penyelamatan pangan pasar (PSR-27).
+ * - viar_trike: Motor roda tiga kapasitas muatan ringan <= 300 kg.
+ * - granmax_pickup: Mobil pikap bak kapasitas muatan menengah 301 - 1.000 kg.
+ * - isuzu_truck: Truk engkel kapasitas muatan massal > 1.000 kg.
+ */
 export type VehicleClass = "viar_trike" | "granmax_pickup" | "isuzu_truck";
 
+/**
+ * Spesifikasi teknis dan operasional armada pengangkut logistik (PSR-27).
+ */
 export interface VehicleSpec {
   type: VehicleClass;
   displayName: string;
@@ -23,6 +32,9 @@ export interface VehicleSpec {
   licensePlate: string;
 }
 
+/**
+ * Parameter spesifikasi baku armada logistik resmi Pasar Induk Kramat Jati (PSR-27).
+ */
 export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
   viar_trike: {
     type: "viar_trike",
@@ -59,6 +71,9 @@ export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
   },
 };
 
+/**
+ * Hasil perhitungan penugasan muatan dan optimasi armada logistik (PSR-27).
+ */
 export interface FleetAllocationResult {
   vehicleType: VehicleClass;
   vehicleSpec: VehicleSpec;
@@ -70,6 +85,9 @@ export interface FleetAllocationResult {
   dispatchDescription: string;
 }
 
+/**
+ * Titik henti penjemputan komoditas di los kios pasar (PSR-27).
+ */
 export interface CargoStop {
   kioskStall: string;
   kioskName: string;
@@ -79,6 +97,9 @@ export interface CargoStop {
   orderId?: string;
 }
 
+/**
+ * Manifes perjalanan pengiriman barang terstruktur ke mitra sirkular (PSR-27).
+ */
 export interface DeliveryManifest {
   manifestId: string;
   allocatedVehicle: VehicleSpec;

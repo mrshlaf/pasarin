@@ -1,12 +1,29 @@
+/**
+ * Modul Autentikasi Sesi Server dan Manajemen Kredensial Basis Data Supabase (PSR-2).
+ * Menangani pembuatan token sesi bertanda tangan kriptografis HMAC-SHA256 (HttpOnly cookies),
+ * verifikasi keabsahan tanda tangan secara timing-safe, autentikasi langsung ke tabel `auth.users`,
+ * serta penyemaian (seeding) akun pasar massal ke skema Supabase Auth.
+ */
+
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { isAppRole, resolveLoginEmail, type AuthUser } from "@/data/accounts";
 import { MARKET_ACCOUNTS, accountEmail } from "@/data/marketAccounts";
 import { getDatabasePool } from "@/lib/database";
 
+/**
+ * Nama cookie sesi server terotentikasi HttpOnly (PSR-2).
+ */
 export const SESSION_COOKIE = "pasarin_session";
+
+/**
+ * Masa aktif sesi server dalam detik (8 jam durasi operasional harian pasar) (PSR-2).
+ */
 export const SESSION_SECONDS = 8 * 60 * 60;
 
+/**
+ * Konfigurasi atribut keamanan cookie sesi server (HttpOnly, SameSite Lax, Secure) (PSR-2).
+ */
 export const sessionCookie = {
   httpOnly: true,
   sameSite: "lax" as const,
@@ -15,22 +32,43 @@ export const sessionCookie = {
   maxAge: SESSION_SECONDS,
 };
 
-/** Server auth is opt-in so Supabase Auth can take over without a schema change. */
+/**
+ * Memeriksa apakah mode autentikasi berbasis sesi server sedang diaktifkan.
+ *
+ * @returns Boolean bernilai true jika variabel lingkungan PASARIN_SERVER_AUTH bernilai "1".
+ */
 export function serverAuthEnabled() {
   return process.env.PASARIN_SERVER_AUTH === "1" || process.env.NEXT_PUBLIC_PASARIN_SERVER_AUTH === "1";
 }
 
+/**
+ * Mengambil nilai kunci rahasia untuk menandatangani token sesi server.
+ *
+ * @returns String kunci rahasia dari environment.
+ * @throws Galat jika variabel lingkungan rahasia belum diatur.
+ */
 function sessionSecret() {
   const secret = process.env.PASARIN_SESSION_SECRET || process.env.PASARIN_SEED_SECRET;
   if (!secret) throw new Error("PASARIN_SESSION_SECRET belum diatur.");
   return secret;
 }
 
+/**
+ * Menandatangani muatan sesi menggunakan HMAC-SHA256 untuk perlindungan integritas cookie.
+ *
+ * @param payload - String muatan base64url yang akan ditandatangani.
+ * @returns Tanda tangan string terformat base64url.
+ */
 function sign(payload: string) {
   return createHmac("sha256", sessionSecret()).update(payload).digest("base64url");
 }
 
-/** Creates an HttpOnly session token for a Supabase Auth user. */
+/**
+ * Membuat token sesi bertanda tangan kriptografis HMAC-SHA256 untuk disimpan dalam HttpOnly cookie.
+ *
+ * @param user - Profil pengguna AuthUser yang berhasil diautentikasi.
+ * @returns String token sesi berformat "<payload_base64url>.<signature_base64url>".
+ */
 export function createSessionToken(user: AuthUser) {
   const payload = Buffer.from(JSON.stringify({
     ...user,
@@ -39,7 +77,12 @@ export function createSessionToken(user: AuthUser) {
   return `${payload}.${sign(payload)}`;
 }
 
-/** Verifies the signature and expiration before trusting any session field. */
+/**
+ * Memvalidasi integritas tanda tangan dan masa berlaku token sesi server sebelum mempercayai data muatan.
+ *
+ * @param token - String token sesi dari cookie peramban.
+ * @returns Profil AuthUser jika token sah dan belum kedaluwarsa, atau null jika tidak valid.
+ */
 function verifySessionToken(token: string): AuthUser | null {
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
@@ -64,12 +107,20 @@ function verifySessionToken(token: string): AuthUser | null {
   }
 }
 
-/** Reads the signed server session from the request cookie. */
+/**
+ * Mengekstrak dan memverifikasi profil pengguna dari cookie sesi permintaan HTTP masuk.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Profil AuthUser jika sesi terverifikasi, atau null.
+ */
 export function readSessionUser(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   return token ? verifySessionToken(token) : null;
 }
 
+/**
+ * Representasi baris entri tabel `auth.users` PostgreSQL Supabase (PSR-2).
+ */
 interface AccountRow {
   id: string;
   email: string;
@@ -77,6 +128,12 @@ interface AccountRow {
   raw_user_meta_data: Record<string, unknown> | null;
 }
 
+/**
+ * Mengonversi baris akun pengguna tabel `auth.users` PostgreSQL menjadi objek profil AuthUser.
+ *
+ * @param row - Baris data akun hasil kueri database.
+ * @returns Objek profil AuthUser atau null jika data peran tidak valid.
+ */
 function profileFromRow(row: AccountRow): AuthUser | null {
   const app = row.raw_app_meta_data ?? {};
   const meta = row.raw_user_meta_data ?? {};
@@ -93,7 +150,13 @@ function profileFromRow(row: AccountRow): AuthUser | null {
   };
 }
 
-/** Checks a username and bcrypt hash against Supabase Auth's own user table. */
+/**
+ * Mengautentikasi pengguna langsung ke tabel `auth.users` Supabase PostgreSQL menggunakan ekstensi pgcrypto.
+ *
+ * @param username - Nama pengguna atau alamat email pengguna.
+ * @param password - Kata sandi dalam teks polos.
+ * @returns Profil AuthUser jika kredensial cocok dan akun aktif, atau null.
+ */
 export async function authenticateAccount(username: string, password: string): Promise<AuthUser | null> {
   const result = await getDatabasePool().query<AccountRow>(
     `select id, email, raw_app_meta_data, raw_user_meta_data
@@ -110,7 +173,12 @@ export async function authenticateAccount(username: string, password: string): P
   return row ? profileFromRow(row) : null;
 }
 
-/** Rechecks the current permissions of an existing database-backed account. */
+/**
+ * Mengambil dan memvalidasi ulang profil pengguna yang masih aktif berdasarkan ID akun di basis data.
+ *
+ * @param id - UUID akun pengguna di auth.users.
+ * @returns Profil AuthUser jika akun masih aktif dan tidak diblokir, atau null.
+ */
 export async function findActiveAccount(id: string): Promise<AuthUser | null> {
   const { rows } = await getDatabasePool().query<AccountRow>(
     `select id, email, raw_app_meta_data, raw_user_meta_data
@@ -121,7 +189,12 @@ export async function findActiveAccount(id: string): Promise<AuthUser | null> {
   return rows[0] ? profileFromRow(rows[0]) : null;
 }
 
-/** Creates or refreshes every market account inside Supabase Auth. */
+/**
+ * Menyemai (seed) atau menyinkronkan seluruh akun pasar ke dalam tabel auth.users Supabase.
+ * Menginjeksi metadata peran aplikasi (app_metadata) dan enkripsi kata sandi via pgcrypto Blowfish.
+ *
+ * @returns Objek pemetaan username ke UUID akun Supabase yang disemai.
+ */
 export async function seedAccounts() {
   const client = await getDatabasePool().connect();
   const actorIds: Record<string, string> = {};
@@ -190,7 +263,11 @@ export async function seedAccounts() {
   }
 }
 
-/** Counts the market identities currently stored in Supabase Auth. */
+/**
+ * Menghitung jumlah akun pengguna pasar yang saat ini tersimpan aktif di skema Supabase Auth.
+ *
+ * @returns Jumlah akun pengguna pasar terdaftar.
+ */
 export async function countMarketAccounts() {
   const result = await getDatabasePool().query<{ count: number }>(
     "select count(*)::int as count from auth.users where raw_app_meta_data ? 'pasarin_role' and deleted_at is null",

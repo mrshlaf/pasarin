@@ -1,3 +1,11 @@
+/**
+ * Dasbor Ruang Kerja Mitra Pembeli Sirkular 3-Tier (PSR-22).
+ * Melayani 3 kelompok mitra dengan karakteristik operasional terpisah:
+ * - Warteg & Kuliner UMKM (Tier 1): Pembelian komersial pangan terjangkau.
+ * - Dapur Sosial & Panti Asuhan (Tier 2): Klaim donasi pangan bergizi gratis / tebusan nominal.
+ * - Fasilitas Budidaya Maggot BSF (Tier 3): Penerimaan biomassa organik afkir untuk biokonversi pakan.
+ */
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -38,7 +46,9 @@ const framing = {
   },
 } as const;
 
-/** Shares catalog, order history and status presentation across all buyer roles. */
+/**
+ * Komponen antarmuka dasbor pembeli yang membagikan katalog penawaran, riwayat pesanan, dan status pengantaran.
+ */
 export function BuyerDashboard({ role }: { role: BuyerRole }) {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, weather, busy, claimOfferByBuyer, payQrisForOffer } = useMarketSimulation();
@@ -71,7 +81,9 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
   const selectedStock = selectedOffer && stockById.get(selectedOffer.stockId);
 
-  /** Reserves the selected weight and opens the invoice for the exact order returned by the server. */
+  /**
+   * Mereservasi kuantitas bobot yang dipilih dan membuka tiket tagihan pembayaran jika penawaran berbayar.
+   */
   async function reserve(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selection) return;
@@ -85,7 +97,9 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
     if (result.offer?.paymentStatus === "unpaid") setInvoice(result.offer);
   }
 
-  /** Records the simulated payment and makes the order available to couriers. */
+  /**
+   * Memproses simulasi pembayaran QRIS rekening bersama (Escrow) dan mengalihkan pesanan ke antrean kurir.
+   */
   async function pay() {
     if (!invoice) return;
     const result = await payQrisForOffer(invoice.id);

@@ -14,6 +14,11 @@ import {
   EscrowPaymentStatus,
 } from "@/lib/qrisEscrowGateway";
 
+/**
+ * Memeriksa status operasional modul gateway escrow QRIS dinamis.
+ *
+ * @returns Respons JSON spesifikasi gateway dan standar kepatuhan Bank Indonesia.
+ */
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -26,6 +31,12 @@ export async function GET() {
   });
 }
 
+/**
+ * Membangkitkan string payload QRIS Dinamis standar EMVCo TLV ber-CRC16.
+ *
+ * @param req - Objek NextRequest masuk berisi detail nominal tagihan dan referensi faktur.
+ * @returns Respons JSON string payload QRIS dan status awal escrow 'unpaid'.
+ */
 export async function POST(req: NextRequest) {
   const auth = await requireApiRole(req, ["warteg", "admin"]);
   if (auth.response) return auth.response;
@@ -64,6 +75,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/**
+ * Memproses simulasi pelunasan pembayaran ke rekening escrow atau pelepasan dana akhir ke rekening pedagang (settlement PoD).
+ *
+ * @param req - Objek NextRequest masuk berisi tipe aksi dan status transisi escrow.
+ * @returns Respons JSON status transisi mutasi escrow baru.
+ */
 export async function PUT(req: NextRequest) {
   const auth = await requireApiRole(req, ["admin"]);
   if (auth.response) return auth.response;

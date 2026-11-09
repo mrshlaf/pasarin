@@ -7,11 +7,18 @@
 import { getServiceRoleClient } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
 
+/**
+ * Buffer sirkular penyimpanan catatan audit di memori lokal saat database offline (PSR-4).
+ */
 const inMemoryAuditRingBuffer: SystemAuditTrailRecord[] = [];
+
+/**
+ * Batas maksimal kapasitas ring buffer audit lokal (100 entri) (PSR-4).
+ */
 const MAX_RING_BUFFER_SIZE = 100;
 
 /**
- * Parameter masukan pencatatan peristiwa audit sistem.
+ * Parameter masukan pencatatan peristiwa audit sistem (PSR-4).
  */
 interface RecordAuditParams {
   subsystem: string;
@@ -48,13 +55,13 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
     occurred_at: occurredAt,
   };
 
-  // Simpan ke ring buffer
+  // Simpan rekaman peristiwa terbaru ke kepala ring buffer in-memory lokal
   inMemoryAuditRingBuffer.unshift(record);
   if (inMemoryAuditRingBuffer.length > MAX_RING_BUFFER_SIZE) {
     inMemoryAuditRingBuffer.pop();
   }
 
-  // Coba persist ke Supabase jika URL sudah diset
+  // Persistensikan ke tabel basis data Supabase jika kredensial aktif telah terkonfigurasi
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const isSupabaseLive = Boolean(supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY);
 

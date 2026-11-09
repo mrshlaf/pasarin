@@ -51,6 +51,9 @@ export const TROPICAL_FALLBACK_PROFILE: Readonly<WeatherTelemetryData> = Object.
   },
 });
 
+/**
+ * Struktur data entri cache memori telemetri cuaca pasar (PSR-5).
+ */
 interface CachedWeatherEntry {
   data: WeatherTelemetryData;
   expiresAtTimestamp: number;

@@ -1,3 +1,9 @@
+/**
+ * Modul Agregasi Operasional Pasar dan Asisten Tanya Jawab Pengelola (PSR-17 / PSR-38).
+ * Menghitung metrik rantai pasok harian (pasokan masuk, pengantaran, pesanan tertahan, stok berisiko layu)
+ * serta mengintegrasikan model Google Gemini untuk sintesis laporan manajerial berbasis fakta lapangan.
+ */
+
 import { GoogleGenAI } from "@google/genai";
 import { getEnv } from "@/lib/env";
 import { getServerSimulationState, evaluateMarketStock } from "@/lib/serverSimulationState";
@@ -6,13 +12,25 @@ import { isReadyForDelivery } from "@/types/market";
 
 const jakartaDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" });
 
-/** Compares recorded timestamps by the market's business date. */
+/**
+ * Membandingkan stempel waktu ISO dengan tanggal kalender bisnis pasar hari ini di zona waktu WIB.
+ *
+ * @param iso - Stempel waktu ISO 8601 yang akan dievaluasi.
+ * @param today - Tanggal hari ini dalam format YYYY-MM-DD zona waktu Asia/Jakarta.
+ * @returns Boolean bernilai true jika tanggal kejadian adalah hari ini.
+ */
 function isToday(iso: string | undefined, today: string) {
   const date = Date.parse(iso ?? "");
   return Number.isFinite(date) && jakartaDate.format(date) === today;
 }
 
-/** Collects operational counts from persisted arrivals, orders and measured age. */
+/**
+ * Mengompilasi ringkasan metrik operasional pasar hari ini secara real-time.
+ * Mengagregasi data pasokan fisik masuk, lot penawaran aktif, status pembayaran pesanan,
+ * kesiapan penjemputan armada logistik, serta estimasi komoditas yang memasuki fase peluruhan kritis.
+ *
+ * @returns Objek ringkasan metrik operasional pasar terpadu.
+ */
 export async function getMarketOperations() {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const today = jakartaDate.format(new Date());
@@ -39,7 +57,15 @@ export async function getMarketOperations() {
   };
 }
 
-/** Answers a supervisor using the same market data on web and Telegram. */
+/**
+ * Menjawab pertanyaan operasional manajerial pengelola pasar menggunakan data fisik terverifikasi.
+ * Menggunakan Google Gemini API untuk merangkum wawasan bahasa alami secara padat,
+ * dengan mekanisme fail-safe fallback ke format sintesis heuristik deterministik jika API tidak tersedia.
+ *
+ * @param question - Pertanyaan kueri yang diajukan pengelola melalui dasbor web atau bot Telegram.
+ * @param forceHeuristic - Paksa penggunaan generator teks heuristik tanpa memanggil Gemini API.
+ * @returns Objek hasil rangkuman, label sumber analisis ("gemini" | "data_pasar"), dan data metrik terkait.
+ */
 export async function answerMarketQuestion(question: string, forceHeuristic = false) {
   const metrics = await getMarketOperations();
   const summary = [

@@ -1,3 +1,9 @@
+/**
+ * Skrip Migrasi Skema dan Penyemaian Data Basis Data PostgreSQL (PSR-2).
+ * Mengeksekusi berkas migrasi SQL secara transaksional (BEGIN-COMMIT-ROLLBACK)
+ * ke instance PostgreSQL target (lokal maupun Supabase Cloud).
+ */
+
 import { readFileSync } from "node:fs";
 import { loadEnvFile } from "node:process";
 import { Client } from "pg";

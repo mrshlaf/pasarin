@@ -1,8 +1,15 @@
+/**
+ * Tata Letak Akar Aplikasi PASARIN (Root Layout).
+ * Mengonfigurasi metadata SEO, font tipografi Geist, pembungkus AuthProvider,
+ * dan penyedia state simulasi pasar (SimulationProvider).
+ */
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
 import { SimulationProvider } from "@/lib/simulationStore";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -25,6 +32,9 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Komponen pembungkus tata letak utama aplikasi.
+ */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html

@@ -599,7 +599,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
   const thoughtProcess: ReActStep[] = [];
   const toolsInvoked: string[] = [];
 
-  // Langkah 1: Observasi penerimaan kueri dan dekomposisi maksud
+  // Inisialisasi tahapan penalaran ReAct dan pencatatan dekomposisi maksud kueri
   thoughtProcess.push({
     step: 1,
     agent: "OrchestratorAgent",

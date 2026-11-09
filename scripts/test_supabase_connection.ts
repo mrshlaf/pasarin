@@ -17,7 +17,7 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-console.log("\n--- PASARIN SUPABASE CONNECTIVITY & CRUD TEST ---");
+console.log("\nPASARIN Supabase Connectivity & CRUD Test");
 
 if (!supabaseUrl || !supabaseKey) {
   console.error("❌ ERROR: NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_ANON_KEY belum diatur pada .env.local!");
@@ -32,7 +32,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
  */
 async function runDatabaseTests() {
   try {
-    // Test 1: Operasi baca (SELECT) katalog komoditas
+    // Uji 1: Operasi baca (SELECT) katalog komoditas
     console.log("\n[Test 1] Menjalankan operasi BACA (SELECT) pada tabel 'commodities'...");
     const { data: commodities, error: readError } = await supabase
       .from("commodities")
@@ -47,7 +47,7 @@ async function runDatabaseTests() {
     console.log(`✅ Berhasil membaca ${commodities.length} komoditas dari database!`);
     console.table(commodities);
 
-    // Test 2: Operasi baca direktori kios pedagang
+    // Uji 2: Operasi baca direktori kios pedagang
     console.log("\n[Test 2] Menjalankan operasi BACA (SELECT) pada direktori 'kiosks'...");
     const { data: kiosks, error: kioskError } = await supabase
       .from("kiosks")
@@ -62,7 +62,7 @@ async function runDatabaseTests() {
     console.log(`✅ Berhasil membaca ${kiosks.length} data kios pedagang Pasar Kramat Jati!`);
     console.table(kiosks);
 
-    // Test 3: Operasi tulis (INSERT) data stok
+    // Uji 3: Operasi tulis (INSERT) data stok
     console.log("\n[Test 3] Menjalankan operasi TULIS (INSERT) pada tabel 'stock_items'...");
     const testStockId = `test_stock_${Date.now()}`;
     const targetVendor = kiosks.length > 0 ? kiosks[0].id : "vendor_kramat_01";
@@ -86,7 +86,7 @@ async function runDatabaseTests() {
     }
     console.log(`✅ Berhasil INSERT item stok baru [${testStockId}] ke Supabase!`);
 
-    // Test 4: Operasi pembaruan (UPDATE) status stok
+    // Uji 4: Operasi pembaruan (UPDATE) status stok
     console.log("\n[Test 4] Menjalankan operasi PEMBARUAN (UPDATE) pada item stok...");
     const { error: updateError } = await supabase
       .from("stock_items")
@@ -99,7 +99,7 @@ async function runDatabaseTests() {
     }
     console.log(`✅ Berhasil UPDATE item stok [${testStockId}] (Sisa: 42.5 kg)!`);
 
-    // Test 5: Operasi pembersihan (DELETE) data uji
+    // Uji 5: Operasi pembersihan (DELETE) data uji
     console.log("\n[Test 5] Menjalankan pembersihan data uji (DELETE)...");
     const { error: deleteError } = await supabase
       .from("stock_items")
@@ -112,7 +112,7 @@ async function runDatabaseTests() {
     }
     console.log(`✅ Berhasil DELETE data uji [${testStockId}]!`);
 
-    console.log("\n🎉 SELURUH PENGUJIAN OPERASI BACA & TULIS SUPABASE BERHASIL 100%!\n");
+    console.log("\nSeluruh pengujian operasi baca dan tulis Supabase berhasil 100%.\n");
   } catch (err) {
     console.error("Terjadi pengecualian runtime:", err);
   }

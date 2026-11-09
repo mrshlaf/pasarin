@@ -1,3 +1,8 @@
+/**
+ * Komponen Lambang Merek PASARIN (Pasarin Logo).
+ * Menampilkan ikon identitas visual resmi dan tipografi nama sistem dalam varian warna teal atau putih.
+ */
+
 import Image from "next/image";
 
 interface PasarinLogoProps {
@@ -7,6 +12,9 @@ interface PasarinLogoProps {
   className?: string;
 }
 
+/**
+ * Komponen logo PASARIN dengan ikon teroptimasi dan penyesuaian ukuran adaptif.
+ */
 export function PasarinLogo({
   size = "md",
   variant = "teal",

@@ -1,39 +1,29 @@
 // @ts-nocheck
 /**
- * ============================================================================
- * PASARIN TELEGRAM BOT REAL-TIME POLLING RUNNER
- * File: scripts/run_telegram_polling.ts
+ * Eksekutor Polling Real-Time Bot Telegram PASARIN.
+ * Menghubungkan bot Telegram nyata (@agent_pasarin_bot) secara langsung
+ * ke engine PASARIN tanpa memerlukan tunnel ngrok atau webhook publik eksternal.
  *
- * Menghubungkan bot Telegram nyata (@agent_pasarin_bot) secara real-time
- * ke engine PASARIN tanpa memerlukan ngrok / webhook eksternal.
- *
- * Fitur yang didukung lewat chat Telegram:
- *   /start    - Pesan sambutan & panduan peran
- *   /status   - Memantau kondisi & pesanan aktif pasar
- *   /tanya    - Menanyakan kondisi pasar ke AI/analisis operasional
- *   /evaluasi - Memicu evaluasi sapu bersih stok
- *   /surplus  - Menampilkan katalog penawaran aktif
- *   /pasok    - Pedagang mencatat pasokan baru (contoh: /pasok kangkung 30)
- *
- * Cara Menjalankan:
- *   npm run bot:poll
- * ============================================================================
+ * Mendukung interaksi percakapan dan tombol aksi peran pedagang, pembeli, dan kurir:
+ * - /start    : Pesan sambutan dan panduan peran pasar.
+ * - /status   : Pemantauan kondisi dan pesanan aktif pasar.
+ * - /dlh      : Laporan kepatuhan DLH DKI Jakarta & simulasi 24 jam.
+ * - /cuaca    : Telemetri mikro los pasar Kramat Jati.
+ * - /evaluasi : Pemicu evaluasi berkala mutu stok pedagang.
+ * - /surplus  : Katalog penawaran penyelamatan pangan aktif.
+ * - /pasok    : Pencatatan pasokan baru oleh pedagang kios.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import {
-  handleTelegramCommand,
   dispatchTelegramMessage,
   answerTelegramCallbackQuery,
   type TelegramUpdate,
 } from "../src/lib/telegramBotGateway";
-import {
-  claimOfferServer,
-  confirmDeliveryServer,
-  payOfferServer,
-  publishMarketOffers,
-} from "../src/lib/serverSimulationState";
+import { handleTelegramCommand, handleTelegramAction } from "../src/lib/telegramWorkspace";
+import { telegramChatSessions, startTelegramSession, currentTelegramAccount } from "../src/lib/telegramSessions";
+import { localTestProfile } from "../src/lib/localTestAuth";
 
 // Muat .env.local
 try {
@@ -68,9 +58,7 @@ async function apiCall(method: string, body?: any) {
 }
 
 async function startPolling() {
-  console.log("================================================================================");
-  console.log("             PASARIN REAL-TIME TELEGRAM BOT POLLING GATEWAY                     ");
-  console.log("================================================================================");
+  console.log("\nPASARIN Real-Time Telegram Bot Polling Gateway");
   console.log("Menghubungkan ke Telegram Bot API...");
 
   // 1. Verifikasi Identitas Bot
@@ -86,9 +74,9 @@ async function startPolling() {
   await apiCall("deleteWebhook", { drop_pending_updates: false });
   console.log("[INFO] Mode Long-Polling Aktif. Menunggu pesan masuk dari Telegram...\n");
 
-  const defaultAdminActor = {
+  const defaultAdminActor: any = {
     id: "local:admin1",
-    role: "admin" as const,
+    role: "admin",
     name: "Pengelola Pasar (Telegram)",
   };
 
@@ -107,11 +95,27 @@ async function startPolling() {
           // Tangani Pesan Teks
           if (update.message && update.message.text) {
             const chatId = update.message.chat.id;
-            const text = update.message.text;
+            const text = update.message.text.trim();
             const senderName = update.message.from?.first_name || "Pengguna";
             console.log(`[PESAN MASUK] Dari: ${senderName} (${chatId}): "${text}"`);
 
-            const reply = await handleTelegramCommand(text, chatId, defaultAdminActor, update.update_id);
+            const sessions = await telegramChatSessions(chatId);
+            let activeUser = sessions.active ? await currentTelegramAccount(sessions.active.user) : undefined;
+
+            // Fasilitas login lokal via teks untuk kemudahan polling developer
+            if (text.startsWith("/masuk ") || text.startsWith("/login ")) {
+              const [, identifier] = text.split(/\s+/);
+              const profile = localTestProfile(identifier?.toLowerCase() || "");
+              if (profile) {
+                await startTelegramSession(chatId, profile);
+                console.log(`[LOGIN LOKAL] Berhasil login sebagai: ${profile.name} (${profile.role})`);
+                await dispatchTelegramMessage(chatId, `Berhasil masuk sebagai ${profile.name} (${profile.role}). Silakan ketik /menu untuk membuka ruang kerja.`);
+                continue;
+              }
+            }
+
+            const userToUse = activeUser || defaultAdminActor;
+            const reply = await handleTelegramCommand(text, chatId, userToUse, update.update_id);
             console.log(`[BALASAN BOT] Aksi: ${reply.actionTaken}`);
 
             const sent = await dispatchTelegramMessage(chatId, reply.responseText, {
@@ -132,25 +136,29 @@ async function startPolling() {
             const chatId = cb.message?.chat.id || 0;
             console.log(`[CALLBACK KLIK] Dari: ${cb.from.first_name}: "${data}"`);
 
-            const [action, offerId] = data.split(":");
-            let feedback = "Aksi berhasil diproses.";
+            const sessions = await telegramChatSessions(chatId);
+            const activeUser = sessions.active ? await currentTelegramAccount(sessions.active.user) : defaultAdminActor;
 
-            if (action === "pay" && offerId) {
-              const res = await payOfferServer(offerId, defaultAdminActor.id);
-              feedback = res.message;
-            } else if (action === "claim" && offerId) {
-              const res = await claimOfferServer(offerId, defaultAdminActor);
-              feedback = res.message;
-            } else if (action === "deliver" && offerId) {
-              const res = await confirmDeliveryServer(offerId);
-              feedback = res.message;
+            let parts = (data || "").split(":");
+            if (sessions.active && parts[0] === sessions.active.key) {
+              parts = parts.slice(1);
+            }
+            const [action, id, ...args] = parts;
+
+            let reply;
+            if (action === "menu" && id) {
+              reply = await handleTelegramCommand(["/" + id, ...args].join(" "), chatId, activeUser);
+            } else {
+              reply = await handleTelegramAction(action, id, activeUser, args);
             }
 
-            await answerTelegramCallbackQuery(cb.id, feedback);
-            if (chatId) {
-              await dispatchTelegramMessage(chatId, `Notifikasi: ${feedback}`);
+            await answerTelegramCallbackQuery(cb.id, reply.actionTaken === "stale_button" ? "Sesi usang" : "");
+            if (reply.responseText) {
+              await dispatchTelegramMessage(chatId, reply.responseText, {
+                replyMarkup: reply.replyMarkup,
+              });
             }
-            console.log(`[CALLBACK SELESAI] ${feedback}\n`);
+            console.log(`[CALLBACK SELESAI] Aksi: ${reply.actionTaken}\n`);
           }
         }
       }

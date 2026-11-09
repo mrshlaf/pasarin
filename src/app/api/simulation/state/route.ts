@@ -1,3 +1,9 @@
+/**
+ * Rute API Status Snapshot Simulasi Pasar dan Penanganan Mutasi Peran (PSR-4 / PSR-37).
+ * Menyediakan sinkronisasi snapshot inventaris, penawaran, telemetri cuaca, dan buku besar,
+ * serta memproses aksi mutasi terotorisasi (pencatatan stok, publikasi, pembayaran, dan serah terima).
+ */
+
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-response";
@@ -20,7 +26,12 @@ const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("delivery"), offerId }),
 ]);
 
-/** Returns the current data and decay visible to this account. */
+/**
+ * Mengembalikan snapshot data pasar dan skor peluruhan biologis yang berhak dilihat oleh akun pengguna saat ini.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons API berisi snapshot state pasar.
+ */
 export async function GET(req: NextRequest) {
   const auth = await requireApiRole(req);
   if (auth.response) return auth.response;
@@ -32,7 +43,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Validates a market action before executing the authorized state transition. */
+/**
+ * Memvalidasi dan mengeksekusi mutasi status pasar sesuai otorisasi peran pengguna.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons API hasil mutasi status.
+ */
 export async function POST(req: NextRequest) {
   const auth = await requireApiRole(req);
   if (auth.response) return auth.response;

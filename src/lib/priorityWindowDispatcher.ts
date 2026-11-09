@@ -13,6 +13,9 @@ import { RescueOffer } from "@/lib/simulationStore";
  */
 export const SOCIAL_RESERVATION_WINDOW_MINUTES = 30;
 
+/**
+ * Hasil evaluasi jendela waktu reservasi eksklusif Dapur Sosial (PSR-23 / Invarian 3).
+ */
 export interface PriorityWindowEvaluationResult {
   offerId: string;
   targetTier: "tier_1" | "tier_2" | "tier_3";

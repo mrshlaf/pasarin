@@ -1,4 +1,8 @@
-// Rute API Mesin Pencocokan Sirkular 3-Tier (PSR-22): GET & POST batch
+/**
+ * Rute API Mesin Pencocokan Sirkular 3-Tier (PSR-22 / Matchmaking Engine API).
+ * Menghitung kecocokan geografis dan kapasitas serap mitra pembeli sirkular
+ * berdasarkan jarak radius (haversine) dan kompatibilitas komoditas.
+ */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,7 +23,12 @@ const matchOffer = z.object({
 });
 const matchBatch = z.object({ offers: z.array(matchOffer).min(1).max(200) });
 
-// GET: Rekomendasi pembeli terdekat via query params (commodityId, quantityKg, targetTier, radiusKm)
+/**
+ * Mencari rekomendasi pembeli sirkular terdekat berdasarkan parameter kueri URL.
+ *
+ * @param req - Objek NextRequest pembawa parameter kueri pencocokan.
+ * @returns Respons JSON daftar kandidat pembeli yang diurutkan berdasarkan skor gabungan.
+ */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -43,7 +52,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// POST: Evaluasi batch penawaran surplus
+/**
+ * Mengevaluasi rekomendasi pencocokan pembeli untuk kumpulan penawaran secara massal.
+ *
+ * @param req - Objek NextRequest pembawa array penawaran surplus.
+ * @returns Respons JSON rekapitulasi hasil pencocokan batch.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const input = await validateJsonBody(req, matchBatch);
@@ -66,7 +80,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-// HEAD: Probe kesehatan rute
+/**
+ * Menangani pemeriksaan ketersediaan ringan (probe) rute pencocokan.
+ *
+ * @returns Respons HTTP 200 OK kosong.
+ */
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

@@ -6,6 +6,11 @@
 import { NextResponse } from "next/server";
 import { run24HourMarketMetabolismTrial } from "@/lib/marketMetabolismSimulator";
 
+/**
+ * Menjalankan uji coba simulasi metabolisme pasar 24 jam melintasi 5 fase sirkadian.
+ *
+ * @returns Respons JSON laporan simulasi lengkap dan metrik reduksi emisi gas metana IPCC 2006.
+ */
 export async function GET() {
   try {
     const trialReport = await run24HourMarketMetabolismTrial();
@@ -25,6 +30,11 @@ export async function GET() {
   }
 }
 
+/**
+ * Memicu eksekusi simulasi metabolisme pasar 24 jam via HTTP POST.
+ *
+ * @returns Respons JSON laporan hasil simulasi.
+ */
 export async function POST() {
   return GET();
 }

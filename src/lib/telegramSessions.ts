@@ -1,3 +1,10 @@
+/**
+ * Modul Pengelola Sesi Akun Pengguna Multi-Peran pada Chat Telegram (PSR-38).
+ * Mengatur autentikasi Mini App via initData (HMAC-SHA256 WebAppData),
+ * pembatasan laju percobaan login (Rate Limiting 10x per 15 menit),
+ * persistensi multisesi akun terpisah per obrolan, serta pemilihan sesi aktif secara atomik.
+ */
+
 import { createHmac, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { accountProfile, resolveLoginEmail, type AuthUser } from "@/data/accounts";
@@ -7,12 +14,18 @@ import { localTestProfile } from "@/lib/localTestAuth";
 import { authenticateAccount, findActiveAccount, serverAuthEnabled, SESSION_SECONDS } from "@/lib/serverAuth";
 import { getServiceRoleClient, supabaseAuthConfigured } from "@/lib/supabase";
 
+/**
+ * Rekaman sesi akun pengguna yang tersimpan dalam obrolan Telegram (PSR-38).
+ */
 interface AccountSession {
   key: string;
   user: AuthUser;
   expiresAt: number;
 }
 
+/**
+ * Status obrolan Telegram mencakup akun aktif, multisesi tersimpan, dan kuota percobaan login (PSR-38).
+ */
 interface ChatState {
   active: string | null;
   accounts: AccountSession[];
@@ -27,7 +40,15 @@ declare global {
 const local = globalThis.pasarinTelegramSessions ??= new Map<number, ChatState>();
 const loginWindow = 15 * 60_000;
 
-/** Authenticates Telegram's signed launch data and returns the private chat identity. */
+/**
+ * Memvalidasi data peluncuran Mini App Telegram (initData) dan mengembalikan Telegram User ID yang sah.
+ * Menegakkan verifikasi tanda tangan kriptografis HMAC-SHA256 dengan kunci turunan dari token bot.
+ *
+ * @param initData - String URL parameter dari Telegram WebApp.initData.
+ * @param botToken - Token bot Telegram rahasia dari environment.
+ * @param now - Stempel waktu waktu saat ini untuk verifikasi auth_date.
+ * @returns ID pengguna Telegram (angka positif) jika sah, atau null jika data dipalsukan/kedaluwarsa.
+ */
 export function telegramLoginChat(initData: string, botToken: string, now = Date.now()) {
   const params = new URLSearchParams(initData);
   const entries = [...params.entries()];
@@ -50,7 +71,12 @@ export function telegramLoginChat(initData: string, botToken: string, now = Date
   }
 }
 
-/** Reads the independent chat record from the same private store as market data. */
+/**
+ * Membaca rekaman sesi obrolan Telegram dari penyimpanan persisten (PostgreSQL, Supabase REST, atau memori lokal).
+ *
+ * @param chatId - ID unik obrolan Telegram.
+ * @returns Objek berisi revisi CAS dan ChatState jika ada.
+ */
 async function readChat(chatId: number) {
   const id = "telegram:" + chatId;
   if (databaseConfigured()) {
@@ -68,7 +94,13 @@ async function readChat(chatId: number) {
   return state ? { revision: 0, state } : null;
 }
 
-/** Updates a chat only if the stored revision still matches the state read by this request. */
+/**
+ * Memperbarui state obrolan Telegram secara atomik dengan protokol penguncian revisi optimistik (CAS).
+ *
+ * @param chatId - ID unik obrolan Telegram.
+ * @param change - Fungsi callback yang memodifikasi state sesi obrolan.
+ * @returns Hasil komputasi dari fungsi callback change.
+ */
 async function changeChat<T>(chatId: number, change: (state: ChatState) => T): Promise<T> {
   const id = "telegram:" + chatId;
   const remote = databaseConfigured() || process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
@@ -102,7 +134,13 @@ async function changeChat<T>(chatId: number, change: (state: ChatState) => T): P
   throw new Error("Sesi Telegram sedang berubah.");
 }
 
-/** Reserves a login attempt before invoking the password provider. */
+/**
+ * Menegakkan pembatasan laju (rate limiting) percobaan masuk: maksimal 10 kali per 15 menit per chat.
+ *
+ * @param chatId - ID obrolan Telegram.
+ * @param now - Stempel waktu waktu saat ini.
+ * @returns True jika percobaan diizinkan, false jika kuota terlampaui.
+ */
 export function allowTelegramLogin(chatId: number, now = Date.now()) {
   return changeChat(chatId, (state) => {
     if (!state.attempts || state.attempts.until <= now) state.attempts = { count: 0, until: now + loginWindow };
@@ -112,7 +150,14 @@ export function allowTelegramLogin(chatId: number, now = Date.now()) {
   });
 }
 
-/** Checks the same credentials and server-managed role used for website login. */
+/**
+ * Memverifikasi kredensial akun pasar yang diajukan melalui Telegram terhadap otoritas autentikasi aktif.
+ *
+ * @param identifier - Username akun pasar atau email.
+ * @param password - Kata sandi dalam teks polos.
+ * @param allowLocalTest - Apakah akun uji coba lokal diizinkan.
+ * @returns Profil AuthUser jika kredensial cocok, atau null.
+ */
 export async function authenticateTelegramAccount(identifier: string, password: string, allowLocalTest: boolean) {
   if (serverAuthEnabled()) return authenticateAccount(identifier, password);
   if (allowLocalTest) {
@@ -129,7 +174,12 @@ export async function authenticateTelegramAccount(identifier: string, password: 
   return data.user ? accountProfile(data.user) : null;
 }
 
-/** Refreshes the role from its authority before a deployed session can perform work. */
+/**
+ * Menyegarkan dan memvalidasi ulang peran pengguna dari basis data sebelum menjalankan aksi operasional di Telegram.
+ *
+ * @param user - Profil akun tersimpan dalam sesi.
+ * @returns Profil AuthUser terbaru jika akun masih sah, atau null jika akun telah diblokir/dihapus.
+ */
 export async function currentTelegramAccount(user: AuthUser) {
   if (databaseConfigured() && serverAuthEnabled()) return findActiveAccount(user.id);
   if (process.env.NODE_ENV !== "production" && process.env.PASARIN_STATE_BACKEND !== "supabase" && !databaseConfigured()) return user;
@@ -139,7 +189,14 @@ export async function currentTelegramAccount(user: AuthUser) {
   return accountProfile(data.user);
 }
 
-/** Activates a verified account while retaining the other unexpired accounts in this chat. */
+/**
+ * Mengaktifkan sesi akun terotentikasi dalam obrolan Telegram dengan mempertahankan hingga 8 multisesi tersimpan.
+ *
+ * @param chatId - ID unik obrolan Telegram.
+ * @param user - Profil akun pasar yang diautentikasi.
+ * @param now - Stempel waktu saat ini.
+ * @returns Objek sesi aktif AccountSession.
+ */
 export function startTelegramSession(chatId: number, user: AuthUser, now = Date.now()) {
   const session = { user, key: randomBytes(6).toString("base64url"), expiresAt: now + SESSION_SECONDS * 1000 };
   return changeChat(chatId, (state) => {
@@ -149,14 +206,27 @@ export function startTelegramSession(chatId: number, user: AuthUser, now = Date.
   });
 }
 
-/** Lists valid saved sessions and the single account currently handling chat commands. */
+/**
+ * Mengambil daftar sesi akun yang masih berlaku dalam obrolan Telegram dan sesi yang sedang aktif saat ini.
+ *
+ * @param chatId - ID obrolan Telegram.
+ * @param now - Stempel waktu saat ini.
+ * @returns Objek berisi array akun tersimpan dan akun aktif.
+ */
 export async function telegramChatSessions(chatId: number, now = Date.now()) {
   const chat = await readChat(chatId);
   const accounts = chat?.state.accounts.filter((item) => item.expiresAt > now) ?? [];
   return { accounts, active: accounts.find((item) => item.key === chat?.state.active) };
 }
 
-/** Selects a saved session without accepting a role or user ID from the chat. */
+/**
+ * Mengalihkan akun aktif obrolan Telegram ke salah satu akun tersimpan menggunakan session key.
+ *
+ * @param chatId - ID obrolan Telegram.
+ * @param key - Session key dari akun tersimpan.
+ * @param now - Stempel waktu saat ini.
+ * @returns Objek sesi yang berhasil diaktifkan.
+ */
 export function selectTelegramSession(chatId: number, key: string, now = Date.now()) {
   return changeChat(chatId, (state) => {
     const session = state.accounts.find((item) => item.key === key && item.expiresAt > now);
@@ -165,7 +235,12 @@ export function selectTelegramSession(chatId: number, key: string, now = Date.no
   });
 }
 
-/** Revokes the active chat session without signing out the website or other saved accounts. */
+/**
+ * Mencabut sesi akun aktif di obrolan Telegram tanpa memengaruhi sesi web peramban pengguna.
+ *
+ * @param chatId - ID obrolan Telegram.
+ * @param key - Session key yang akan diakhiri.
+ */
 export function endTelegramSession(chatId: number, key: string) {
   return changeChat(chatId, (state) => {
     if (state.active !== key) return;

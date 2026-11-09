@@ -1,21 +1,13 @@
 /**
- * ============================================================================
- * PASARIN TESTING SCENARIOS SEED RUNNER
- * File: scripts/run_seed_scenarios.ts
- *
- * Menginjeksikan 7 Skenario Pengujian Nyata ke dalam Sistem PASARIN:
- *   1. Skenario Segar Prima (Retail Normal di Kios A-01, Decay < 0.35)
- *   2. Skenario Layu Ringan (Tier 1: Warteg Diskon 58%, Decay 0.42)
- *   3. Skenario Layu Kritis (Tier 2: Dapur Sosial Jendela 30m, Decay 0.72)
- *   4. Skenario Tidak Layak / Afkir (Tier 3: Biokonversi Maggot BSF, Decay >= 0.85)
- *   5. Skenario Audit Invarian 1 (Percobaan Moral Hazard Terblokir & Penalti)
- *   6. Skenario Escrow QRIS BI & Antrean Kurir (Held in Escrow, Siap Antar)
- *   7. Skenario Transaksi Selesai (Settled & Saldo Cair ke Dompet Pedagang)
- *
- * Cara Menjalankan:
- *   npm run seed:scenarios
- *   atau: npx tsx scripts/run_seed_scenarios.ts
- * ============================================================================
+ * Eksekutor Skenario Uji Pasar PASARIN (PSR-39 / Scenario Seed Runner).
+ * Menginjeksikan 7 skenario pengujian nyata ke dalam sistem state pasar:
+ * 1. Skenario Segar Prima: Penjualan ritel normal di Kios A-01 (DecayScore < 0.35).
+ * 2. Skenario Layu Ringan: Penawaran Tier 1 Warteg dengan diskon modal 58%.
+ * 3. Skenario Layu Kritis: Penawaran Tier 2 Dapur Sosial dengan masa reservasi 30 menit.
+ * 4. Skenario Afkir Biologis: Penawaran Tier 3 Biokonversi Maggot BSF.
+ * 5. Skenario Audit Invarian 1: Pencegahan moral hazard dan pemotongan poin reputasi.
+ * 6. Skenario Escrow QRIS BI & Antrean Kurir: Status held_in_escrow siap antar armada.
+ * 7. Skenario Transaksi Selesai: Konfirmasi serah terima kurir dan pencairan saldo pedagang.
  */
 
 import fs from "node:fs";
@@ -318,9 +310,7 @@ const scenarioTransactions: EscrowTransaction[] = [
 ];
 
 async function seedTestingScenarios() {
-  console.log("================================================================================");
-  console.log("         PASARIN TESTING SCENARIOS INJECTION & VERIFICATION ENGINE              ");
-  console.log("================================================================================\n");
+  console.log("\nInisialisasi dan Verifikasi Skenario Pengujian PASARIN\n");
 
   // 1. Buat Fresh Seed State untuk seluruh 30 Kios pasar berstandar sirkular
   const baseSeed = buildMarketSeedState();
@@ -406,10 +396,8 @@ async function seedTestingScenarios() {
     }
   }
 
-  // 4. Ringkasan Peta Skenario untuk Presentasi
-  console.log("================================================================================");
-  console.log("            RINGKASAN 7 SKENARIO TESTING SIAP DEMO DI PASARIN                  ");
-  console.log("================================================================================");
+  // 4. Ringkasan Peta Skenario untuk Pengujian dan Demonstrasi
+  console.log("\nRingkasan 7 Skenario Pengujian PASARIN:");
   console.log("1. SKENARIO SEGAR PRIMA (Retail Normal):");
   console.log("   • Komoditas: Kangkung (50 kg) & Bayam (40 kg)");
   console.log("   • Decay: 0.075 (< 0.35) | Status: Di Kios A-01 | Belum Ada Diskon");
@@ -445,9 +433,7 @@ async function seedTestingScenarios() {
   console.log("   • Status: Dana Rp 50.000 cair otomatis ke saldo dompet pedagang Kios A-18.");
   console.log("   • Uji Coba: Login sebagai 'pasar2' atau 'pengelola1' -> Cek Pembayaran.\n");
 
-  console.log("================================================================================");
-  console.log("                INJEKSI SKENARIO TESTING SELESAI DENGAN SUKSES!                 ");
-  console.log("================================================================================\n");
+  console.log("Inisialisasi skenario pengujian selesai dieksekusi.\n");
 }
 
 seedTestingScenarios().catch((err) => {
