@@ -34,11 +34,11 @@ function assert(condition: boolean, testName: string, detail?: string) {
  * Menjalankan rangkaian pengujian integrasi telemetri cuaca PSR-5 secara sekuensial.
  */
 async function runWeatherTests() {
-  console.log("\n--- PASARIN PSR-5 WEATHER TELEMETRY TEST SUITE ---");
+  console.log("\nPASARIN PSR-5 Weather Telemetry Test Suite");
 
   weatherAgent.clearCache();
 
-  // Test 1: Baca telemetri cuaca mikro di koordinat Kramat Jati
+  // Uji 1: Baca telemetri cuaca mikro di koordinat Kramat Jati
   console.log("\n[Test 1] Pengujian Pembacaan Telemetri Cuaca Aktual (Kramat Jati)");
   const weather1 = await weatherAgent.getMarketWeather({ forceRefresh: true });
 
@@ -63,7 +63,7 @@ async function runWeatherTests() {
     `${weather1.rainfallMm} mm`
   );
 
-  // Test 2: In-memory cache 15 menit untuk hemat kuota gratis
+  // Uji 2: Penyimpanan cache memori 15 menit untuk menghemat kuota gratis
   console.log("\n[Test 2] Pengujian In-Memory Cache (15 Menit / 900.000 ms)");
   
   // Panggilan kedua tanpa forceRefresh dilayani langsung dari cache
@@ -82,7 +82,7 @@ async function runWeatherTests() {
     `Sisa TTL: ${metrics.expiresInSeconds} detik`
   );
 
-  // Test 3: Pengalihan otomatis ke profil cadangan saat offline
+  // Uji 3: Pengalihan otomatis ke profil cadangan saat offline
   console.log("\n[Test 3] Pengujian Simulasi Putus Jaringan & Profil Cadangan");
   
   weatherAgent.clearCache();
@@ -104,7 +104,7 @@ async function runWeatherTests() {
     `${fallbackWeather.relativeHumidityPercent}% RH`
   );
 
-  // Test 4: Integrasi langsung cuaca mikro dengan modul peluruhan biologis
+  // Uji 4: Integrasi langsung cuaca mikro dengan modul peluruhan biologis
   console.log("\n[Test 4] Pengujian Integrasi Cuaca Mikro dengan Modul Peluruhan Biologis");
   
   const kangkung = COMMODITIES.find((c) => c.id === "kangkung");
@@ -131,8 +131,8 @@ async function runWeatherTests() {
     );
   }
 
-  // Ringkasan hasil test
-  console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-5: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
+  // Rekapitulasi hasil pengujian
+  console.log(`\nHasil pengujian akhir PSR-5: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

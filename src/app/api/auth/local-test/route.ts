@@ -1,3 +1,9 @@
+/**
+ * Rute API Otentikasi Sesi Pengujian Lokal Khusus Pengembangan (Local Test Auth).
+ * Memfasilitasi login cepat pada lingkungan loopback pengembangan (localhost)
+ * tanpa memerlukan kuota panggilan API ke Supabase Auth Cloud.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { errorResponse, validateJsonBody } from "@/lib/api-response";
@@ -11,13 +17,23 @@ const credentials = z.object({
   password: z.string().max(256),
 });
 
-/** Restores the current localhost test session after a refresh. */
+/**
+ * Memulihkan data profil pengguna sesi pengujian lokal dari cookie peramban.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons JSON berisi profil AuthUser atau status 404.
+ */
 export async function GET(req: NextRequest) {
   if (!isLocalTestRequest(req)) return new NextResponse(null, { status: 404 });
   return NextResponse.json({ user: readLocalTestUser(req) });
 }
 
-/** Signs in a known test username on localhost only. */
+/**
+ * Mengautentikasi username pengujian lokal dan menerbitkan cookie sesi pengujian tertandatangani.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons JSON berisi profil pengguna dan set-cookie sesi.
+ */
 export async function POST(req: NextRequest) {
   if (!isLocalTestRequest(req)) return new NextResponse(null, { status: 404 });
   const input = await validateJsonBody(req, credentials);
@@ -38,7 +54,12 @@ export async function POST(req: NextRequest) {
   return response;
 }
 
-/** Removes the test session from this browser. */
+/**
+ * Menghapus cookie sesi pengujian lokal dari peramban peramban klien.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons HTTP 204 No Content.
+ */
 export async function DELETE(req: NextRequest) {
   if (!isLocalTestRequest(req)) return new NextResponse(null, { status: 404 });
   const response = new NextResponse(null, { status: 204 });

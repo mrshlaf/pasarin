@@ -22,14 +22,12 @@ function assert(condition: boolean, testName: string, detail?: string) {
 }
 
 async function runMetabolismTrialTests() {
-  console.log("================================================================================");
-  console.log("  PENGUJIAN UNIT MANDIRI: PSR-31 (24-HOUR MARKET METABOLISM SIMULATION TRIAL)");
-  console.log("  Fokus: Validasi 5 Fase Sirkadian, Target Efisiensi >=90%, & Invarian Kritis");
-  console.log("================================================================================\n");
+  console.log("\nPengujian Unit Mandiri: PSR-31 (24-Hour Market Metabolism Simulation Trial)");
+  console.log("Fokus: Validasi 5 Fase Sirkadian, Target Efisiensi >=90%, dan Invarian Kritis\n");
 
   const report = await run24HourMarketMetabolismTrial();
 
-  // Test 1: Verifikasi Kelengkapan 5 Fase Sirkadian
+  // Uji 1: Verifikasi Kelengkapan 5 Fase Sirkadian
   console.log("[Test 1] Kelengkapan Eksekusi 5 Fase Sirkadian Pasar");
   assert(
     report.allPhasesCompleted === true && report.phasesCount === 5,
@@ -45,7 +43,7 @@ async function runMetabolismTrialTests() {
     );
   });
 
-  // Test 2: Ambang Batas Efisiensi Pengalihan Sampah Organik (Target DLH DKI >= 90%)
+  // Uji 2: Ambang Batas Efisiensi Pengalihan Sampah Organik (Target DLH DKI >= 90%)
   console.log("\n[Test 2] Efisiensi Penyelamatan Surplus dari TPA Bantar Gebang");
   assert(
     report.meetsDlhThreshold === true,
@@ -58,7 +56,7 @@ async function runMetabolismTrialTests() {
     `Total: ${report.totalRescuedKg} kg dari surplus ${report.totalProjectedSurplusKg} kg`
   );
 
-  // Test 3: Audit Kepatuhan 3 Invarian Kritis
+  // Uji 3: Audit Kepatuhan 3 Invarian Kritis
   console.log("\n[Test 3] Audit Kepatuhan 3 Invarian Kritis");
   assert(
     report.invariantsAudit.invariant1ZeroEdibleToFeed === true,
@@ -81,7 +79,7 @@ async function runMetabolismTrialTests() {
     "100% Invariants Compliant"
   );
 
-  // Test 4: Akuntansi Lingkungan & Keuangan Escrow
+  // Uji 4: Akuntansi Lingkungan & Keuangan Escrow
   console.log("\n[Test 4] Akuntansi Lingkungan IPCC 2006 & Settlement Finansial");
   assert(
     report.environmentalImpact.methaneAvoidedKg > 0 && report.environmentalImpact.carbonOffsetCo2eKg > 0,
@@ -94,9 +92,7 @@ async function runMetabolismTrialTests() {
     `Kredit: Rp ${report.financialSettlement.totalVendorWalletCreditedIdr.toLocaleString("id-ID")}`
   );
 
-  console.log("\n================================================================================");
-  console.log(`HASIL AKHIR PENGUJIAN PSR-31: ${passedCount} LULUS, ${failedCount} GAGAL`);
-  console.log("================================================================================\n");
+  console.log(`\nHasil akhir pengujian PSR-31: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

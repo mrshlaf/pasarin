@@ -1,3 +1,9 @@
+/**
+ * Halaman Ruang Kerja Dasbor Peran Pengguna (Role Workspace Dashboard) (PSR-2).
+ * Menyediakan kerangka navigasi terpadu untuk merender komponen dasbor sesuai peran pengguna aktif
+ * (Pedagang, Warteg, Dapur Sosial, Sentra Maggot, Kurir, Pengelola Pasar, dan Administrator).
+ */
+
 "use client";
 
 import { useEffect } from "react";
@@ -13,7 +19,9 @@ import { LogisticsDashboard } from "@/components/roles/LogisticsDashboard";
 import { BuyerDashboard } from "@/components/roles/BuyerDashboard";
 import { OversightDashboard } from "@/components/roles/OversightDashboard";
 
-/** Renders the same workspace shell for each authorized role. */
+/**
+ * Komponen konten dasbor yang merender tampilan ruang kerja sesuai peran terotorisasi.
+ */
 function DashboardContent() {
   const { user } = useAuth();
   const { role, busy, stateReady, feedback, clearFeedback, refreshMarket } = useMarketSimulation();
@@ -73,7 +81,9 @@ function DashboardContent() {
   );
 }
 
-/** Opens the private workspace after login and sends visitors to the public dashboard. */
+/**
+ * Halaman utama ruang kerja privat yang mengarahkan pengunjung tanpa sesi kembali ke halaman publik.
+ */
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();

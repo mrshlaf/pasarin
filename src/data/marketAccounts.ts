@@ -1,8 +1,16 @@
+/**
+ * Direktori Identitas Akun dan Kredensial Pengguna Pasar (PSR-2).
+ * Menyediakan pemetaan terpadu untuk autentikasi sesi lokal maupun seeding akun Supabase Auth Cloud.
+ * Mencakup 30 pedagang kios, 100 mitra warteg, 3 dapur sosial, 2 sentra maggot, 5 armada kurir, pengelola, dan admin.
+ */
+
 import type { AppRole } from "@/data/accounts";
 import { CIRCULAR_BUYERS } from "@/data/buyers";
 import { KIOSKS } from "@/data/kiosks";
 
-/** One market identity shared by the login directory and the cloud account seeder. */
+/**
+ * Entitas profil akun pasar yang digunakan bersama oleh direktori login dan seeder akun cloud.
+ */
 export interface MarketAccount {
   username: string;
   password: string;
@@ -71,7 +79,10 @@ const courierAccounts: MarketAccount[] = Array.from({ length: 5 }, (_, index) =>
   };
 });
 
-/** 30 kiosks, 100 warteg, 3 social kitchens, 2 maggot sites, 5 couriers, 1 manager, 1 admin. */
+/**
+ * Kompilasi master seluruh akun pengguna pasar:
+ * 30 kios pasar, 100 warteg/UMKM, 3 dapur sosial, 2 sentra maggot, 5 kurir logistik, 1 pengelola UPB, 1 admin sistem.
+ */
 export const MARKET_ACCOUNTS: MarketAccount[] = [
   ...vendorAccounts,
   ...buyerAccounts("tier_1", "warteg", "warteg"),
@@ -88,12 +99,22 @@ export const MARKET_ACCOUNT_BY_VENDOR_ID = new Map(
   MARKET_ACCOUNTS.filter((account) => account.vendorId).map((account) => [account.vendorId as string, account]),
 );
 
-/** Local development identities use a stable prefix so claims remain distinct per account. */
+/**
+ * Menghasilkan identifier aktor sesi simulasi lokal dengan awalan stabil agar klaim terisolasi per akun.
+ *
+ * @param username - Nama pengguna akun pasar (misal: "pasar1", "warteg1").
+ * @returns String ID aktor dengan format "local:<username>".
+ */
 export function localActorId(username: string) {
   return `local:${username}`;
 }
 
-/** Supabase Auth uses one email-shaped identifier for every market account. */
+/**
+ * Mengonversi username akun pasar menjadi alamat email standar untuk Supabase Auth Cloud.
+ *
+ * @param username - Nama pengguna akun pasar.
+ * @returns Alamat email terformat "@pasarin.id".
+ */
 export function accountEmail(username: string) {
   return `${username}@pasarin.id`;
 }

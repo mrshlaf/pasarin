@@ -1,3 +1,9 @@
+/**
+ * Komponen Penunjuk Waktu Dinamis Waktu Indonesia Barat (WIB, UTC+7).
+ * Menyajikan visualisasi waktu aktual Jakarta secara reaktif per detik
+ * untuk memandu ritme kerja pedagang los basah dan batas waktu kedaluwarsa penawaran.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";

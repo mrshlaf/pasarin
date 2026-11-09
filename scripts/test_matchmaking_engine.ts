@@ -32,14 +32,12 @@ function assert(condition: boolean, testId: string, testName: string, detail?: s
 }
 
 async function runMatchmakingTestSuite() {
-  console.log("\n================================================================================");
-  console.log("  PASARIN PSR-22 CIRCULAR 3-TIER MATCHMAKING ENGINE TEST SUITE");
-  console.log("  Mata Kuliah : Rekayasa Perangkat Lunak - Fakultas Teknik Universitas Indonesia");
-  console.log(`  Jangkar GPS : ${MARKET_ANCHOR_COORDINATES.name} (${MARKET_ANCHOR_COORDINATES.latitude}, ${MARKET_ANCHOR_COORDINATES.longitude})`);
-  console.log(`  Waktu Uji   : ${new Date().toLocaleString("id-ID")}`);
-  console.log("================================================================================\n");
+  console.log("\nPASARIN PSR-22 Circular 3-Tier Matchmaking Engine Test Suite");
+  console.log("Mata Kuliah : Rekayasa Perangkat Lunak - Fakultas Teknik Universitas Indonesia");
+  console.log(`Jangkar GPS : ${MARKET_ANCHOR_COORDINATES.name} (${MARKET_ANCHOR_COORDINATES.latitude}, ${MARKET_ANCHOR_COORDINATES.longitude})`);
+  console.log(`Waktu Uji   : ${new Date().toLocaleString("id-ID")}\n`);
 
-  // --- Test 1: Akurasi Geospasial Formula Haversine ---
+  // Uji 1: Akurasi Geospasial Formula Haversine
   console.log("\x1b[33m▶ [Uji 1] Akurasi Geospasial Formula Haversine (Haversine Distance Accuracy)\x1b[0m");
 
   // Jarak ke Warteg Ibu Yayu Hek (-6.264, 106.872) ~0.4 km
@@ -84,7 +82,7 @@ async function runMatchmakingTestSuite() {
     `Jarak: ${distZero} km`
   );
 
-  // --- Test 2: Isolasi Kategori 3-Tier ---
+  // Uji 2: Isolasi Kategori 3-Tier
   console.log("\n\x1b[33m▶ [Uji 2] Isolasi Peran 3-Tier (Tier Filtering Integrity)\x1b[0m");
 
   const sampleOfferTier1 = {
@@ -117,7 +115,7 @@ async function runMatchmakingTestSuite() {
     `Total kandidat terfilter: ${matchResultTier3.rankedMatches.length} mitra`
   );
 
-  // --- Test 3: Pembatasan Radius Geospasial (Maksimal 5.0 km) ---
+  // Uji 3: Pembatasan Radius Geospasial (Maksimal 5.0 km)
   console.log("\n\x1b[33m▶ [Uji 3] Pembatasan Radius Geospasial Maksimal 5.0 km (Radius Enforcing)\x1b[0m");
 
   // Tambahkan mock pembeli di Depok / Bogor (jarak > 15 km)
@@ -149,7 +147,7 @@ async function runMatchmakingTestSuite() {
     `Jarak: ${farMatch.distanceKm} km, Alasan: '${farMatch.ineligibilityReason}'`
   );
 
-  // --- Test 4: Proteksi Kelebihan Kapasitas Harian (Anti-Overcapacity Guard) ---
+  // Uji 4: Proteksi Kelebihan Kapasitas Harian (Anti-Overcapacity Guard)
   console.log("\n\x1b[33m▶ [Uji 4] Proteksi Batas Kapasitas Harian Mitra (Capacity Overload Guard)\x1b[0m");
 
   // Muatan raksasa 75 kg (melebihi kapasitas tersisa Warteg Ibu Yayu yang hanya 40 kg tersisa)
@@ -178,7 +176,7 @@ async function runMatchmakingTestSuite() {
     `Sisa Kuota: ${cawangMatch.remainingCapacityKg} kg`
   );
 
-  // --- Test 5: Pemeringkatan Prioritas Jarak Terdekat ---
+  // Uji 5: Pemeringkatan Prioritas Jarak Terdekat
   console.log("\n\x1b[33m▶ [Uji 5] Pemeringkatan Prioritas Mitra Terdekat (DoD Acceptance Criteria)\x1b[0m");
 
   const normalOffer = {
@@ -197,7 +195,7 @@ async function runMatchmakingTestSuite() {
     `Rekomendasi #1: ${topBuyer.name} (${rankedNormal.rankedMatches[0].distanceKm} km, Skor: ${rankedNormal.rankedMatches[0].totalMatchScore})`
   );
 
-  // --- Test 6: SLA Kecepatan Perhitungan (< 100 ms) ---
+  // Uji 6: SLA Kecepatan Perhitungan (< 100 ms)
   console.log("\n\x1b[33m▶ [Uji 6] Tolok Ukur Kecepatan Eksekusi / SLA (< 100 ms)\x1b[0m");
 
   const sampleLots = [
@@ -219,7 +217,7 @@ async function runMatchmakingTestSuite() {
     `Durasi eksekusi: ${batchDuration} ms (Target: < 100 ms)`
   );
 
-  // --- Test 7: Integritas Fasad Modul ---
+  // Uji 7: Integritas Fasad Modul
   console.log("\n\x1b[33m▶ [Uji 7] Integritas Fasad Modul matchmakingEngine\x1b[0m");
 
   assert(
@@ -231,14 +229,12 @@ async function runMatchmakingTestSuite() {
     `Radius acuan: ${matchmakingEngine.MAX_RADIUS_KM} km`
   );
 
-  console.log("\n================================================================================");
   if (failedTests === 0) {
-    console.log(`\x1b[32m🎉 SEMUA PENGUJIAN PSR-22 LULUS 100%! (${passedTests}/${totalTests} TESTS PASSED)\x1b[0m`);
-    console.log("✔ Seluruh Kriteria Penerimaan (DoD) Tiket PSR-22 Terpenuhi Sempurna.");
+    console.log(`\n\x1b[32m✔ Seluruh pengujian PSR-22 lulus (${passedTests}/${totalTests} pengujian lolos)\x1b[0m`);
+    console.log("Kriteria penerimaan tiket PSR-22 terpenuhi tanpa catatan galat.\n");
   } else {
-    console.error(`\x1b[31m✖ PENGUJIAN GAGAL: ${failedTests} pengujian tidak memenuhi syarat.\x1b[0m`);
+    console.error(`\n\x1b[31m✖ Pengujian gagal: ${failedTests} pengujian tidak memenuhi syarat.\x1b[0m\n`);
   }
-  console.log("================================================================================\n");
 
   if (failedTests > 0) {
     process.exit(1);

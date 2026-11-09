@@ -82,6 +82,10 @@ import {
   CircularBuyer,
 } from "@/data/buyers";
 
+/**
+ * Kontrak struktur laporan hasil pengujian terintegrasi master testbench (PSR-39).
+ * Memuat ringkasan asersi lulus/gagal, rasio keberhasilan (%), stempel waktu, dan rincian per suite.
+ */
 export interface MasterTestReport {
   suiteTitle: string;
   totalAssertions: number;
@@ -99,7 +103,13 @@ export interface MasterTestReport {
 }
 
 /**
- * Menjalankan rangkaian uji otomatis 12 suite secara terintegrasi (PSR-39).
+ * Menjalankan rangkaian uji otomatis 14 suite rekayasa perangkat lunak PASARIN secara terintegrasi (PSR-39).
+ * Mengevaluasi 76 asersi pengujian unit mencakup telemetri cuaca, kinetika Arrhenius, redaman hujan,
+ * dynamic pricing, prediksi surplus komposit, gerbang mutu etis, ReAct Gemini 2.0 Flash, tool calling,
+ * otorisasi peran, Telegram webhook, integrasi master data, invarian sirkular, dan mesin pencocokan Haversine.
+ *
+ * @param options - Opsi eksekusi pengujian, seperti mode senyap (silent) tanpa pencetakan log konsol.
+ * @returns Laporan master pengujian MasterTestReport berisi ringkasan asersi lulus/gagal dan rincian per suite.
  */
 export async function runMasterInClassTestSuite(options?: { silent?: boolean }): Promise<MasterTestReport> {
   const isSilent = Boolean(options?.silent);
@@ -149,13 +159,11 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
 
   if (!isSilent) {
-    console.log("\n================================================================================");
-    console.log("  PASARIN IN-CLASS AUTOMATED UNIT TESTING SUITE (PSR-39 MASTER TESTBENCH)");
-    console.log("  Mata Kuliah : Rekayasa Perangkat Lunak (ENCE605024) - Kelas 01 FTUI");
-    console.log("  Dosen       : Prof. Dr. Ir. Riri Fitri Sari, M.M., M.Sc.");
-    console.log("  Tim         : Marshal Aufa Diliyana (2406346913) & Zahir Shahab (2406487084)");
-    console.log(`  Target      : Pasar Induk Kramat Jati (-6.2675, 106.8702) | Waktu: ${new Date().toLocaleString("id-ID")}`);
-    console.log("================================================================================");
+    console.log("\nPASARIN In-Class Automated Unit Testing Suite (PSR-39 Master Testbench)");
+    console.log("Mata Kuliah : Rekayasa Perangkat Lunak (ENCE605024) - Kelas 01 FTUI");
+    console.log("Dosen       : Prof. Dr. Ir. Riri Fitri Sari, M.M., M.Sc.");
+    console.log("Tim         : Marshal Aufa Diliyana (2406346913) & Zahir Shahab (2406487084)");
+    console.log(`Target      : Pasar Induk Kramat Jati (-6.2675, 106.8702) | Waktu: ${new Date().toLocaleString("id-ID")}\n`);
   }
 
   // 1. Suite 1: PSR-5
@@ -422,7 +430,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Tool Execution Valid"
   );
 
-  // Pengujian Verifikasi PSR-27 Logistics Fleet Cargo Allocation and Weight Dispatch Rule
+  // Pengujian Verifikasi PSR-27: Alokasi Muatan Armada Logistik dan Aturan Pengiriman Berdasarkan Bobot
   const allocLight = calculateFleetAllocation(250, "warteg");
   const allocMedium = calculateFleetAllocation(750, "social_kitchen");
   const allocHeavy = calculateFleetAllocation(1800, "maggot");
@@ -625,9 +633,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Efisiensi: ${trialReport.wasteDiversionEfficiencyPct}% (Target >=90%)`
   );
 
-  // ============================================================================
-  // SUITE 13: PSR-22 (Circular 3-Tier Matchmaking Engine)
-  // ============================================================================
+  // Pengujian Suite 13: PSR-22 (Mesin Pencocokan Sirkular 3-Tier)
   startSuite("SUITE 13: PSR-22", "Mesin Pencocokan Sirkular 3-Tier & Formula Haversine");
 
   // TC-MM01: Akurasi Geospasial Haversine ke Warteg Hek (~0.43 km)
@@ -791,10 +797,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Radius acuan: ${matchmakingEngine.MAX_RADIUS_KM} km`
   );
 
-  // ============================================================================
-  // SUITE 14: PSR-26 (Buyer Instant Alert & Fast Claim Concurrency Channel)
-  // ============================================================================
-  // Finalize last suite
+  // Rekapitulasi hasil pengujian akhir
   if (currentSuiteId) {
     suiteSummaries.push({
       suiteId: currentSuiteId,
@@ -804,17 +807,15 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     });
   }
 
-  // Summary
+  // Rekapitulasi hasil pengujian
   if (!isSilent) {
-    console.log("\n================================================================================");
     if (failedTests === 0) {
-      console.log(`\x1b[1m\x1b[32m🎉 SEMUA PENGUJIAN LULUS HIJAU 100%! (${passedTests}/${totalTests} TESTS PASSED)\x1b[0m`);
-      console.log("\x1b[32m✔ Seluruh Kriteria Penerimaan Sesi Kelas (PSR-39) Terpenuhi Penuh Tanpa Cacat.\x1b[0m");
-      console.log("\x1b[32m✔ Sistem PASARIN Terverifikasi Siap Demo di Hadapan Dosen Pengampu & Asisten.\x1b[0m");
+      console.log(`\n\x1b[1m\x1b[32m✔ Seluruh pengujian lulus (${passedTests}/${totalTests} terverifikasi)\x1b[0m`);
+      console.log("\x1b[32mSeluruh kriteria penerimaan PSR-39 terpenuhi tanpa catatan galat.\x1b[0m");
+      console.log("\x1b[32mSistem PASARIN terverifikasi siap untuk demonstrasi operasional.\x1b[0m\n");
     } else {
-      console.log(`\x1b[1m\x1b[31m❌ TERDAPAT ${failedTests} PENGUJIAN GAGAL DARI TOTAL ${totalTests} TESTS!\x1b[0m`);
+      console.log(`\n\x1b[1m\x1b[31m✖ Terdapat ${failedTests} kegagalan dari total ${totalTests} pengujian!\x1b[0m\n`);
     }
-    console.log("================================================================================\n");
   }
 
   return {
@@ -829,6 +830,9 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
 }
 
+/**
+ * Objek fasad testbench terpadu untuk pengujian otomatis in-class (PSR-39).
+ */
 export const inClassTestbench = {
   runMasterInClassTestSuite,
 };

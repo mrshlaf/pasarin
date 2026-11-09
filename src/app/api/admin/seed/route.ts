@@ -1,3 +1,9 @@
+/**
+ * Rute API Penyemaian Awal Data Pengguna dan Status Pasar (Database & Market Seeder) (PSR-2 / PSR-4).
+ * Memfasilitasi inisialisasi satu kali atau penyetelan ulang (reset) data 142 akun pasar ke Supabase Auth
+ * serta pembentukan snapshot state pasar awal secara atomik.
+ */
+
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, successResponse } from "@/lib/api-response";
@@ -18,7 +24,9 @@ function seedSecret(req: NextRequest) {
     req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
 }
 
-/** Protects the one-time account and market seed route. */
+/**
+ * Memvalidasi otorisasi administratif untuk rute penyemaian (seeding) massal.
+ */
 async function authorizeSeed(req: NextRequest) {
   if (process.env.NODE_ENV !== "production") {
     const auth = await requireApiRole(req, ["admin"]);
@@ -36,7 +44,12 @@ async function authorizeSeed(req: NextRequest) {
   return { actorIds: null } as const;
 }
 
-/** Reports whether the state table and market accounts are ready. */
+/**
+ * Memeriksa kesiapan tabel state simulasi dan menghitung jumlah akun pasar yang telah disemai.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons API status kesiapan seeding basis data.
+ */
 export async function GET(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;
@@ -80,7 +93,12 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Creates or refreshes the 142 accounts, then seeds the market atomically. */
+/**
+ * Membuat atau memperbarui 142 akun pasar ke Supabase Auth lalu menyemai snapshot state pasar secara atomik.
+ *
+ * @param req - Objek NextRequest masuk.
+ * @returns Respons API hasil eksekusi penyemaian akun dan data pasar.
+ */
 export async function POST(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;

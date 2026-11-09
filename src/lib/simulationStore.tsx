@@ -1,3 +1,9 @@
+/**
+ * Modul Penyedia State Simulasi Pasar Sisi Klien (Client-Side Simulation Provider) (PSR-4 / PSR-37).
+ * Menyinkronkan snapshot state pasar secara periodik dengan server, menghitung peluruhan kinetika
+ * secara real-time pada detik jam fisik peramban, serta mengelola aksi mutasi terisolasi per peran pengguna.
+ */
+
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
@@ -11,6 +17,9 @@ export type { AppRole, EscrowTransaction, RescueOffer, StockItem };
 
 type ServerState = Awaited<ReturnType<typeof readMarketSnapshot>>;
 
+/**
+ * Kontrak konteks status dan aksi operasional simulasi pasar sisi klien (PSR-4 / PSR-37).
+ */
 export interface SimulationContextType {
   role: AppRole;
   setRole: (role: AppRole) => void;
@@ -38,10 +47,19 @@ export interface SimulationContextType {
 
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
+/**
+ * Hasil aksi operasional pasar sisi klien (pesan status dan objek penawaran).
+ */
 type MarketActionResult = { success: boolean; message: string; offer?: RescueOffer };
+
+/**
+ * Rekaman snapshot pasar tersinkronisasi per identitas pengguna.
+ */
 type MarketSnapshot = { userId: string; state: ServerState; syncedAt: number };
 
-/** Keeps a role-scoped market snapshot synchronized across sessions and channels. */
+/**
+ * Komponen penyedia state simulasi pasar yang menyinkronkan data antar-sesi pengguna secara berkala.
+ */
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -67,7 +85,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const transactions = data?.transactions ?? [];
   const vendorWalletBalanceIdr = data?.vendorWalletIdr ?? 0;
 
-  // Real-time live decaying: recalculate remaining hours dynamically with actual clock seconds
+  // Kalkulasi peluruhan dinamis berbasis detik jam aktual peramban klien
   const liveStockHealth = data?.stockHealth
     ? Object.fromEntries(
         Object.entries(data.stockHealth).map(([stockId, health]) => {
@@ -98,7 +116,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     const controller = new AbortController();
 
-    // Discard poll results that started before a newer mutation.
+    // Mengabaikan respons polling jika ada mutasi data lokal yang lebih mutakhir
     async function sync() {
       if (changing.current || !userId) return;
       const version = generation.current;
@@ -127,7 +145,13 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, refreshTick]);
 
-  // All role actions go through the server and refresh the shared snapshot.
+  /**
+   * Mengalirkan aksi mutasi peran ke endpoint API server dan memperbarui snapshot pasar secara atomik.
+   *
+   * @param body - Muatan data mutasi yang dikirimkan.
+   * @param endpoint - URL endpoint target (default: "/api/simulation/state").
+   * @returns Hasil aksi operasional pasar bertipe MarketActionResult.
+   */
   async function mutate(body: Record<string, unknown>, endpoint = "/api/simulation/state"): Promise<MarketActionResult> {
     if (!userId || changing.current) return { success: false, message: "Tunggu tindakan sebelumnya selesai." };
     changing.current = true;

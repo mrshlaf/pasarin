@@ -1,3 +1,9 @@
+/**
+ * Modul Gerbang Autentikasi dan Otorisasi Berbasis Peran API (PSR-2).
+ * Memvalidasi sesi pengguna dari cookie sesi server, token Bearer Supabase Auth,
+ * atau kredensial simulasi lokal khusus lingkungan pengembangan, serta menegakkan batasan peran (RBAC).
+ */
+
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
 import { accountProfile, type AppRole } from "@/data/accounts";
@@ -6,7 +12,14 @@ import { errorResponse } from "@/lib/api-response";
 import { readLocalTestUser } from "@/lib/localTestAuth";
 import { serverAuthEnabled, readSessionUser } from "@/lib/serverAuth";
 
-/** Compares server-provided secrets without exposing the expected value. */
+/**
+ * Membandingkan string rahasia menggunakan timing-safe buffer comparison.
+ * Mencegah serangan analisis waktu (timing-attack) pada validasi token rahasia webhook atau cron.
+ *
+ * @param value - Nilai token masukan dari permintaan HTTP.
+ * @param secret - Nilai token rahasia acuan dari variabel lingkungan server.
+ * @returns True jika kedua nilai identik secara byte per byte.
+ */
 export function matchesSecret(value: string | null | undefined, secret: string | undefined) {
   if (!value || !secret) return false;
   const a = Buffer.from(value);
@@ -14,7 +27,15 @@ export function matchesSecret(value: string | null | undefined, secret: string |
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Enforces the verified role from Supabase, the server session, or a localhost-only test session. */
+/**
+ * Menegakkan otorisasi peran (RBAC) pada rute API endpoint Next.js.
+ * Memeriksa identitas pengguna secara berurutan: cookie sesi server, Bearer token Supabase,
+ * atau header sesi simulasi lokal (localhost development).
+ *
+ * @param req - Objek NextRequest masuk.
+ * @param roles - Daftar peran yang diizinkan mengakses endpoint (opsional, jika kosong hanya memverifikasi autentikasi).
+ * @returns Objek hasil berisi profil pengguna valid atau respons galat 401/403/503 siap kirim.
+ */
 export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[]) {
   if (serverAuthEnabled()) {
     const serverUser = readSessionUser(req);

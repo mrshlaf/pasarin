@@ -42,9 +42,9 @@ function assert(condition: boolean, testName: string, detail?: string) {
  * Menjalankan rangkaian pengujian integrasi Tool Calling Registry PSR-18.
  */
 async function runToolCallingRegistryTests() {
-  console.log("\n--- PASARIN PSR-18 TOOL CALLING REGISTRY & QUERY DECOMPOSITION TEST SUITE ---");
+  console.log("\nPASARIN PSR-18 Tool Calling Registry & Query Decomposition Test Suite");
 
-  // Test 1: Verifikasi kelengkapan registrasi spesifikasi alat sub-agen
+  // Uji 1: Verifikasi kelengkapan registrasi spesifikasi alat sub-agen
   console.log("\n[Test 1] Verifikasi Deklarasi Skema Alat Fungsi (PASARIN_TOOL_DECLARATIONS)");
   assert(
     PASARIN_TOOL_DECLARATIONS.length >= 8,
@@ -73,7 +73,7 @@ async function runToolCallingRegistryTests() {
     );
   });
 
-  // Test 2: Dekomposisi kueri armada lusa (Kriteria Penerimaan 1)
+  // Uji 2: Dekomposisi kueri armada lusa (Kriteria Penerimaan 1)
   console.log("\n[Test 2] Dekomposisi Kueri Manajerial Armada Logistik (DoD 1)");
   const fleetQuery = "Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?";
   const plan = decomposeManagerialQuery(fleetQuery);
@@ -91,7 +91,7 @@ async function runToolCallingRegistryTests() {
     `Alat: [${plan.requiredTools.join(", ")}]`
   );
 
-  // Test 3: Isolasi pemanggilan alat - tidak memanggil modul yang tidak dibutuhkan (DoD 2)
+  // Uji 3: Isolasi pemanggilan alat - tidak memanggil modul yang tidak dibutuhkan (DoD 2)
   console.log("\n[Test 3] Isolasi Eksekusi - Tanpa Memanggil Modul yang Tidak Dibutuhkan (DoD 2)");
   assert(
     !plan.requiredTools.includes("parseLocalMarketUnits") &&
@@ -100,7 +100,7 @@ async function runToolCallingRegistryTests() {
     "Isolasi Modul Terpenuhi"
   );
 
-  // Test 4: Eksekusi berantai & sintesis keluaran padat rincian tonase dan armada (DoD 3 & 4)
+  // Uji 4: Eksekusi berantai & sintesis keluaran padat rincian tonase dan armada (DoD 3 & 4)
   console.log("\n[Test 4] Eksekusi Berantai & Sintesis Rekomendasi Armada Terpadu (DoD 3)");
   const startTime = Date.now();
   const queryResult = await executeDecomposedManagerialQuery(fleetQuery);
@@ -123,7 +123,7 @@ async function runToolCallingRegistryTests() {
     `Durasi: ${durationMs} ms`
   );
 
-  // Test 5: Pengujian eksekusi nyata setiap alat individual terdaftar (DoD 5)
+  // Uji 5: Pengujian eksekusi nyata setiap alat individual terdaftar (DoD 5)
   console.log("\n[Test 5] Eksekusi Nyata Alat Individual (executeRegisteredTool)");
   // 5a. Cuaca mikro
   const weatherExec = await executeRegisteredTool("fetchOpenWeatherTelemetry", { forceRefresh: false });
@@ -181,7 +181,7 @@ async function runToolCallingRegistryTests() {
     "Eksekusi alat 'calculateMethaneAvoidance' menghitung 480.0 kg CO2e terhindar untuk 1.000 kg surplus",
     hasCarbonOffset ? `CO2e Offset: ${carbonData.carbonOffsetCo2eKg} kg` : "Gagal"
   );
-  // Test 6: Penanganan galat pemanggilan alat tidak dikenal
+  // Uji 6: Penanganan galat pemanggilan alat tidak dikenal
   console.log("\n[Test 6] Penanganan Galat Alat yang Tidak Terdaftar (Error Resilience)");
   const unknownExec = await executeRegisteredTool("alatTidakDikenal123", {});
   assert(
@@ -190,7 +190,7 @@ async function runToolCallingRegistryTests() {
     `Error: '${unknownExec.error}'`
   );
 
-  // Test 7: Integritas Fasad toolCallingRegistry
+  // Uji 7: Integritas Fasad toolCallingRegistry
   console.log("\n[Test 7] Integritas Fasad Registri Tool Calling (toolCallingRegistry)");
   assert(
     typeof toolCallingRegistry.executeTool === "function" &&
@@ -200,8 +200,8 @@ async function runToolCallingRegistryTests() {
     "Fasad Registry Valid"
   );
 
-  // Ringkasan hasil test
-  console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-18: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
+  // Rekapitulasi hasil pengujian
+  console.log(`\nHasil pengujian akhir PSR-18: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

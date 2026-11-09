@@ -42,9 +42,9 @@ function assert(condition: boolean, testName: string, detail?: string) {
  * Menjalankan rangkaian pengujian integrasi ReAct Orchestrator PSR-17.
  */
 async function runOrchestratorTests() {
-  console.log("\n--- PASARIN PSR-17 GEMINI 2.0 FLASH REACT ORCHESTRATOR TEST SUITE ---");
+  console.log("\nPASARIN PSR-17 Gemini 2.0 Flash ReAct Orchestrator Test Suite");
 
-  // Test 1: Eksekusi mandiri alur sapuan otonom 14:30 WIB
+  // Uji 1: Eksekusi mandiri alur sapuan otonom 14:30 WIB
   console.log("\n[Test 1] Eksekusi Mandiri Siklus Otonom Sapuan Sore 14:30 WIB");
   const startTime = Date.now();
   const runResult = await executeAutonomousOrchestration({
@@ -73,7 +73,7 @@ async function runOrchestratorTests() {
     `Durasi: ${durationMs} ms`
   );
 
-  // Test 2: Distribusi Alokasi 3-Tier Sirkular
+  // Uji 2: Distribusi Alokasi 3-Tier Sirkular
   console.log("\n[Test 2] Alokasi Sirkular 3-Tier & Penugasan Armada Logistik");
   assert(
     runResult.allocations.tier1WartegKg > 0,
@@ -96,7 +96,7 @@ async function runOrchestratorTests() {
     `Armada: ${runResult.fleetAssignmentsCount} unit`
   );
 
-  // Test 3: Kepatuhan Batas Maksimal Putaran ReAct (MAX_REACT_TURNS = 5)
+  // Uji 3: Kepatuhan Batas Maksimal Putaran ReAct (MAX_REACT_TURNS = 5)
   console.log("\n[Test 3] Kepatuhan Pembatasan Putaran ReAct (Invarian Max 5 Turns)");
   assert(
     runResult.thoughtProcess.length <= MAX_REACT_TURNS,
@@ -109,7 +109,7 @@ async function runOrchestratorTests() {
     "Struktur ReAct Valid"
   );
 
-  // Test 4: Pemrosesan Kueri Bahasa Alami Manajerial Armada (PSR-18)
+  // Uji 4: Pemrosesan Kueri Bahasa Alami Manajerial Armada (PSR-18)
   console.log("\n[Test 4] Dekomposisi Kueri Bahasa Alami Armada Logistik");
   const fleetQuery = "Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?";
   const fleetResult = await processManagerialNaturalQuery(fleetQuery, { forceHeuristic: true });
@@ -130,7 +130,7 @@ async function runOrchestratorTests() {
     `Poin: ${fleetResult.recommendations?.length} saran`
   );
 
-  // Test 5: Pemrosesan Kueri Bahasa Alami Mikroklimat Cuaca
+  // Uji 5: Pemrosesan Kueri Bahasa Alami Mikroklimat Cuaca
   console.log("\n[Test 5] Dekomposisi Kueri Bahasa Alami Cuaca & Kinetika");
   const weatherQuery = "Bagaimana ramalan cuaca dan suhunya untuk los sayur sore ini?";
   const weatherResult = await processManagerialNaturalQuery(weatherQuery, { forceHeuristic: true });
@@ -146,7 +146,7 @@ async function runOrchestratorTests() {
     "WeatherAgent Terpanggil"
   );
 
-  // Test 6: Perekaman Jejak Audit Sistem (System Audit Trail)
+  // Uji 6: Perekaman Jejak Audit Sistem (System Audit Trail)
   console.log("\n[Test 6] Perekaman Jejak Audit Sistem Multi-Agen (Audit Trail)");
   const recentLogs = getRecentAuditLogs(15);
   const orchestratorSweepLog = recentLogs.find(
@@ -167,7 +167,7 @@ async function runOrchestratorTests() {
     orchestratorQueryLog ? `Event ID: ${orchestratorQueryLog.event_id}` : "Log tidak ditemukan"
   );
 
-  // Test 7: Integritas Fasad Objek Agen Orchestrator
+  // Uji 7: Integritas Fasad Objek Agen Orchestrator
   console.log("\n[Test 7] Integritas Fasad Agen & Prompt Sistem ReAct");
   assert(
     geminiOrchestrator.name === "GeminiOrchestratorAgent" &&
@@ -181,8 +181,8 @@ async function runOrchestratorTests() {
     "System Prompt Valid"
   );
 
-  // Ringkasan hasil test
-  console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-17: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
+  // Rekapitulasi hasil pengujian
+  console.log(`\nHasil pengujian akhir PSR-17: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

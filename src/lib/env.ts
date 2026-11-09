@@ -42,6 +42,9 @@ export const envSchema = z.object({
     .default("development"),
 });
 
+/**
+ * Tipe inferensi TypeScript dari skema validasi variabel lingkungan Zod (PSR-3).
+ */
 export type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;

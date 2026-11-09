@@ -27,14 +27,12 @@ function assert(condition: boolean, testName: string, detail?: string) {
 }
 
 async function runPriorityWindowTests() {
-  console.log("================================================================================");
-  console.log("  PENGUJIAN UNIT MANDIRI: PSR-23 (PRIORITY TIME-WINDOW DISPATCHER TIER 2)");
-  console.log("  Fokus: Invarian 3 (30-Minute Social Reservation Window & Auto-Downgrade)");
-  console.log("================================================================================\n");
+  console.log("\nPengujian Unit Mandiri: PSR-23 (Priority Time-Window Dispatcher Tier 2)");
+  console.log("Fokus: Invarian 3 (30-Minute Social Reservation Window & Auto-Downgrade)\n");
 
   const now = new Date();
 
-  // Test 1: Penawaran Tier 2 baru dibuat (elapsed 0 menit)
+  // Uji 1: Penawaran Tier 2 baru dibuat (elapsed 0 menit)
   console.log("[Test 1] Evaluasi Penawaran Baru Tier 2 (0 Menit Berlalu)");
   const freshOffer: RescueOffer = {
     id: "ofr_test_t2_01",
@@ -58,7 +56,7 @@ async function runPriorityWindowTests() {
   assert(freshEval.canSocialKitchenClaim === true, "Dapur Sosial diizinkan mengklaim alokasi Tier 2");
   assert(freshEval.canMaggotClaim === false, "Invarian 3: Sentra Maggot DILARANG mengklaim pada masa reservasi");
 
-  // Test 2: Validasi penolakan klaim Maggot selama jendela 30 menit aktif
+  // Uji 2: Validasi penolakan klaim Maggot selama jendela 30 menit aktif
   console.log("\n[Test 2] Validasi Gerbang Etis (validateClaimAgainstPriorityWindow)");
   const maggotClaimBlocked = validateClaimAgainstPriorityWindow(freshOffer, "maggot", now);
   assert(
@@ -70,7 +68,7 @@ async function runPriorityWindowTests() {
   const socialClaimAllowed = validateClaimAgainstPriorityWindow(freshOffer, "social_kitchen", now);
   assert(socialClaimAllowed.allowed === true, "Klaim Dapur Sosial diizinkan secara penuh", "Akses Diizinkan");
 
-  // Test 3: Evaluasi Penawaran setelah 35 menit berlalu (Jendela Habis)
+  // Uji 3: Evaluasi Penawaran setelah 35 menit berlalu (Jendela Habis)
   console.log("\n[Test 3] Evaluasi Penawaran Setelah 35 Menit Berlalu Tanpa Klaim");
   const pastTime = new Date(now.getTime() - 35 * 60000);
   const expiredOffer: RescueOffer = {
@@ -86,7 +84,7 @@ async function runPriorityWindowTests() {
   assert(expiredEval.remainingMinutes === 0, "Sisa waktu reservasi adalah 0 menit");
   assert(expiredEval.actionDecision === "eligible_tier3_downgrade", "Status penawaran menjadi eligible_tier3_downgrade");
 
-  // Test 4: Otomasi pengalihan (auto-downgrade) ke Tier 3 saat masa reservasi selesai
+  // Uji 4: Otomasi pengalihan (auto-downgrade) ke Tier 3 saat masa reservasi selesai
   console.log("\n[Test 4] Pemrosesan Auto-Downgrade ke Pakan Biomassa Maggot (Tier 3)");
   const testOfferList: RescueOffer[] = [
     { ...freshOffer, id: "offer_active", createdAt: now.toISOString() },
@@ -103,9 +101,7 @@ async function runPriorityWindowTests() {
     `Tier: ${downgradedItem?.targetTier} | Harga: Rp ${downgradedItem?.salvagePricePerKg}`
   );
 
-  console.log("\n================================================================================");
-  console.log(`HASIL AKHIR PENGUJIAN PSR-23: ${passedCount} LULUS, ${failedCount} GAGAL`);
-  console.log("================================================================================\n");
+  console.log(`\nHasil akhir pengujian PSR-23: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

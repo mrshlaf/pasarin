@@ -1,4 +1,8 @@
-// Master direktori mitra pembeli sirkular 3-tier pasar Kramat Jati (PSR-22)
+/**
+ * Master Direktori Mitra Pembeli dan Jalur Penyaluran Sirkular 3-Tier (PSR-22).
+ * Memuat koordinat geospasial mitra pembeli di sekitar Pasar Induk Kramat Jati,
+ * kuota tampung harian, komoditas preferensi, dan jam operasional.
+ */
 
 export interface CircularBuyer {
   id: string;
@@ -13,7 +17,7 @@ export interface CircularBuyer {
   address: string;
   dailyCapacityKg: number;
   currentAllocatedKg: number;
-  reputationScore: number; // 0 - 100
+  reputationScore: number;
   preferredCommodities: string[];
   operationalHours: {
     openClock: string;
@@ -21,19 +25,26 @@ export interface CircularBuyer {
   };
 }
 
-// Titik tengah los basah Kramat Jati Blok A
+/**
+ * Titik jangkar geospasial los basah Blok A Pasar Induk Kramat Jati sebagai pusat kalkulasi jarak Haversine.
+ */
 export const MARKET_ANCHOR_COORDINATES = {
   latitude: -6.2675,
   longitude: 106.8702,
   name: "Pasar Induk Kramat Jati, Jakarta Timur",
 } as const;
 
-// Batas radius maksimal pengalihan surplus (5.0 km)
+/**
+ * Batas radius maksimal pengalihan logistik surplus pangan (5,0 km).
+ * Ditentukan untuk memastikan pengantaran selesai dalam batas waktu kesegaran sayuran daun.
+ */
 export const MAX_MATCHMAKING_RADIUS_KM = 5.0;
 
-// Direktori mitra pembeli terverifikasi di sekitar Pasar Induk Kramat Jati
+/**
+ * Direktori mitra pembeli sirkular terverifikasi dalam radius operasional Pasar Induk Kramat Jati.
+ */
 export const CIRCULAR_BUYERS: CircularBuyer[] = [
-  // --- TIER 1: Warteg & Katering UMKM (Penyelamatan Mutu Layu Ringan) ---
+  // Mitra Tier 1: Warteg & Katering UMKM (Penyelamatan Mutu Layu Ringan)
   {
     id: "buyer_warteg_01",
     name: "Warteg Kharisma Bahari Condet",
@@ -120,7 +131,7 @@ export const CIRCULAR_BUYERS: CircularBuyer[] = [
     operationalHours: { openClock: "07:00", closeClock: "23:00" },
   },
 
-  // --- TIER 2: Dapur Sosial & Panti Asuhan (Pangan Darurat Nutrisi Layu Sedang) ---
+  // Mitra Tier 2: Dapur Sosial & Panti Asuhan (Pangan Darurat Nutrisi Layu Sedang)
   {
     id: "buyer_social_01",
     name: "Dapur Pangan Yatim Al-Khairat Condet",
@@ -173,7 +184,7 @@ export const CIRCULAR_BUYERS: CircularBuyer[] = [
     operationalHours: { openClock: "07:00", closeClock: "18:00" },
   },
 
-  // --- TIER 3: Sentra Budidaya Maggot BSF & Biokonversi Organik ---
+  // Mitra Tier 3: Sentra Budidaya Maggot BSF & Biokonversi Organik
   {
     id: "buyer_maggot_01",
     name: "Sentra Budidaya Maggot BSF TPS 3R Pasar Kramat Jati",

@@ -28,12 +28,10 @@ function assert(condition: boolean, testName: string, detail?: string) {
 }
 
 async function runQrisEscrowTests() {
-  console.log("================================================================================");
-  console.log("  PENGUJIAN UNIT MANDIRI: PSR-37 (DYNAMIC QRIS ESCROW PAYMENT GATEWAY)");
-  console.log("  Fokus: Format EMVCo TLV, Checksum CRC16, & Pelepasan Dana Escrow");
-  console.log("================================================================================\n");
+  console.log("\nPengujian Unit Mandiri: PSR-37 (Dynamic QRIS Escrow Payment Gateway)");
+  console.log("Fokus: Format EMVCo TLV, Checksum CRC16, dan Pelepasan Dana Escrow\n");
 
-  // Test 1: Pembangkitan Payload QRIS Dinamis Berstandar Nasional
+  // Uji 1: Pembangkitan Payload QRIS Dinamis Berstandar Nasional
   console.log("[Test 1] Pembangkitan Payload QRIS Dinamis Bank Indonesia (EMVCo TLV)");
   const qrisGen = generateBankIndonesiaQrisPayload(112500, "INV-WARTEG-01", {
     merchantId: "ID1026348913PASARIN",
@@ -57,7 +55,7 @@ async function runQrisEscrowTests() {
     `CRC16: ${qrisGen.crc16}`
   );
 
-  // Test 2: Validasi Struktur Payload & Deteksi Cacat Checksum
+  // Uji 2: Validasi Struktur Payload & Deteksi Cacat Checksum
   console.log("\n[Test 2] Validasi Struktur Payload & Integritas Checksum CRC16");
   const validationSuccess = validateQrisPayloadStructure(qrisGen.qrisPayload);
   assert(
@@ -75,7 +73,7 @@ async function runQrisEscrowTests() {
     validationTampered.error
   );
 
-  // Test 3: Mesin Transisi Status Escrow (Escrow State Machine)
+  // Uji 3: Mesin Transisi Status Escrow (Escrow State Machine)
   console.log("\n[Test 3] Mesin Transisi Status Rekening Escrow");
   const payTransition = transitionEscrowPaymentStatus("unpaid", "confirm_payment");
   assert(
@@ -98,7 +96,7 @@ async function runQrisEscrowTests() {
     invalidTransition.reason
   );
 
-  // Test 4: Eksekusi Pelepasan Dana Escrow setelah konfirmasi serah terima
+  // Uji 4: Eksekusi Pelepasan Dana Escrow setelah konfirmasi serah terima
   console.log("\n[Test 4] Eksekusi Pelepasan Dana Escrow Setelah Serah Terima");
   const failSettlement = executeEscrowSettlement(112500, "unpaid");
   assert(
@@ -114,9 +112,7 @@ async function runQrisEscrowTests() {
     `Status: ${successSettlement.newStatus} | Kredit: Rp ${successSettlement.creditedAmountIdr}`
   );
 
-  console.log("\n================================================================================");
-  console.log(`HASIL AKHIR PENGUJIAN PSR-37: ${passedCount} LULUS, ${failedCount} GAGAL`);
-  console.log("================================================================================\n");
+  console.log(`\nHasil akhir pengujian PSR-37: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

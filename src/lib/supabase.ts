@@ -5,6 +5,9 @@
  */
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Indikator boolean apakah kredensial Supabase Auth (URL & Anon Key) telah dikonfigurasi di environment (PSR-2).
+ */
 export const supabaseAuthConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 const supabaseUrl =

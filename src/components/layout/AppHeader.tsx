@@ -1,3 +1,9 @@
+/**
+ * Komponen Bilah Atas Aplikasi (App Header).
+ * Menampilkan logo merek, indikator jam digital WIB real-time, identitas profil pengguna aktif,
+ * tautan bot Telegram resmi, serta tombol keluar sesi (sign out).
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -7,7 +13,9 @@ import { useAuth } from "@/lib/authContext";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import { RealtimeWibClock } from "@/components/common/RealtimeWibClock";
 
-/** Displays brand and session actions on every dashboard. */
+/**
+ * Komponen header navigasi global untuk seluruh dasbor peran terotentikasi.
+ */
 export function AppHeader() {
   const { user, signOut } = useAuth();
   const [leaving, setLeaving] = useState(false);

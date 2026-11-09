@@ -7,12 +7,22 @@
  * 4. Logika Pelepasan Dana Instan (Zero-Click Settlement) ke dompet pedagang saat bukti PoD tervalidasi.
  */
 
+/**
+ * Status rekening penampung bersama (Escrow Payment Status) (PSR-37):
+ * - unpaid: Belum dibayar oleh pembeli.
+ * - held_in_escrow: Pembayaran QRIS terverifikasi dan ditahan di rekening penampung netral.
+ * - released_to_vendor: Komoditas telah diterima utuh (PoD) dan dana diteruskan ke dompet pedagang.
+ * - refunded: Transaksi dibatalkan dan dana dikembalikan ke pembeli.
+ */
 export type EscrowPaymentStatus =
   | "unpaid"
   | "held_in_escrow"
   | "released_to_vendor"
   | "refunded";
 
+/**
+ * Metadata kios pedagang pasar penerima pembayaran QRIS (PSR-37).
+ */
 export interface QrisMerchantDetails {
   merchantId: string;
   merchantName: string;
@@ -20,6 +30,9 @@ export interface QrisMerchantDetails {
   postalCode?: string;
 }
 
+/**
+ * Struktur payload dan metadata QRIS Dinamis standar Bank Indonesia EMVCo (PSR-37).
+ */
 export interface DynamicQrisResult {
   qrisPayload: string;
   transactionReference: string;
@@ -57,6 +70,10 @@ export function calculateQrisCrc16(str: string): string {
 
 /**
  * Format string bantuan untuk menyusun Tag-Length-Value (TLV) standar EMVCo QRIS.
+ *
+ * @param tag - Kode tag 2 karakter (misal: "00", "54").
+ * @param value - Nilai konten string yang diasosiasikan dengan tag.
+ * @returns String terformat "<tag><panjang 2-digit><nilai>".
  */
 function formatTlv(tag: string, value: string): string {
   const len = String(value.length).padStart(2, "0");
@@ -187,8 +204,12 @@ export function validateQrisPayloadStructure(payload: string): {
 }
 
 /**
- * Mesin Transisi Status Rekening Penampung (Escrow State Machine).
+ * Mesin Transisi Status Rekening Penampung (Escrow State Machine) (PSR-37).
  * Menjamin aliran status finansial terkontrol: unpaid -> held_in_escrow -> released_to_vendor.
+ *
+ * @param currentStatus - Status pembayaran saat ini.
+ * @param action - Aksi mutasi status yang diminta ("confirm_payment" | "release_to_vendor" | "refund").
+ * @returns Status transisi sukses/gagal beserta status baru dan alasan jika ditolak.
  */
 export function transitionEscrowPaymentStatus(
   currentStatus: EscrowPaymentStatus,
@@ -219,7 +240,12 @@ export function transitionEscrowPaymentStatus(
 }
 
 /**
- * Menghitung pelepasan dana simulasi untuk pesanan yang telah dibayar.
+ * Menghitung pelepasan dana simulasi (Escrow Settlement) untuk pesanan yang telah dibayar (PSR-37).
+ * Menyalurkan nominal pembayaran dari rekening penampung ke saldo dompet pedagang.
+ *
+ * @param amountIdr - Nominal transaksi yang dicairkan dalam Rupiah.
+ * @param currentStatus - Status pembayaran saat ini (default: "held_in_escrow").
+ * @returns Hasil mutasi settlement saldo dan pesan konfirmasi.
  */
 export function executeEscrowSettlement(
   amountIdr: number,

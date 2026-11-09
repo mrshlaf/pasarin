@@ -1,3 +1,10 @@
+/**
+ * Dasbor Ruang Kerja Armada Logistik dan Kurir Pengantaran Pasar (PSR-27).
+ * Mengelola manifes antrean pengantaran muatan tersegregasi berdasarkan 3 tahapan sirkular,
+ * kalkulasi penugasan jenis kendaraan (Viar Roda Tiga vs GranMax Pikap vs Isuzu Truk),
+ * serta konfirmasi serah terima muatan (Proof-of-Delivery) untuk pelepasan instan dana rekening escrow.
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -93,7 +100,10 @@ const DISPATCH_PHASES = [
   },
 ] as const;
 
-/** Presents the circular phase-segmented dispatch queue and lets couriers confirm handover. */
+/**
+ * Komponen dasbor operasional kurir pengantar.
+ * Menampilkan antrean muatan berdasarkan tahapan sirkular dan memfasilitasi konfirmasi serah terima barang.
+ */
 export function LogisticsDashboard() {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, confirmDelivery, busy } = useMarketSimulation();
@@ -156,7 +166,9 @@ export function LogisticsDashboard() {
     return { label: "Tahap 3 · Maggot", style: "bg-tier-3-soft text-tier-3-ink" };
   }
 
-  /** Completes one order, then lets the refreshed server snapshot update every role. */
+  /**
+   * Menyelesaikan serah terima pengantaran lot pesanan dan memperbarui status pesanan di seluruh dasbor peran.
+   */
   async function finish() {
     if (!selected) return;
     const result = await confirmDelivery(selected.id);

@@ -1,4 +1,10 @@
-// Mesin Pencocokan Sirkular 3-Tier (PSR-22): Haversine <= 5km, kuota harian, reputasi
+/**
+ * Modul Mesin Pencocokan Sirkular 3-Tier (PSR-22).
+ * Mengimplementasikan algoritma optimasi penugasan mitra penerima komoditas pangan:
+ * 1. Formula Geospasial Haversine dengan pembatasan radius operasi maksimal 5.0 km dari Pasar Kramat Jati.
+ * 2. Isolasi Peran 3-Tier (Tier 1: Warteg/UMKM, Tier 2: Dapur Sosial/Panti, Tier 3: Sentra Maggot BSF).
+ * 3. Proteksi Kuota Serap Harian (Capacity Overload Guard) dan pemeringkatan berbasis fungsi objektif terbobot.
+ */
 
 import {
   CircularBuyer,
@@ -7,17 +13,26 @@ import {
   MAX_MATCHMAKING_RADIUS_KM,
 } from "@/data/buyers";
 
-// Radius bola bumi rata-rata (WGS-84 spherical approximation)
+/**
+ * Radius bola bumi rata-rata (WGS-84 spherical approximation) dalam kilometer (PSR-22).
+ */
 export const EARTH_RADIUS_KM = 6371.0;
 
-// Bobot fungsi objektif: Jarak 50%, Kapasitas 30%, Reputasi 20%
+/**
+ * Bobot fungsi objektif penentuan skor kecocokan mitra (PSR-22):
+ * - DISTANCE: 50% kedekatan fisik geospasial dari pasar.
+ * - CAPACITY: 30% sisa kuota kapasitas serap harian.
+ * - REPUTATION: 20% rekam jejak dan keandalan operasional mitra.
+ */
 export const MATCHMAKING_WEIGHTS = {
   DISTANCE: 0.50,    // Kedekatan fisik dari los pasar
   CAPACITY: 0.30,    // Sisa kuota tampung harian
   REPUTATION: 0.20,  // Rekam jejak mitra
 } as const;
 
-// Skor kecocokan per mitra pembeli
+/**
+ * Struktur skor kecocokan dan rincian sub-skor per mitra pembeli sirkular (PSR-22).
+ */
 export interface BuyerMatchScore {
   buyerId: string;
   buyerName: string;
@@ -37,7 +52,9 @@ export interface BuyerMatchScore {
   estimatedTransitMinutes: number;
 }
 
-// Output hasil pencocokan mitra untuk satu lot surplus
+/**
+ * Output komprehensif hasil evaluasi pencocokan mitra untuk satu penawaran lot surplus (PSR-22).
+ */
 export interface MatchmakingResult {
   offerId: string;
   commodityId: string;
@@ -57,7 +74,16 @@ export interface MatchmakingResult {
   executedAt: string;
 }
 
-// Jarak lingkaran besar antar koordinat GPS bumi via formula trigonometri Haversine
+/**
+ * Menghitung jarak lingkaran besar antar-dua titik koordinat GPS bumi via formula trigonometri Haversine.
+ * Menggunakan pendekatan jari-jari bola bumi WGS-84 (R = 6.371,0 km) dengan presisi hingga 3 tempat desimal.
+ *
+ * @param lat1 - Garis lintang titik awal (derajat desimal).
+ * @param lon1 - Garis bujur titik awal (derajat desimal).
+ * @param lat2 - Garis lintang titik tujuan (derajat desimal).
+ * @param lon2 - Garis bujur titik tujuan (derajat desimal).
+ * @returns Jarak geospasial presisi antara kedua titik dalam satuan kilometer (km).
+ */
 export function haversineDistanceKm(
   lat1: number,
   lon1: number,
@@ -84,7 +110,14 @@ export function haversineDistanceKm(
   return Number(distance.toFixed(3));
 }
 
-// Evaluasi dan pemeringkatan mitra pembeli (hard constraints: radius <= 5 km, tier, kapasitas)
+/**
+ * Mengevaluasi dan memperingkat kandidat mitra pembeli yang memenuhi syarat untuk satu lot penawaran surplus.
+ * Menegakkan kriteria batas ketat: isolasi tier peran, radius geospasial <= 5.0 km, dan ketersediaan kuota harian.
+ *
+ * @param offer - Metadata penawaran surplus (ID, komoditas, bobot kg, dan target tier).
+ * @param options - Parameter konfigurasi opsional (radius kustom, daftar mitra kustom, atau koordinat asal).
+ * @returns Objek MatchmakingResult lengkap berisi daftar mitra terurut dan rekomendasi mitra teratas.
+ */
 export function findMatchesForOffer(
   offer: {
     id: string;
@@ -218,7 +251,12 @@ export function findMatchesForOffer(
   };
 }
 
-// Eksekusi pemadanan batch untuk seluruh antrean penawaran aktif
+/**
+ * Mengeksekusi algoritma pemadanan batch untuk seluruh antrean penawaran surplus aktif secara efisien.
+ *
+ * @param offers - Array penawaran aktif yang memerlukan penetapan mitra penerima.
+ * @returns Array MatchmakingResult untuk setiap penawaran yang diproses.
+ */
 export function batchMatchOffers(
   offers: Array<{
     id: string;
@@ -230,7 +268,9 @@ export function batchMatchOffers(
   return offers.map((offer) => findMatchesForOffer(offer));
 }
 
-// Fasad terpadu mesin pencocokan sirkular (PSR-22)
+/**
+ * Fasad antarmuka terpadu modul pencocokan sirkular (PSR-22).
+ */
 export const matchmakingEngine = {
   haversineDistanceKm,
   findMatchesForOffer,

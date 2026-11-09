@@ -25,6 +25,9 @@ import {
   executeEscrowSettlement,
 } from "@/lib/qrisEscrowGateway";
 
+/**
+ * Kontrak rekaman log tahapan sirkadian simulasi metabolisme pasar (PSR-31).
+ */
 export interface PhaseLogEntry {
   phase: string;
   timeClock: string;
@@ -35,6 +38,11 @@ export interface PhaseLogEntry {
   metrics: Record<string, string | number | boolean>;
 }
 
+/**
+ * Laporan komprehensif uji coba metabolisme pasar 24 jam (PSR-31 Trial Report).
+ * Merangkum efisiensi pengalihan sampah DLH (>= 90%), audit 3 invarian etis,
+ * penyelesaian finansial escrow QRIS, dan reduksi emisi metana/karbon IPCC 2006.
+ */
 export interface MetabolismTrialReport {
   trialId: string;
   executedAt: string;
@@ -67,17 +75,21 @@ export interface MetabolismTrialReport {
 
 /**
  * Menjalankan uji coba komprehensif simulasi siklus 24 jam metabolisme pasar (PSR-31 Trial).
+ * Mengevaluasi 5 fase sirkadian:
+ * 1. Subuh (04:30 WIB) - Penerimaan pasokan awal 30 kios.
+ * 2. Siang Terik (12:00 WIB) - Puncak suhu mikro los 34°C dan kinetika Arrhenius.
+ * 3. Sapuan Sore (14:30 WIB) - ReAct AI Cron Sweep, prediksi surplus komposit, dan penetapan harga dinamis.
+ * 4. Hujan Sore (15:30 WIB) - Redaman pengunjung pasar 48%, alokasi 30m prioritas dapur sosial, dan pembayaran QRIS Escrow.
+ * 5. Logistik Malam (17:30 - 21:00 WIB) - Penugasan armada, pelepasan escrow dompet pedagang, dan audit karbon IPCC 2006.
  *
- * @returns Laporan performa uji coba metabolisme pasar lengkap.
+ * @returns Laporan performa uji coba metabolisme pasar lengkap (MetabolismTrialReport).
  */
 export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialReport> {
   const trialStartTime = Date.now();
   const trialId = `TRL-24H-${Date.now().toString().slice(-6)}`;
   const phaseLogs: PhaseLogEntry[] = [];
 
-  // ===========================================================================
-  // FASE 1: Penerimaan Pasokan Grosir Subuh (04:30 WIB)
-  // ===========================================================================
+  // Fase 1: Penerimaan Pasokan Grosir Subuh (04:30 WIB)
   let totalIntakeKg = 0;
   KIOSKS.forEach((_, idx) => {
     const kg1 = 70 + ((idx * 5) % 40);
@@ -100,9 +112,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     },
   });
 
-  // ===========================================================================
-  // FASE 2: Puncak Suhu Los Terik Siang (12:00 WIB)
-  // ===========================================================================
+  // Fase 2: Puncak Suhu Los Terik Siang (12:00 WIB)
   let highDecayStallsCount = 0;
   KIOSKS.forEach((kiosk, idx) => {
     const c = COMMODITIES[idx % COMMODITIES.length];
@@ -124,9 +134,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     },
   });
 
-  // ===========================================================================
-  // FASE 3: Evaluasi Mutu Harian & ReAct AI Cron Sweep (14:30 WIB)
-  // ===========================================================================
+  // Fase 3: Evaluasi Mutu Harian & ReAct AI Cron Sweep (14:30 WIB)
   const orchestrationDossier = await executeAutonomousOrchestration({ forceHeuristic: true, recordResult: false });
   const projectedSurplusKg = 1329.0;
   const tier1WartegKg = 785.0;
@@ -149,9 +157,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     },
   });
 
-  // ===========================================================================
-  // FASE 4: Hujan Sore, Redaman Pengunjung & Klaim 3-Tier (15:30 WIB)
-  // ===========================================================================
+  // Fase 4: Hujan Sore, Redaman Pengunjung & Klaim 3-Tier (15:30 WIB)
   const rainEffect = calculateRainFootfallAttenuation(18.5, true);
   const sampleT2Offer = {
     id: "ofr_trial_t2",
@@ -194,9 +200,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     },
   });
 
-  // ===========================================================================
-  // FASE 5: Distribusi Armada Logistik & Handover PoD (17:30 - 21:00 WIB)
-  // ===========================================================================
+  // Fase 5: Distribusi Armada Logistik & Handover PoD (17:30 - 21:00 WIB)
   const stopsSample = [
     { kioskStall: "A-12", kioskName: "Kios H. Rohmat", block: "A" as const, commodityName: "Kangkung", weightKg: 45 },
     { kioskStall: "A-18", kioskName: "Kios Pak Asep", block: "A" as const, commodityName: "Pakcoy", weightKg: 40 },
@@ -227,9 +231,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     },
   });
 
-  // ===========================================================================
-  // EVALUASI INVARIAN & AUDIT AKUNTANSI LINGKUNGAN
-  // ===========================================================================
+  // Evaluasi kepatuhan invarian dan audit akuntansi lingkungan IPCC 2006
   const sampleTomat = COMMODITIES.find((c) => c.id === "tomat")!;
   const p1 = calculateInverseSurgePricing(sampleTomat, 14.5, 0.0).offeredSalvagePrice;
   const p2 = Math.max(sampleTomat.minimumSalvagePricePerKg, Math.round(sampleTomat.baseWholesalePricePerKg * 0.2));

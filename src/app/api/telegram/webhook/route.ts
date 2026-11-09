@@ -1,3 +1,9 @@
+/**
+ * Rute API Webhook Telegram Bot Gateway (PSR-38).
+ * Menerima pembaruan masuk dari server Telegram, memvalidasi secret token webhook,
+ * menyinkronkan sesi aktif akun pasar pada chat privat, dan mengeksekusi perintah maupun tombol aksi.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import {
   answerTelegramCallbackQuery, dispatchTelegramMessage, verifyTelegramWebhookSecret, type TelegramUpdate,
@@ -8,7 +14,9 @@ import {
 import { currentTelegramAccount, endTelegramSession, selectTelegramSession, telegramChatSessions } from "@/lib/telegramSessions";
 import { getEnv } from "@/lib/env";
 
-/** Builds the private-chat account picker and the HTTPS Mini App login button. */
+/**
+ * Membangun menu pemilihan akun privat dan tombol peluncur Mini App berbasis HTTPS.
+ */
 function accountMenu(req: NextRequest, sessions: Awaited<ReturnType<typeof telegramChatSessions>>, title: string) {
   const url = new URL("/telegram/login", req.nextUrl.origin);
   const keyboard: TelegramButton[][] = sessions.accounts.map((session) => [{
@@ -20,7 +28,9 @@ function accountMenu(req: NextRequest, sessions: Awaited<ReturnType<typeof teleg
   return telegramReply("accounts", title + (url.protocol === "https:" ? "" : "\nTombol login memerlukan deployment HTTPS."), keyboard);
 }
 
-/** Binds market buttons to their issuing session and stays inside Telegram's 64-byte limit. */
+/**
+ * Mengikat tombol inline ke session key aktif dan memastikan muatan callback_data berada di bawah batas 64 byte Telegram.
+ */
 function bindKeyboard(reply: ReturnType<typeof telegramReply>, key?: string) {
   return reply.replyMarkup && {
     inline_keyboard: reply.replyMarkup.inline_keyboard.map((row) => row.flatMap((button) => {
@@ -32,7 +42,11 @@ function bindKeyboard(reply: ReturnType<typeof telegramReply>, key?: string) {
   };
 }
 
-/** Reports configuration readiness without sending a Telegram message. */
+/**
+ * Memeriksa kesiapan konfigurasi webhook bot Telegram tanpa mengirim pesan jaringan.
+ *
+ * @returns Respons JSON status kesiapan gateway Telegram.
+ */
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -41,7 +55,12 @@ export async function GET() {
   });
 }
 
-/** Accepts verified private Telegram updates and dispatches them as the active Pasarin account. */
+/**
+ * Menerima pembaruan webhook privat dari Telegram dan memprosesnya menggunakan akun aktif yang terverifikasi.
+ *
+ * @param req - Objek NextRequest masuk dari Telegram.
+ * @returns Respons JSON konfirmasi status pemrosesan webhook.
+ */
 export async function POST(req: NextRequest) {
   if (!verifyTelegramWebhookSecret(req.headers.get("x-telegram-bot-api-secret-token"))) {
     return NextResponse.json({ ok: false, error: "Webhook tidak terotorisasi." }, { status: 401 });
@@ -91,7 +110,7 @@ export async function POST(req: NextRequest) {
         const [, action, id, ...args] = data.split(":");
         reply = action === "menu" && id
           ? await handleTelegramCommand(["/" + id, ...args].join(" "), chatId, user)
-          : await handleTelegramAction(action, id, user);
+          : await handleTelegramAction(action, id, user, args);
       } else {
         reply = await handleTelegramCommand(text, chatId, user, update.update_id);
       }

@@ -1,12 +1,8 @@
--- ============================================================================
--- PASARIN DATABASE SEED DATA (Supabase PostgreSQL)
--- Task Key: PSR-101 (Pre-seeding 30 Kiosks Kramat Jati & 30 Biological Commodities)
--- ============================================================================
+-- Data Awal Basis Data PASARIN (Supabase PostgreSQL Seed)
+-- PSR-101: Penyemaian 30 Kios Kramat Jati dan 30 Profil Biologis Komoditas
 
--- ----------------------------------------------------------------------------
--- 1. SEED DIREKTORI 30 KIOSK PEDAGANG PASAR INDUK KRAMAT JATI (Blok A, B, C)
+-- 1. Direktori 30 Kios Pedagang Pasar Induk Kramat Jati (Blok A, B, C)
 -- Dilengkapi verifikasi dokumen resmi izin PD Pasar Jaya
--- ----------------------------------------------------------------------------
 
 -- Blok A: Sayuran Basah & Daun Cepat Layu (Kios A-01 s/d A-10)
 INSERT INTO kiosks (id, name, owner_name, phone, stall_number, block, aisle, specialization, address_details, address_proof_document, verification_status, reputation_score, tier2_contribution_count) VALUES
@@ -47,10 +43,8 @@ INSERT INTO kiosks (id, name, owner_name, phone, stall_number, block, aisle, spe
 ON CONFLICT (id) DO NOTHING;
 
 
--- ----------------------------------------------------------------------------
--- 2. SEED KATALOG PROFIL BIOLOGIS KOMODITAS (30 Komoditas Pasar Kramat Jati)
+-- 2. Katalog Profil Biologis Komoditas (30 Komoditas Pasar Kramat Jati)
 -- Dilengkapi laju respirasi dasar, koefisien termal Q10, dan harga batas bawah
--- ----------------------------------------------------------------------------
 INSERT INTO commodities (id, name, local_name, category, standard_shelf_life_hours, respiration_rate_base, q10_coefficient, temperature_sensitivity_factor, humidity_sensitivity_factor, base_wholesale_price_per_kg, minimum_salvage_price_per_kg, decay_layu_ringan_hour, decay_layu_sedang_hour, decay_tidak_layak_hour, storage_advice) VALUES
 ('kangkung', 'Water Spinach', 'Kangkung Darat', 'leafy_vegetable', 16.00, 35.00, 2.50, 1.80, 1.90, 6000.00, 1500.00, 7.00, 12.00, 16.00, 'Percikkan air berkala, jauhkan dari paparan langsung seng los pasar.'),
 ('bayam', 'Spinach', 'Bayam Hijau', 'leafy_vegetable', 14.00, 42.00, 2.70, 1.90, 2.00, 7000.00, 1500.00, 6.00, 10.00, 14.00, 'Kemas dalam ikatan longgar, hindari penumpukan melebihi 3 lapis peti.'),
@@ -85,10 +79,8 @@ INSERT INTO commodities (id, name, local_name, category, standard_shelf_life_hou
 ON CONFLICT (id) DO NOTHING;
 
 
--- ----------------------------------------------------------------------------
--- 3. SEED CONTOH INVENTARIS AWAL & TIKET PENAWARAN (Sample Active Data)
--- Untuk menguji query baca/tulis aplikasi client TypeScript secara langsung
--- ----------------------------------------------------------------------------
+-- 3. Contoh Inventaris Awal dan Tiket Penawaran Aktif
+-- Untuk verifikasi kueri baca/tulis aplikasi klien TypeScript
 INSERT INTO stock_items (id, vendor_id, commodity_id, initial_quantity_kg, remaining_quantity_kg, arrival_timestamp, physical_condition, decay_score, allocated_tier, is_active) VALUES
 ('stock_init_01', 'vendor_kramat_01', 'bayam', 100.00, 35.00, CURRENT_TIMESTAMP - INTERVAL '8 hours', 'layu_ringan', 0.3850, 'tier_1', true),
 ('stock_init_02', 'vendor_kramat_01', 'kangkung', 150.00, 60.00, CURRENT_TIMESTAMP - INTERVAL '8 hours', 'layu_ringan', 0.3500, 'tier_1', true),

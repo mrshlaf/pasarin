@@ -29,12 +29,10 @@ function assert(condition: boolean, testName: string, detail?: string) {
 }
 
 async function runFleetCalculatorTests() {
-  console.log("================================================================================");
-  console.log("  PENGUJIAN UNIT MANDIRI: PSR-27 (LOGISTICS FLEET & CARGO CALCULATOR)");
-  console.log("  Fokus: Weight Dispatch Rule, Rute Multi-Stop, & Manifes Digital");
-  console.log("================================================================================\n");
+  console.log("\nPengujian Unit Mandiri: PSR-27 (Logistics Fleet & Cargo Calculator)");
+  console.log("Fokus: Weight Dispatch Rule, Rute Multi-Stop, dan Manifes Digital\n");
 
-  // Test 1: Aturan Penugasan Muatan Ringan (<= 300 kg -> Viar Roda 3)
+  // Uji 1: Aturan Penugasan Muatan Ringan (<= 300 kg -> Viar Roda 3)
   console.log("[Test 1] Alokasi Muatan Ringan <= 300 kg (Motor Viar Roda 3)");
   const lightAllocation = calculateFleetAllocation(180, "warteg");
   assert(
@@ -53,7 +51,7 @@ async function runFleetCalculatorTests() {
     lightAllocation.recommendedDriver
   );
 
-  // Test 2: Aturan Penugasan Muatan Menengah (301 - 1.000 kg -> GranMax Pikap)
+  // Uji 2: Aturan Penugasan Muatan Menengah (301 - 1.000 kg -> GranMax Pikap)
   console.log("\n[Test 2] Alokasi Muatan Menengah 301 - 1.000 kg (GranMax Pikap)");
   const mediumAllocation = calculateFleetAllocation(750, "social_kitchen");
   assert(
@@ -67,7 +65,7 @@ async function runFleetCalculatorTests() {
     `${mediumAllocation.capacityUtilizationPct}%`
   );
 
-  // Test 3: Aturan Penugasan Muatan Massal (> 1.000 kg -> Truk Isuzu Elf)
+  // Uji 3: Aturan Penugasan Muatan Massal (> 1.000 kg -> Truk Isuzu Elf)
   console.log("\n[Test 3] Alokasi Muatan Massal > 1.000 kg (Truk Isuzu Elf)");
   const heavyAllocation = calculateFleetAllocation(2400, "maggot");
   assert(
@@ -81,7 +79,7 @@ async function runFleetCalculatorTests() {
     heavyAllocation.vehicleSpec.fuelType
   );
 
-  // Test 4: Rute Penjemputan Terurut (Blok A -> Blok B -> Blok C)
+  // Uji 4: Rute Penjemputan Terurut (Blok A -> Blok B -> Blok C)
   console.log("\n[Test 4] Optimalisasi Urutan Rute Penjemputan Los Kios Pasar (Blok A -> B -> C)");
   const messyStops: CargoStop[] = [
     { kioskStall: "C-04", kioskName: "Kios Kentang Dieng", block: "C", commodityName: "Kentang", weightKg: 50 },
@@ -104,7 +102,7 @@ async function runFleetCalculatorTests() {
     orderedStalls.join(" -> ")
   );
 
-  // Test 5: Integritas Manifes Perjalanan & Kalkulasi BBM
+  // Uji 5: Integritas Manifes Perjalanan & Kalkulasi BBM
   console.log("\n[Test 5] Manifes Perjalanan Digital & Estimasi Konsumsi BBM");
   assert(
     manifest.totalWeightKg === 165,
@@ -122,9 +120,7 @@ async function runFleetCalculatorTests() {
     `${manifest.estimatedDurationMinutes} menit`
   );
 
-  console.log("\n================================================================================");
-  console.log(`HASIL AKHIR PENGUJIAN PSR-27: ${passedCount} LULUS, ${failedCount} GAGAL`);
-  console.log("================================================================================\n");
+  console.log(`\nHasil akhir pengujian PSR-27: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

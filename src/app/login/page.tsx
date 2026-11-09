@@ -1,3 +1,9 @@
+/**
+ * Halaman Masuk Sesi Pengguna Aplikasi PASARIN (Login Page) (PSR-2).
+ * Menyediakan gerbang autentikasi terpusat untuk seluruh peran operasional pasar:
+ * pedagang kios, warteg, dapur sosial, sentra maggot, armada kurir, pengelola pasar, dan administrator.
+ */
+
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
@@ -13,7 +19,9 @@ const timeline = [
   ["Pengantaran", "Kurir mengonfirmasi serah terima"],
 ];
 
-/** Shows the same account sign-in entry point for every role. */
+/**
+ * Komponen halaman login yang memvalidasi kredensial pengguna dan mengarahkan ke dasbor peran terkait.
+ */
 export default function LoginPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, signInWithPassword } = useAuth();
@@ -27,7 +35,9 @@ export default function LoginPage() {
     if (isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, router]);
 
-  /** Submits credentials and presents the result without exposing provider internals. */
+  /**
+   * Mengirimkan kredensial masuk pengguna ke layanan otentikasi.
+   */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSubmitting) return;

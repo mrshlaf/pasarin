@@ -1,3 +1,9 @@
+/**
+ * Dasbor Ruang Kerja Pedagang Kios Pasar Induk Kramat Jati (PSR-2).
+ * Memfasilitasi pencatatan pasokan subuh, pemantauan kinetika peluruhan biologis stok kios,
+ * penimbangan fisik sisa dagangan sore hari, serta konfirmasi penerbitan penawaran penyelamatan pangan.
+ */
+
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -12,7 +18,10 @@ import {
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskInfo, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
-/** Shows actual arrivals, their current decay and the order that reserves each lot. */
+/**
+ * Komponen antarmuka dasbor operasional pedagang kios.
+ * Mengelola siklus pasokan masuk, pembacaan kinetika susut, dan konfirmasi timbangan fisik penawaran.
+ */
 export function VendorDashboard() {
   const { user } = useAuth();
   const { stockItems, stockHealth, estimatedUnsoldKg, weather, offers, transactions, vendorWalletBalanceIdr, busy,
@@ -49,14 +58,18 @@ export function VendorDashboard() {
     .reduce((sum, offer) => sum + offer.quantityKg, 0))) : 0;
   const donationLots = kiosk ? completedDonationLots(kioskOffers, kiosk.id) : 0;
 
-  /** Records the arrival on the server and keeps the form populated if it fails. */
+  /**
+   * Mencatat kedatangan pasokan fisik baru ke server dan mereset formulir timbangan jika berhasil.
+   */
   async function recordArrival(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = await addStockItem({ commodityId: commodity, initialKg: Number(weight) });
     if (result.success) setWeight("");
   }
 
-  /** Opens a fresh weighing form for the lot selected by the seller. */
+  /**
+   * Membuka dialog penimbangan fisik untuk lot stok yang dipilih oleh pedagang.
+   */
   function openConfirmation(stockId: string, proposalId?: string) {
     setConfirmedKg("");
     setMode("");
@@ -64,7 +77,9 @@ export function VendorDashboard() {
     setSelection({ stockId, proposalId });
   }
 
-  /** Publishes only the weight and distribution choice confirmed by the seller. */
+  /**
+   * Menerbitkan lot penawaran ke pasar sesuai bobot aktual dan pilihan saluran distribusi pedagang.
+   */
   async function confirmStock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selection) return;

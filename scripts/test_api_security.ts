@@ -47,7 +47,7 @@ supabase.auth.getUser = async (token) => {
   return { data: { user }, error: null };
 };
 
-/** Constructs requests with the same bearer token or Telegram secret used by the route handlers. */
+/** Membangun objek NextRequest pembawa Bearer token otorisasi atau secret token Telegram. */
 function request(body?: unknown, role?: AppRole, headers?: Record<string, string>) {
   return new NextRequest("http://localhost/api", {
     method: body === undefined ? "GET" : "POST",
@@ -56,14 +56,14 @@ function request(body?: unknown, role?: AppRole, headers?: Record<string, string
   });
 }
 
-/** Reads the authorized workspace snapshot, including current decay. */
+/** Membaca snapshot data ruang kerja terotorisasi, mencakup evaluasi kinetika peluruhan terkini. */
 async function view(role: AppRole) {
   const response = await state(request(undefined, role));
   assert.equal(response.status, 200);
   return (await response.json()).data;
 }
 
-/** Simulates an authenticated private Telegram message or button press. */
+/** Mensimulasikan pesan privat atau penekanan tombol callback Telegram yang terotentikasi. */
 async function sendTelegram(chat: number, id: number, action: string, callback = false) {
   const message = { chat: { id: chat, type: "private" }, from: { id: chat }, text: action };
   const session = callback ? (await telegramChatSessions(chat)).active : undefined;
@@ -73,7 +73,7 @@ async function sendTelegram(chat: number, id: number, action: string, callback =
   }, undefined, { "X-Telegram-Bot-Api-Secret-Token": "telegram-test-secret" }));
 }
 
-/** Exercises fresh intake, time-dependent decay, reservation, payment, handover and shared bot state. */
+/** Menjalankan pengujian terpadu alur pencatatan stok, kinetika peluruhan, reservasi, pembayaran QRIS, dan serah terima. */
 async function run() {
   assert.equal((await state(request())).status, 401);
   assert.equal((await (await overview()).json()).data.availableLots, 0);
@@ -158,7 +158,8 @@ async function run() {
   assert.equal((await view("vendor")).stocks.find((item: { id: string }) => item.id === telegramStock.id).remainingKg, 6);
   const summary = await (await ask(request({ query: "Berapa pengantaran hari ini?", forceHeuristic: true }, "manager"))).json();
   assert.equal(summary.data.metrics.deliveriesToday, 2);
-  assert.equal((await (await sendTelegram(44, 106, "/tanya berapa pengantaran hari ini")).json()).actionTaken, "market_answer");
+  assert.equal((await (await sendTelegram(44, 106, "/dlh")).json()).actionTaken, "dlh_reported");
+  assert.equal((await (await sendTelegram(44, 106, "/tanya berapa pengantaran hari ini")).json()).actionTaken, "help_displayed");
   assert.equal((await (await sendTelegram(44, 107, "menu:pratinjau:warteg:2", true)).json()).actionTaken, "preview_workspace");
   assert.equal((await (await sendTelegram(11, 108, "/pratinjau warteg")).json()).actionTaken, "help_displayed");
   for (const [role, min, max, mode] of [
@@ -262,7 +263,7 @@ async function run() {
   console.log("Cron estimate stays private until seller weighs stock and confirms publication quantity.");
 }
 
-/** Exercises the actual Gemini SDK call with a fake upstream that inspects the market payload. */
+/** Menguji pemanggilan Google Gemini SDK dengan upstream mock yang memvalidasi integritas payload pasar. */
 async function checkGemini() {
   const fetchBefore = globalThis.fetch;
   process.env.GEMINI_API_KEY = "fixture-gemini-key";
@@ -291,7 +292,7 @@ async function checkGemini() {
   }
 }
 
-/** Verifies local credentials and prevents a test session from escaping development. */
+/** Memverifikasi kredensial uji lokal dan memastikan sesi pengujian tidak dapat diakses di luar lingkungan pengembangan. */
 async function checkLocalTestSessions() {
   const environment = process.env.NODE_ENV;
   const databaseUrl = process.env.SUPABASE_DB_URL;

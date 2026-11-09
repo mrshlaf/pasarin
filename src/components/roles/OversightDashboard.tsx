@@ -1,3 +1,10 @@
+/**
+ * Dasbor Ruang Kerja Pengawas Operasional Pasar (UPB Pasar Jaya & Administrator) (PSR-4 / PSR-31).
+ * Memberikan visibilitas menyeluruh terhadap buku besar transaksi pasar, pemantauan stok berisiko layu,
+ * verifikasi kepatuhan target lingkungan Dinas Lingkungan Hidup DKI Jakarta (DLH >= 90%),
+ * serta pemicu manual siklus otonom sapuan sore (Afternoon Sweep).
+ */
+
 "use client";
 
 import { useState } from "react";
@@ -12,7 +19,9 @@ import {
   commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
-/** Gives supervisors the same live inventory and ledger with role-appropriate actions. */
+/**
+ * Komponen antarmuka pengawas yang menampilkan inventaris langsung, buku besar transaksi, dan audit trail operasional.
+ */
 export function OversightDashboard() {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();

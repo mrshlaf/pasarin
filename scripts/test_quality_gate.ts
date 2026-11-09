@@ -36,9 +36,9 @@ function assert(condition: boolean, testName: string, detail?: string) {
  * Menjalankan seluruh skenario pengujian gerbang kendali mutu etis PSR-21.
  */
 async function runQualityGateTests() {
-  console.log("\n--- PASARIN PSR-21 QUALITY GATE & ANTI-MORAL HAZARD TEST SUITE ---");
+  console.log("\nPASARIN PSR-21 Quality Gate & Anti-Moral Hazard Test Suite");
 
-  // Test 1: Penolakan mutlak pengalihan bayam segar (decayScore < 0.35) ke pakan maggot
+  // Uji 1: Penolakan mutlak pengalihan bayam segar (decayScore < 0.35) ke pakan maggot
   console.log("\n[Test 1] Pengujian Invarian 1 pada Sayuran Segar Prima (Bayam 2 jam pajang)");
   const freshResult = await verifyHumanGradeIntegrity({
     commodityId: "bayam",
@@ -68,7 +68,7 @@ async function runQualityGateTests() {
     `recommendedTier: '${freshResult.recommendedTier}'`
   );
 
-  // Test 2: Penolakan sayuran layu ringan (0.35 - 0.65) ke maggot & pemindahan ke Tier 1 (Warteg)
+  // Uji 2: Penolakan sayuran layu ringan (0.35 - 0.65) ke maggot & pemindahan ke Tier 1 (Warteg)
   console.log("\n[Test 2] Pengujian Sayuran Layu Ringan (Kangkung 4.5 jam pajang)");
   const lightWiltResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
@@ -88,7 +88,7 @@ async function runQualityGateTests() {
     `recommendedTier: '${lightWiltResult.recommendedTier}'`
   );
 
-  // Test 3: Penolakan sayuran layu sedang (0.65 - 0.85) ke maggot & aktivasi jendela reservasi 30 menit
+  // Uji 3: Penolakan sayuran layu sedang (0.65 - 0.85) ke maggot & aktivasi jendela reservasi 30 menit
   console.log("\n[Test 3] Pengujian Sayuran Layu Sedang & Invarian 3 (Kangkung 6.5 jam pajang)");
   const mediumWiltResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
@@ -113,7 +113,7 @@ async function runQualityGateTests() {
     `socialReservationWindowMinutes: ${mediumWiltResult.socialReservationWindowMinutes} menit`
   );
 
-  // Test 4: Persetujuan komoditas afkir/rusak (decayScore >= 0.85) untuk pakan maggot
+  // Uji 4: Persetujuan komoditas afkir/rusak (decayScore >= 0.85) untuk pakan maggot
   console.log("\n[Test 4] Pengujian Komoditas Afkir / Tidak Layak Konsumsi (Kangkung 9 jam pajang)");
   const spoiledResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
@@ -138,7 +138,7 @@ async function runQualityGateTests() {
     `isMoralHazardViolation: ${spoiledResult.isMoralHazardViolation}`
   );
 
-  // Test 5: Perekaman otomatis insiden moral hazard ke riwayat audit sistem
+  // Uji 5: Perekaman otomatis insiden moral hazard ke riwayat audit sistem
   console.log("\n[Test 5] Pengujian Perekaman Jejak Audit Sistem (Audit Trail Logging)");
   const recentLogs = getRecentAuditLogs(10);
   const moralHazardLog = recentLogs.find(
@@ -156,7 +156,7 @@ async function runQualityGateTests() {
     `Enforced Rule: '${moralHazardLog?.payload_json?.enforcedRule}'`
   );
 
-  // Test 6: Kompatibilitas fasad agen ReAct Tool Calling
+  // Uji 6: Kompatibilitas fasad agen ReAct Tool Calling
   console.log("\n[Test 6] Pengujian Fasad Agen Tool Calling & Invarian PRD");
   assert(
     qualityGateAgent.name === "QualityGateAgent" && typeof qualityGateAgent.verifyHumanGradeIntegrity === "function",
@@ -169,7 +169,7 @@ async function runQualityGateTests() {
     `Threshold: ${qualityGateAgent.HUMAN_CONSUMABLE_DECAY_THRESHOLD}`
   );
 
-  // Test 7: Evaluasi klorofil visual MobileNetV3 (evaluateChlorophyllLoss)
+  // Uji 7: Evaluasi klorofil visual MobileNetV3 (evaluateChlorophyllLoss)
   console.log("\n[Test 7] Pengujian Evaluasi Kehilangan Klorofil Visual (MobileNetV3)");
   const visualFresh = qualityGateAgent.evaluateChlorophyllLoss({ chlorophyllRatio: 0.92, commodityId: "bayam" });
   assert(
@@ -184,7 +184,7 @@ async function runQualityGateTests() {
     `Loss: ${visualSpoiled.chlorophyllLossPercent}%, Condition: '${visualSpoiled.estimatedCondition}'`
   );
 
-  // Test 8: Penalti reputasi pedagang saat terbukti melakukan moral hazard
+  // Uji 8: Penalti reputasi pedagang saat terbukti melakukan moral hazard
   console.log("\n[Test 8] Pengujian Penalti Reputasi Pedagang saat Moral Hazard");
   const penaltyResult = await verifyHumanGradeIntegrity({
     commodityId: "bayam",
@@ -203,8 +203,8 @@ async function runQualityGateTests() {
     "Hasil inspeksi visual klorofil terlampir pada verifikasi gerbang mutu",
     `Visual Loss: ${penaltyResult.visualVerification?.chlorophyllLossPercent}%`
   );
-  // Ringkasan hasil test
-  console.log(`\n🎉 HASIL PENGUJIAN AKHIR PSR-21: ${passedCount} LULUS, ${failedCount} GAGAL\n`);
+  // Rekapitulasi hasil pengujian
+  console.log(`\nHasil pengujian akhir PSR-21: ${passedCount} lulus, ${failedCount} gagal\n`);
 
   if (failedCount > 0) {
     process.exitCode = 1;

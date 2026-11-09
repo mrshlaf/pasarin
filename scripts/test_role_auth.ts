@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { User } from "@supabase/supabase-js";
 import { APP_ROLES, accountProfile, isAppRole, resolveLoginEmail } from "../src/data/accounts";
 
-/** Creates a provider response with independently controlled trusted and user-editable metadata. */
+/** Menghasilkan respons entitas pengguna Supabase dengan metadata peran terisolasi (app_metadata vs user_metadata). */
 function account(role?: string): User {
   return {
     id: "account-test", email: "admin@example.test", app_metadata: { pasarin_role: role, pasarin_vendor_id: "vendor_kramat_01" },

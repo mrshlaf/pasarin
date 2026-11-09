@@ -66,6 +66,9 @@ export function calculateDecay(
   };
 }
 
+/**
+ * Mengevaluasi peluruhan biologis komoditas berdasarkan pengidentifikasi unik string komoditas (PSR-14).
+ */
 export { evaluateProduceById };
 
 /**

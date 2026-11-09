@@ -1,3 +1,9 @@
+/**
+ * Dasbor Publik Agregat Pasar Induk Kramat Jati (Public Market Dashboard).
+ * Menampilkan ringkasan volume surplus pangan pasar secara agregat tanpa membocorkan privasi
+ * identitas akun maupun detail transaksi per kios pedagang.
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,7 +28,9 @@ const lanes = [
 const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 const number = new Intl.NumberFormat("id-ID");
 
-/** Shows market-wide totals and keeps account activity behind the workspace sign-in. */
+/**
+ * Komponen halaman beranda publik yang memvisualisasikan agregat sirkular 3-tier dan armada distribusi.
+ */
 export function PublicMarketDashboard() {
   const { isAuthenticated } = useAuth();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -132,89 +140,95 @@ export function PublicMarketDashboard() {
           </section>
         </div>
 
-        {/* Perkiraan Hari Ini: Warteg, Dapur Sosial, & Armada Kurir (PSR-27 & AI Gemini) */}
+        {/* Proyeksi Harian: Warteg, Dapur Sosial, & Armada Pengantar */}
         {data?.forecast && (
           <div className="mt-4 space-y-4">
             <div className="grid gap-4 lg:grid-cols-[1.12fr_1fr] lg:gap-5">
-              {/* Kartu 1: Perkiraan Penyaluran Warteg & Dapur Sosial */}
-              <section className="market-panel min-w-0" aria-labelledby="forecast-recipients-title">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
-                  <div>
-                    <p className="market-eyebrow">Proyeksi Serapan Hari Ini</p>
-                    <h2 id="forecast-recipients-title" className="market-section-heading">Perkiraan Warteg & Dapur Sosial</h2>
+              {/* Kartu 1: Penyaluran Warteg & Dapur Sosial */}
+              <section className="market-panel flex min-w-0 flex-col justify-between" aria-labelledby="forecast-recipients-title">
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+                    <div>
+                      <p className="market-eyebrow">Penyaluran Hari Ini</p>
+                      <h2 id="forecast-recipients-title" className="market-section-heading">Warteg & Dapur Sosial</h2>
+                    </div>
+                    <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand">Estimasi Siap Salur</span>
                   </div>
-                  <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand">Estimasi Hari Ini</span>
+
+                  <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
+                    {/* Warteg Card */}
+                    <div className="rounded-2xl border border-line bg-canvas/70 p-4 transition-colors hover:border-brand/30">
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
+                          <span className="grid size-6 place-items-center rounded-md bg-tier-1-soft text-tier-1"><UtensilsCrossed size={13} /></span>
+                          Warteg & UMKM
+                        </span>
+                        <span className="text-[11px] font-medium text-ink-muted">{data.forecast.recipients.warteg.lots} lot aktif</span>
+                      </div>
+                      <div className="mt-2.5 flex items-baseline gap-2">
+                        <span className="font-serif text-3xl font-bold tracking-tight text-ink tabular-nums">{kg(data.forecast.recipients.warteg.kg)}</span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-brand">~{number.format(data.forecast.recipients.warteg.estimatedMeals)} porsi makan</p>
+                      <p className="mt-2 text-[11px] text-ink-muted">{data.forecast.recipients.warteg.partnerCount} mitra warteg (radius &lt; 2.5 km)</p>
+                    </div>
+
+                    {/* Dapur Sosial Card */}
+                    <div className="rounded-2xl border border-line bg-canvas/70 p-4 transition-colors hover:border-brand/30">
+                      <div className="flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
+                          <span className="grid size-6 place-items-center rounded-md bg-tier-2-soft text-tier-2"><HeartHandshake size={13} /></span>
+                          Dapur Sosial & Panti
+                        </span>
+                        <span className="text-[11px] font-medium text-ink-muted">{data.forecast.recipients.socialKitchen.lots} lot aktif</span>
+                      </div>
+                      <div className="mt-2.5 flex items-baseline gap-2">
+                        <span className="font-serif text-3xl font-bold tracking-tight text-ink tabular-nums">{kg(data.forecast.recipients.socialKitchen.kg)}</span>
+                      </div>
+                      <p className="mt-1 text-xs font-semibold text-tier-2-ink">~{number.format(data.forecast.recipients.socialKitchen.estimatedBeneficiaries)} porsi santunan</p>
+                      <p className="mt-2 text-[11px] text-ink-muted">{data.forecast.recipients.socialKitchen.partnerCount} panti mitra · Reservasi 30 menit</p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="mt-3.5 grid gap-3 sm:grid-cols-2">
-                  {/* Warteg Card */}
-                  <div className="rounded-2xl border border-line bg-canvas/80 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid size-8 place-items-center rounded-lg bg-tier-1-soft text-tier-1"><UtensilsCrossed size={16} /></span>
-                      <h3 className="font-semibold text-ink text-sm">Mitra Warteg & UMKM</h3>
-                    </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="font-serif text-2xl font-bold text-ink tabular-nums">{kg(data.forecast.recipients.warteg.kg)}</span>
-                      <span className="text-xs font-semibold text-ink-muted">{data.forecast.recipients.warteg.lots} lot aktif</span>
-                    </div>
-                    <p className="mt-1 text-xs font-semibold text-brand">~{number.format(data.forecast.recipients.warteg.estimatedMeals)} porsi makan terjangkau</p>
-                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{data.forecast.recipients.warteg.partnerCount} Warteg mitra (radius &lt; 2.5 km) siap menyerap.</p>
-                  </div>
-
-                  {/* Dapur Sosial Card */}
-                  <div className="rounded-2xl border border-line bg-canvas/80 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="grid size-8 place-items-center rounded-lg bg-tier-2-soft text-tier-2"><HeartHandshake size={16} /></span>
-                      <h3 className="font-semibold text-ink text-sm">Dapur Sosial & Panti</h3>
-                    </div>
-                    <div className="mt-3 flex items-baseline justify-between">
-                      <span className="font-serif text-2xl font-bold text-ink tabular-nums">{kg(data.forecast.recipients.socialKitchen.kg)}</span>
-                      <span className="text-xs font-semibold text-ink-muted">{data.forecast.recipients.socialKitchen.lots} lot aktif</span>
-                    </div>
-                    <p className="mt-1 text-xs font-semibold text-tier-2-ink">~{number.format(data.forecast.recipients.socialKitchen.estimatedBeneficiaries)} porsi santunan pangan</p>
-                    <p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{data.forecast.recipients.socialKitchen.partnerCount} Panti & dapur sosial (jendela 30m aktif).</p>
-                  </div>
-                </div>
-
-                {/* Sentra Maggot Banner */}
+                {/* Sentra Maggot Strip */}
                 {data.forecast.recipients.maggot.kg > 0 && (
-                  <div className="mt-3 flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
-                    <span className="inline-flex items-center gap-1.5 font-medium text-ink">
-                      <Recycle size={14} className="text-tier-3" />
-                      Sentra Maggot BSF: <strong className="text-ink">{kg(data.forecast.recipients.maggot.kg)}</strong> ({data.forecast.recipients.maggot.lots} lot)
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-line bg-surface/90 px-3.5 py-2 text-xs text-ink-muted">
+                    <span className="inline-flex items-center gap-2 font-medium text-ink">
+                      <Recycle size={14} className="text-tier-3 shrink-0" />
+                      <span>Sentra Maggot BSF: <strong className="text-ink">{kg(data.forecast.recipients.maggot.kg)}</strong> ({data.forecast.recipients.maggot.lots} lot)</span>
                     </span>
                     <span className="font-semibold text-tier-3-ink">Rp0 Bebas Biaya</span>
                   </div>
                 )}
               </section>
 
-              {/* Kartu 2: Perkiraan Kurir & Kendaraan Pengantar ("Nganter Pake Apa") */}
+              {/* Kartu 2: Kurir & Armada Pengantar */}
               <section className="market-panel min-w-0" aria-labelledby="forecast-fleet-title">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
                   <div>
-                    <p className="market-eyebrow">Alokasi Armada Logistik (PSR-27)</p>
-                    <h2 id="forecast-fleet-title" className="market-section-heading">Perkiraan Kurir & Kendaraan</h2>
+                    <p className="market-eyebrow">Kesiapan Distribusi</p>
+                    <h2 id="forecast-fleet-title" className="market-section-heading">Kurir & Armada Pengantar</h2>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-deep px-2.5 py-0.5 text-xs font-semibold text-cream">
-                    <Truck size={13} /> {data.forecast.fleet.totalCouriers} Kurir Siaga
+                    <Truck size={13} /> {data.forecast.fleet.totalCouriers} Kurir Siap Jalan
                   </span>
                 </div>
 
-                <div className="mt-2 divide-y divide-line">
+                <div className="mt-2.5 divide-y divide-line">
                   {data.forecast.fleet.vehicles.map((v) => (
-                    <div key={v.type} className="flex items-start gap-3 py-2.5 text-xs">
+                    <div key={v.type} className="flex items-start gap-3 py-3 text-xs first:pt-1 last:pb-1">
                       <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-line bg-canvas text-brand">
                         {v.type === "viar_trike" ? <Bike size={16} /> : <Truck size={16} />}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-1">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5">
                           <strong className="text-[13px] font-semibold text-ink">{v.units}x {v.name}</strong>
                           <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[11px] text-ink-soft">{v.licensePlate}</span>
                         </div>
                         <p className="mt-0.5 text-ink-soft">
-                          Pengemudi: <strong className="text-ink">{v.driverName}</strong> · Kapasitas: {v.capacityKg} kg ({v.fuelType})
+                          Pengemudi: <strong className="text-ink">{v.driverName}</strong> · Muat {v.capacityKg} kg ({v.fuelType})
                         </p>
-                        <p className="mt-1 text-[11px] leading-relaxed text-ink-muted">{v.description}</p>
+                        <p className="mt-1 text-[11px] font-medium text-ink-muted">Tujuan: {v.targetLane}</p>
                       </div>
                     </div>
                   ))}
@@ -222,23 +236,23 @@ export function PublicMarketDashboard() {
               </section>
             </div>
 
-            {/* Kartu 3: Sintesis AI Gemini */}
+            {/* Kartu 3: Catatan Operasional AI */}
             {data.forecast.aiAnalysis && (
-              <section className="rounded-2xl border border-brand/25 bg-gradient-to-r from-brand-soft/40 via-surface to-brand-soft/30 p-4 sm:p-5">
+              <section className="rounded-2xl border border-brand/20 bg-gradient-to-r from-brand-soft/40 via-surface to-brand-soft/20 p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/60 pb-2.5">
                   <div className="flex items-center gap-2 text-brand">
-                    <Sparkles size={17} className="text-brand shrink-0 animate-pulse" />
-                    <h3 className="text-sm font-semibold text-ink">Analisis & Rekomendasi AI Gemini 3.5 Flash</h3>
+                    <Sparkles size={15} className="text-brand shrink-0" />
+                    <h3 className="text-xs font-semibold tracking-wide uppercase text-ink">Catatan Operasional Pasar</h3>
                   </div>
-                  <span className="rounded-full border border-brand/30 bg-surface px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
-                    {data.forecast.aiAnalysis.model} · {data.forecast.aiAnalysis.source === "gemini" ? "Live Gemini API" : "ReAct Heuristik"}
+                  <span className="rounded-full border border-brand/25 bg-surface px-2.5 py-0.5 font-mono text-[11px] font-medium text-brand">
+                    {data.forecast.aiAnalysis.model}
                   </span>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-ink-soft">
+                <p className="mt-2.5 text-xs leading-relaxed text-ink-soft">
                   {data.forecast.aiAnalysis.summary}
                 </p>
-                <div className="mt-3 rounded-xl border border-line bg-surface/90 p-3 text-xs leading-5 text-ink">
-                  <strong className="font-semibold text-brand">Rekomendasi Taktis: </strong>
+                <div className="mt-2.5 rounded-lg border-l-2 border-brand bg-canvas/80 px-3 py-2 text-xs leading-relaxed text-ink">
+                  <span className="font-semibold text-brand">Rekomendasi: </span>
                   <span>{data.forecast.aiAnalysis.recommendation}</span>
                 </div>
               </section>

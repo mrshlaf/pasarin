@@ -55,21 +55,28 @@ let latestOrchestratorRun: OrchestratorRunResult | null = null;
 const latestQueryHistory: OrchestratorQueryResult[] = [];
 
 /**
- * Mengambil rekam jejak siklus otonom orkestrator terakhir untuk antarmuka pengguna.
+ * Mengambil rekam jejak siklus otonom orkestrator terakhir untuk visualisasi antarmuka pengguna dasbor.
+ *
+ * @returns Objek OrchestratorRunResult terakhir atau null jika siklus belum pernah dipicu.
  */
 export function getLatestOrchestratorRun(): OrchestratorRunResult | null {
   return latestOrchestratorRun;
 }
 
 /**
- * Mengambil riwayat kueri manajerial terakhir dari memori proses.
+ * Mengambil riwayat kueri manajerial terakhir dari memori proses untuk jejak audit interaktif.
+ *
+ * @param limit - Jumlah maksimal riwayat kueri yang diambil (default: 10).
+ * @returns Array riwayat kueri OrchestratorQueryResult terurut dari yang terbaru.
  */
 export function getLatestQueryHistory(limit = 10): OrchestratorQueryResult[] {
   return latestQueryHistory.slice(0, limit);
 }
 
 /**
- * Membentuk dataset stok 30 kios Kramat Jati untuk evaluasi komposit pasar 14:30 WIB.
+ * Membentuk sampel representatif dataset stok 30 kios Kramat Jati untuk evaluasi komposit pasar 14:30 WIB.
+ *
+ * @returns Array objek KioskStockInput untuk 30 kios pedagang binaan.
  */
 function buildStallStockInputs(): KioskStockInput[] {
   const inputs: KioskStockInput[] = [];
@@ -119,7 +126,7 @@ export async function executeAutonomousOrchestration(options?: {
   const executedAt = new Date().toISOString();
   const thoughtProcess: ReActStep[] = [];
 
-  // Langkah 1: Observasi waktu dan penjadwalan sirkadian
+  // Inisialisasi putaran ReAct untuk pencatatan jejak audit siklus otonom
   thoughtProcess.push({
     step: 1,
     agent: "OrchestratorAgent",
@@ -129,7 +136,7 @@ export async function executeAutonomousOrchestration(options?: {
     observation: "Sistem inisialisasi: memindai 30 kios pedagang binaan pada Blok A, B, dan C.",
   });
 
-  // Langkah 2: Mengambil telemetri mikroklimat cuaca pasar aktual (Agent 3)
+  // Akuisisi telemetri mikroklimat cuaca aktual dan perhitungan redaman pengunjung akibat hujan
   const weather = await weatherAgent.getMarketWeather({ simulateOffline: options?.forceHeuristic });
   // Evaluasi redaman pengunjung: perhitungkan curah hujan aktual atau profil konvektif sore hari (12.5 mm)
   const effectiveRainfallMm = Math.max(12.5, weather.rainfallMm);
@@ -144,7 +151,7 @@ export async function executeAutonomousOrchestration(options?: {
     observation: `Kondisi: ${weather.weatherCondition}. ${footfall.aisleAccessibilityDescription} Pengali susut surplus: ${footfall.surplusMultiplier}x.`,
   });
 
-  // Langkah 3: Mengagregasi stok 30 kios dan memproyeksikan surplus komposit (Agent 6)
+  // Agregasi inventaris 30 kios dan proyeksi surplus komposit menggunakan pemodelan kinetika Arrhenius
   const stallInputs = buildStallStockInputs();
   const compositeSurplus = calculateCompositeMarketSurplus(
     stallInputs,
@@ -162,7 +169,7 @@ export async function executeAutonomousOrchestration(options?: {
     observation: `Terdeteksi estimasi surplus total ${compositeSurplus.summary.totalPredictedSurplusKg} kg dari ${compositeSurplus.summary.totalMarketStockKg} kg stok masuk subuh. Item darurat kritis: ${compositeSurplus.summary.criticalEmergencyItemsCount} komoditas.`,
   });
 
-  // Langkah 4: Penegakan gerbang kendali mutu etis dan pencegahan moral hazard (Agent 10)
+  // Penegakan gerbang kendali mutu Invarian 1 (Zero Edible Food to Feed) untuk mencegah moral hazard
   const ethicalViolationsBlocked: string[] = [];
   compositeSurplus.items.forEach((item: StallSurplusPrediction) => {
     if (item.decayScore < qualityGateAgent.HUMAN_CONSUMABLE_DECAY_THRESHOLD && item.allocatedTier === "tier_3") {
@@ -184,7 +191,7 @@ export async function executeAutonomousOrchestration(options?: {
         : "Seluruh alokasi 3-Tier terverifikasi 100% mematuhi batas kelayakan biologis dan etika redistribusi.",
   });
 
-  // Langkah 5: Penetapan alokasi sirkular 3-Tier dan penugasan armada logistik (Agent 7 & Agent 9)
+  // Penetapan alokasi sirkular 3-Tier dan penugasan armada logistik berdasarkan tonase muatan
   const tier1Kg = compositeSurplus.summary.tier1WartegAllocatedKg;
   const tier2Kg = compositeSurplus.summary.tier2SocialKitchenAllocatedKg;
   const tier3Kg = compositeSurplus.summary.tier3MaggotAllocatedKg;
@@ -202,11 +209,40 @@ export async function executeAutonomousOrchestration(options?: {
     observation: `Alokasi terfinalisasi: Tier 1 Warteg (${tier1Kg} kg), Tier 2 Dapur Sosial (${tier2Kg} kg), Tier 3 Sentra Maggot (${tier3Kg} kg). Ditugaskan ${totalFleetRequired} armada dan ${telegramNotificationsDispatched} notifikasi Telegram disiarkan.`,
   });
 
-  const executiveSummary =
+  let executiveSummary =
     `Siklus otonom sapuan pukul 14:30 WIB berhasil mengorkestrasi penyelamatan ${compositeSurplus.summary.totalPredictedSurplusKg} kg ` +
     `surplus pangan dari 30 kios Pasar Induk Kramat Jati. Alokasi sirkular terdistribusi ke Tier 1 Warteg (${tier1Kg} kg), ` +
     `Tier 2 Dapur Sosial (${tier2Kg} kg, jendela reservasi 30 menit aktif), dan Tier 3 Sentra Maggot (${tier3Kg} kg). ` +
     `Ditugaskan ${totalFleetRequired} unit armada penjemputan dengan proteksi modal pedagang terkunci aman.`;
+
+  // Hubungkan ke Google Gemini 2.0 Flash live untuk sintesis orkestrator otonom jika API key tersedia
+  const env = getEnv();
+  const apiKey = env.GEMINI_API_KEY;
+  if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt =
+        `${ORCHESTRATOR_SYSTEM_PROMPT}\n\n` +
+        `Data Sapuan Pukul 14:30 WIB Los Kramat Jati:\n` +
+        `- Suhu Los: ${weather.temperatureCelsius}°C, Kelembapan: ${weather.relativeHumidityPercent}% RH, Curah Hujan Efektif: ${effectiveRainfallMm} mm\n` +
+        `- Redaman Pengunjung: ${footfall.footfallDropPercentage}%, Pengali Susut Surplus: ${footfall.surplusMultiplier}x\n` +
+        `- Total Pasokan Subuh: ${compositeSurplus.summary.totalMarketStockKg} kg, Estimasi Surplus Pangan: ${compositeSurplus.summary.totalPredictedSurplusKg} kg\n` +
+        `- Alokasi 3-Tier Sirkular: Warteg ${tier1Kg} kg, Dapur Sosial ${tier2Kg} kg, Sentra Maggot ${tier3Kg} kg\n` +
+        `- Armada Logistik: ${totalFleetRequired} unit (${totalFleetRequired <= 1 ? "Viar Roda Tiga" : "GranMax Pikap & Viar"})\n` +
+        `- Notifikasi Telegram Kios: ${telegramNotificationsDispatched} lapak tersiarkan\n\n` +
+        `Sebagai Agent 1: Central Orchestrator, berikan sintesis ringkasan eksekutif padat dalam Bahasa Indonesia teknis (2-3 kalimat) mengenai status pengawalan surplus sore ini dan instruksi armada.`;
+
+      const response = await ai.models.generateContent({
+        model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
+        contents: prompt,
+      });
+      if (response.text && response.text.trim().length > 20) {
+        executiveSummary = response.text.trim();
+      }
+    } catch (e) {
+      console.warn("[GeminiOrchestrator] Gagal menghubungi Gemini untuk sintesis sapuan otonom:", e);
+    }
+  }
 
   // Rekam riwayat siklus orkestrasi ke audit trail sistem
   const auditRecord = options?.recordResult === false ? undefined : await recordAuditLog({
