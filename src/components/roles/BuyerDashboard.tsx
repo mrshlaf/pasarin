@@ -24,28 +24,28 @@ const tier = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" } as
 
 const framing = {
   warteg: {
-    title: "Pasokan hari ini",
-    line: "Pilih bahan layak masak, tentukan jumlah, lalu bayar melalui simulasi QRIS.",
+    title: "Pasokan Segar Siap Masak",
+    line: "Yuk, pilih bahan sayuran segar layak masak dengan harga hemat untuk menu usahamu hari ini!",
     icon: UtensilsCrossed,
     impactLabel: "Total nilai pesanan",
     impactNote: "Termasuk pesanan berjalan dan selesai.",
-    catalogDescription: "Bandingkan harga per kilogram dan sisa simpan untuk kebutuhan masak.",
+    catalogDescription: "Bandingkan harga per kilogram dan sisa waktu simpan untuk sajian lezat wartegmu.",
   },
   social_kitchen: {
-    title: "Bahan untuk dapur sosial",
-    line: "Pilih donasi atau bahan berbayar sesuai kebutuhan dapur sosial.",
+    title: "Bahan Bergizi Dapur Sosial",
+    line: "Semangat berbagi! Yuk, klaim donasi pangan gratis atau tebusan nominal untuk sajian porsi hangat.",
     icon: HeartHandshake,
     impactLabel: "Perkiraan porsi dari pesanan",
     impactNote: "Estimasi 4 porsi per kg, termasuk pesanan berjalan.",
-    catalogDescription: "Donasi dapat diklaim tanpa pembayaran. Lot jual dilanjutkan ke simulasi QRIS.",
+    catalogDescription: "Donasi dapat langsung diklaim tanpa biaya. Lot jual dilanjutkan ke simulasi QRIS.",
   },
   maggot: {
-    title: "Bahan baku biomassa",
-    line: "Klaim biomassa afkir gratis untuk biokonversi BSF, bukan untuk konsumsi pangan.",
+    title: "Biomassa Afkir Siap Olah",
+    line: "Yuk, manfaatkan biomassa organik gratis untuk biokonversi BSF dan selamatkan lingkungan dari sampah!",
     icon: Recycle,
     impactLabel: "Perkiraan larva dari pesanan",
     impactNote: "Estimasi 1 kg larva per 5 kg biomassa pesanan.",
-    catalogDescription: "Lot tier 3 merupakan biomassa non-pangan. Tentukan berat yang dapat diterima fasilitas.",
+    catalogDescription: "Lot tier 3 siap diolah untuk biokonversi. Tentukan berat yang siap diterima fasilitasmu.",
   },
 } as const;
 
