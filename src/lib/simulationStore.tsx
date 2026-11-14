@@ -31,6 +31,8 @@ export interface SimulationContextType {
   createInstantSurplusOffer: (stockId: string, confirmation: StockConfirmation) => Promise<MarketActionResult>;
   busy: boolean;
   stateReady: boolean;
+  syncError: string | null;
+  isSyncing: boolean;
   feedback: MarketActionResult | null;
   clearFeedback: () => void;
   refreshMarket: () => void;
@@ -68,9 +70,11 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const setRole = (next: AppRole) => setWorkspace({ userId, role: next });
   const [snapshot, setSnapshot] = useState<MarketSnapshot | null>(null);
   const [feedback, setFeedback] = useState<(MarketActionResult & { userId: string }) | null>(null);
+  const [syncError, setSyncError] = useState<{ userId: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncingUserId, setSyncingUserId] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const generation = useRef(0);
   const changing = useRef(false);
 
@@ -115,10 +119,13 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
+    let inFlight = false;
 
     // Mengabaikan respons polling jika ada mutasi data lokal yang lebih mutakhir
     async function sync() {
-      if (changing.current || !userId) return;
+      if (inFlight || changing.current || !userId) return;
+      inFlight = true;
+      setSyncingUserId(userId);
       const version = generation.current;
       try {
         const response = await apiFetch("/api/simulation/state", { signal: controller.signal, cache: "no-store" });
@@ -126,13 +133,17 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         if (controller.signal.aborted || generation.current !== version) return;
         if (response.ok && payload.data) {
           setSnapshot({ userId, state: payload.data, syncedAt: Date.now() });
+          setSyncError(null);
         } else {
-          setFeedback({ userId, success: false, message: payload.error ?? "Data pasar tidak dapat dimuat." });
+          setSyncError({ userId, message: payload.error ?? "Data pasar tidak dapat dimuat." });
         }
       } catch {
         if (!controller.signal.aborted && generation.current === version) {
-          setFeedback({ userId, success: false, message: "Koneksi terputus. Coba muat ulang data." });
+          setSyncError({ userId, message: "Koneksi terputus. Coba muat ulang data." });
         }
+      } finally {
+        inFlight = false;
+        if (!controller.signal.aborted) setSyncingUserId(null);
       }
     }
     void sync();
@@ -140,6 +151,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     window.addEventListener("focus", sync);
     return () => {
       controller.abort();
+      setSyncingUserId(null);
       clearInterval(timer);
       window.removeEventListener("focus", sync);
     };
@@ -168,7 +180,10 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       result = response.ok && payload.data
         ? { success: true, message: payload.data.message, offer: payload.data.offer }
         : { success: false, message: payload.error ?? "Tindakan tidak dapat diproses." };
-      if (payload.data?.state) setSnapshot({ userId, state: payload.data.state, syncedAt: Date.now() });
+      if (payload.data?.state) {
+        setSnapshot({ userId, state: payload.data.state, syncedAt: Date.now() });
+        setSyncError((error) => error?.userId === userId ? null : error);
+      }
     } catch {
       result = { success: false, message: "Koneksi terputus. Periksa data sebelum mencoba lagi." };
     } finally {
@@ -199,6 +214,8 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         weather: data?.weather ?? null,
         busy,
         stateReady: data !== null,
+        syncError: syncError && syncError.userId === userId ? syncError.message : null,
+        isSyncing: !!userId && syncingUserId === userId,
         feedback: feedback?.userId === userId ? feedback : null,
         clearFeedback: () => setFeedback(null),
         refreshMarket: () => setRefreshTick((tick) => tick + 1),

@@ -1,8 +1,6 @@
 /**
- * Dasbor Ruang Kerja Pengawas Operasional Pasar (UPB Pasar Jaya & Administrator) (PSR-4 / PSR-31).
- * Memberikan visibilitas menyeluruh terhadap buku besar transaksi pasar, pemantauan stok berisiko layu,
- * verifikasi kepatuhan target lingkungan Dinas Lingkungan Hidup DKI Jakarta (DLH >= 90%),
- * serta pemicu manual siklus otonom sapuan sore (Afternoon Sweep).
+ * Dasbor pengawas operasional: penawaran, buku besar pembayaran, evaluasi stok,
+ * dan laporan uji skenario metabolisme pasar yang terpisah dari data operasional.
  */
 
 "use client";
@@ -12,6 +10,7 @@ import { Boxes, Clock, FileCheck, Receipt, RefreshCw, ShieldCheck } from "lucide
 import { useAuth } from "@/lib/authContext";
 import { apiFetch } from "@/lib/apiFetch";
 import { useMarketSimulation } from "@/lib/simulationStore";
+import type { MetabolismTrialReport } from "@/lib/marketMetabolismSimulator";
 import { MarketDialog } from "@/components/common/MarketDialog";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
@@ -19,32 +18,47 @@ import {
   commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
+type MetabolismTrialResponse = {
+  success: boolean;
+  data?: MetabolismTrialReport;
+  error?: string;
+};
+
 /**
  * Komponen antarmuka pengawas yang menampilkan inventaris langsung, buku besar transaksi, dan audit trail operasional.
  */
 export function OversightDashboard() {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
-  const [error, setError] = useState("");
+  const [dlhError, setDlhError] = useState("");
+  const [sweepResult, setSweepResult] = useState<{ success: boolean; message: string } | null>(null);
   const [showAllOffers, setShowAllOffers] = useState(false);
   const [dlhModalOpen, setDlhModalOpen] = useState(false);
   const [dlhLoading, setDlhLoading] = useState(false);
-  const [dlhReport, setDlhReport] = useState<any | null>(null);
+  const [dlhReport, setDlhReport] = useState<MetabolismTrialReport | null>(null);
 
   async function openDlhReport() {
+    setDlhModalOpen(true);
     setDlhLoading(true);
+    setDlhError("");
+    setDlhReport(null);
     try {
       const res = await apiFetch("/api/simulation/metabolism-trial");
-      const json = await res.json();
-      if (json.success && json.data) {
-        setDlhReport(json.data);
-        setDlhModalOpen(true);
+      const json: MetabolismTrialResponse = await res.json();
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error || "Laporan simulasi tidak dapat dimuat. Coba jalankan kembali.");
       }
-    } catch {
-      setError("Gagal memuat laporan simulasi metabolisme pasar.");
+      setDlhReport(json.data);
+    } catch (cause) {
+      setDlhError(cause instanceof Error ? cause.message : "Koneksi terputus saat memuat laporan. Coba jalankan kembali.");
     } finally {
       setDlhLoading(false);
     }
+  }
+
+  async function runStockEvaluation() {
+    setSweepResult(null);
+    setSweepResult(await triggerCronSweepNow());
   }
 
   const ready = offers.filter(isReadyForDelivery);
@@ -57,35 +71,44 @@ export function OversightDashboard() {
   const visibleOffers = showAllOffers ? sortedOffers : sortedOffers.slice(0, 12);
 
   return (
-    <div className="grid gap-4">
-      <MarketMetrics items={[
-        { label: "Kios aktif", value: new Set(stockItems.map((item) => item.vendorId)).size },
-        { label: "Perlu ditinjau", value: risk.length, tone: risk.length > 0 ? "warning" : "brand" },
-        { label: "Siap diantar", value: ready.length },
-        { label: "Selesai", value: settled.length },
-      ]} />
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4">
-        <div>
-          <h3 className="text-sm font-semibold text-ink">Tindakan Pengawasan & Audit Pasar</h3>
-          <p className="text-xs text-ink-muted">Pemicuan evaluasi berkala otonom dan verifikasi kepatuhan lingkungan hidup DLH DKI Jakarta</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {user?.role === "admin" && (
-            <button className={marketSecondary} type="button" disabled={busy} onClick={triggerCronSweepNow}>
-              <RefreshCw size={16} aria-hidden /> Evaluasi stok
+    <div className="grid min-w-0 gap-6">
+      <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div className="min-w-0">
+            <h2 className="font-serif text-2xl leading-tight tracking-tight sm:text-3xl">Tinjau alur pasar</h2>
+            <p className="mt-2 max-w-prose text-sm leading-6 text-ink-muted">Pantau penawaran yang perlu ditimbang, muatan siap antar, dan status pembayaran dari catatan pasar.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+            {user?.role === "admin" && (
+              <button className={marketButton + " justify-center"} type="button" disabled={busy} onClick={runStockEvaluation}>
+                <RefreshCw size={16} aria-hidden /> {busy ? "Memproses evaluasi…" : "Evaluasi stok sekarang"}
+              </button>
+            )}
+            <button className={marketSecondary + " justify-center"} type="button" disabled={dlhLoading} onClick={openDlhReport}>
+              <FileCheck size={16} aria-hidden /> {dlhLoading ? "Memuat uji skenario…" : "Laporan simulasi 24 jam"}
             </button>
-          )}
-          <button className={marketSecondary} type="button" disabled={dlhLoading} onClick={openDlhReport}>
-            <FileCheck size={16} aria-hidden /> {dlhLoading ? "Menjalankan Simulasi…" : "Laporan Kepatuhan DLH"}
-          </button>
+          </div>
         </div>
-      </div>
+        {sweepResult && (
+          <p role={sweepResult.success ? "status" : "alert"} className={`mt-4 rounded-xl p-3 text-sm leading-6 ${sweepResult.success ? "bg-brand-soft text-brand-ink" : "bg-danger-soft text-danger"}`}>
+            {sweepResult.message}
+          </p>
+        )}
+        <p className="mt-4 border-t border-line pt-4 text-xs leading-5 text-ink-muted">Laporan 24 jam menjalankan skenario model terpisah. Hasilnya bukan audit kepatuhan DLH atau bukti pengalihan limbah operasional hari ini.</p>
+      </section>
+
+      <MarketMetrics items={[
+        { label: "Kios dengan stok tercatat", value: new Set(stockItems.map((item) => item.vendorId)).size },
+        { label: "Lot berisiko menurut model", value: risk.length, tone: risk.length > 0 ? "warning" : "brand" },
+        { label: "Siap diantar", value: ready.length },
+        { label: "Serah terima selesai", value: settled.length },
+      ]} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
-          <MarketSection title="Penawaran"
-            action={<span className="text-[12px] font-semibold tabular-nums text-ink-muted">{activeOffers} aktif, {stockItems.length} lot</span>}>
+          <MarketSection title="Pantauan penawaran"
+            description="Urutan dimulai dari persetujuan pedagang. Perkiraan sisa dan mutu berasal dari model; hasil timbang tetap menjadi catatan fisik lot."
+            action={<span className="text-sm font-semibold tabular-nums text-ink-muted">{activeOffers} aktif · {stockItems.length} lot</span>}>
             {offers.length === 0 ? (
               <EmptyState icon={Boxes} title="Belum ada penawaran" description="Lot muncul dari pasokan pedagang." />
             ) : (
@@ -111,7 +134,7 @@ export function OversightDashboard() {
                       {stockHealth[offer.stockId] && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock size={12} aria-hidden className="text-brand shrink-0" />
-                          <span>Mutu {stockHealth[offer.stockId]?.tierLabel || stockHealth[offer.stockId]?.condition} · Sisa simpan: <strong className="font-semibold text-ink">{formatRemainingShelfLife(stockHealth[offer.stockId]?.hoursRemaining ?? 0, stockHealth[offer.stockId]?.decayScore)}</strong></span>
+                          <span>Estimasi mutu: {stockHealth[offer.stockId]?.tierLabel || stockHealth[offer.stockId]?.condition} · Estimasi sisa simpan: <strong className="font-semibold text-ink">{formatRemainingShelfLife(stockHealth[offer.stockId]?.hoursRemaining ?? 0, stockHealth[offer.stockId]?.decayScore)}</strong></span>
                         </p>
                       )}
                     </div>
@@ -132,7 +155,7 @@ export function OversightDashboard() {
         </div>
 
         <div className="col-start-1 row-start-2 min-w-0 xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:self-start">
-          <MarketSection title="Riwayat transaksi & pembayaran">
+          <MarketSection title="Buku besar pembayaran" description="Status dana per transaksi, termasuk penahanan sebelum barang diterima.">
             {transactions.length === 0 ? (
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
             ) : (
@@ -146,7 +169,7 @@ export function OversightDashboard() {
                     <p className="min-w-0 break-words text-[13px] leading-5 text-ink-muted">
                       {item.buyerName} ke {item.vendorName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
                     </p>
-                    <StatusPill label={item.status === "released" ? "Selesai" : item.status === "refunded" ? "Dikembalikan" : "Ditahan"} />
+                    <StatusPill label={item.status === "released" ? "Dana disalurkan" : item.status === "refunded" ? "Dikembalikan" : "Dana ditahan"} tone={item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info"} />
                   </div>
                 </li>
               ))}</ul>
@@ -155,69 +178,89 @@ export function OversightDashboard() {
         </div>
       </div>
 
-      {dlhModalOpen && dlhReport && (
-        <MarketDialog title="Laporan Kepatuhan Regulasi DLH DKI Jakarta & Simulasi 24 Jam" onClose={() => setDlhModalOpen(false)}>
-          <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-tier-3/30 bg-tier-3-soft p-3.5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="text-tier-3-ink" size={20} />
-                <span className="font-semibold text-tier-3-ink">
-                  {dlhReport.meetsDlhThreshold ? "MEMENUHI AMBANG BATAS TARGET DLH DKI (≥ 90%)" : "DI BAWAH AMBANG BATAS"}
-                </span>
+      {dlhModalOpen && (
+        <MarketDialog title="Hasil simulasi metabolisme 24 jam" onClose={() => setDlhModalOpen(false)}>
+          <div className="grid gap-5" aria-busy={dlhLoading}>
+            <p className="rounded-xl bg-canvas p-3 text-sm leading-6 text-ink-muted">Uji skenario model, bukan data langsung pasar atau sertifikasi kepatuhan DLH. Ambang 90% adalah pembanding yang digunakan simulator.</p>
+            {dlhLoading && <p role="status" className="py-5 text-center text-sm font-medium">Menjalankan skenario 24 jam dan menyusun hasil tiap fase…</p>}
+            {dlhError && (
+              <div className="rounded-xl border border-danger/30 bg-danger-soft p-4">
+                <p role="alert" className="text-sm leading-6 text-danger">{dlhError}</p>
+                <button type="button" className={marketSecondary + " mt-3"} onClick={openDlhReport}>Coba muat laporan lagi</button>
               </div>
-              <span className="rounded-md bg-white/80 px-2 py-0.5 text-xs font-bold text-tier-3-ink">
-                Efisiensi {dlhReport.wasteDiversionEfficiencyPct}%
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="rounded-xl border border-line bg-surface p-3">
-                <p className="text-xs text-ink-muted">Total Intake Pasar</p>
-                <p className="text-base font-bold tabular-nums">{(dlhReport.totalMarketIntakeKg ?? 14200).toLocaleString("id-ID")} kg</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-3">
-                <p className="text-xs text-ink-muted">Proyeksi Surplus</p>
-                <p className="text-base font-bold tabular-nums">{(dlhReport.totalProjectedSurplusKg ?? 1248).toLocaleString("id-ID")} kg</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-3">
-                <p className="text-xs text-ink-muted">Biomassa Diselamatkan</p>
-                <p className="text-base font-bold text-tier-3-ink tabular-nums">{(dlhReport.totalRescuedKg ?? 1152).toLocaleString("id-ID")} kg</p>
-              </div>
-              <div className="rounded-xl border border-line bg-surface p-3">
-                <p className="text-xs text-ink-muted">CO2e Terhindar</p>
-                <p className="text-base font-bold text-brand tabular-nums">{dlhReport.environmentalImpact?.co2eAvoidedKg ?? 552.96} kg</p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-line bg-surface p-3.5 text-xs">
-              <p className="font-semibold text-ink">Invarian Etis & Audit Moral Hazard:</p>
-              <ul className="mt-1.5 space-y-1 text-ink-muted">
-                <li>• Invarian 1 (Zero Edible Food to Maggot): <span className="font-semibold text-tier-3-ink">100% Terpenuhi</span></li>
-                <li>• Invarian 2 (Proteksi Price Floor Modal): <span className="font-semibold text-tier-3-ink">Terkunci Aman</span></li>
-                <li>• Nilai Ekonomi Diselamatkan: <span className="font-semibold text-ink">Rp {dlhReport.financialSettlement?.totalEconomicValueSavedIdr?.toLocaleString("id-ID") ?? "2.945.000"}</span></li>
-              </ul>
-            </div>
-
-            <div className="rounded-xl border border-line bg-surface p-3.5">
-              <p className="mb-2 text-xs font-semibold text-ink">Log 5 Fase Metabolisme Sirkadian 24 Jam:</p>
-              <div className="space-y-2">
-                {dlhReport.phaseLogs?.map((phase: any, i: number) => (
-                  <div key={i} className="flex items-start justify-between gap-2 border-b border-line pb-2 text-xs last:border-b-0">
-                    <div>
-                      <span className="font-semibold text-brand-ink">{phase.clockTimeWib} WIB</span> - <span className="font-medium text-ink">{phase.phaseName}</span>
-                      <p className="mt-0.5 text-ink-muted">{phase.eventDescription}</p>
+            )}
+            {dlhReport && (
+              <>
+                <div className="rounded-xl border border-line bg-brand-soft p-4">
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="mt-0.5 shrink-0 text-brand-ink" size={20} aria-hidden />
+                    <div className="min-w-0">
+                      <p className="font-semibold text-brand-ink">{dlhReport.meetsDlhThreshold ? "Model mencapai ambang pengalihan 90%" : "Model belum mencapai ambang pengalihan 90%"}</p>
+                      <p className="mt-2 font-serif text-3xl tabular-nums text-brand-ink">{dlhReport.wasteDiversionEfficiencyPct.toLocaleString("id-ID")}%</p>
+                      <p className="mt-1 text-xs leading-5 text-ink-muted">Rasio biomassa terselamatkan terhadap proyeksi surplus dalam skenario.</p>
                     </div>
-                    <span className="shrink-0 rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-semibold text-brand-ink">
-                      {phase.temperatureC}°C · {phase.humidityPercent}% RH
-                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            <button type="button" className={marketButton + " mt-2 w-full"} onClick={() => setDlhModalOpen(false)}>
-              Tutup Laporan
-            </button>
+                <dl className="grid gap-4 border-y border-line py-4 sm:grid-cols-2">
+                  {[
+                    { label: "Pasokan skenario", value: kg(dlhReport.totalMarketIntakeKg) },
+                    { label: "Proyeksi surplus", value: kg(dlhReport.totalProjectedSurplusKg) },
+                    { label: "Biomassa terselamatkan", value: kg(dlhReport.totalRescuedKg) },
+                    { label: "Estimasi CO₂e terhindar", value: kg(dlhReport.environmentalImpact.carbonOffsetCo2eKg) },
+                  ].map((metric) => (
+                    <div key={metric.label} className="min-w-0">
+                      <dt className="text-xs leading-5 text-ink-muted">{metric.label}</dt>
+                      <dd className="mt-1 text-lg font-semibold tabular-nums">{metric.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <section>
+                  <h3 className="font-semibold">Pemeriksaan aturan dalam skenario</h3>
+                  <ul className="mt-3 grid gap-3 text-sm">
+                    {[
+                      { label: "Pangan layak makan tidak dialihkan ke pakan", passed: dlhReport.invariantsAudit.invariant1ZeroEdibleToFeed },
+                      { label: "Urutan harga dan batas bawah harga", passed: dlhReport.invariantsAudit.invariant2StrictPriceOrdering },
+                      { label: "Jendela reservasi dapur sosial 30 menit", passed: dlhReport.invariantsAudit.invariant3ThirtyMinuteWindow },
+                    ].map((audit) => (
+                      <li key={audit.label} className="flex flex-wrap items-start justify-between gap-2 border-b border-line pb-3">
+                        <span className="min-w-0 flex-1">{audit.label}</span>
+                        <StatusPill label={audit.passed ? "Lulus uji" : "Tidak lulus"} tone={audit.passed ? "success" : "danger"} />
+                      </li>
+                    ))}
+                  </ul>
+                  <LotFacts items={[
+                    { label: "Escrow diproses dalam model", value: rupiah(dlhReport.financialSettlement.totalEscrowProcessedIdr) },
+                    { label: "Saldo pedagang dikreditkan", value: rupiah(dlhReport.financialSettlement.totalVendorWalletCreditedIdr) },
+                    { label: "Sengketa skenario", value: String(dlhReport.financialSettlement.disputesCount) },
+                  ]} />
+                </section>
+
+                <section>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-semibold">Catatan fase simulasi</h3>
+                    <StatusPill label={dlhReport.allPhasesCompleted ? `${dlhReport.phasesCount} fase selesai` : "Fase belum lengkap"} tone={dlhReport.allPhasesCompleted ? "success" : "warning"} />
+                  </div>
+                  {dlhReport.phaseLogs.length === 0 ? (
+                    <p className="mt-3 text-sm text-ink-muted">Simulator tidak mengembalikan catatan fase untuk percobaan ini.</p>
+                  ) : (
+                    <ol className="mt-3 grid gap-4">
+                      {dlhReport.phaseLogs.map((phase, index) => (
+                        <li key={`${phase.phase}-${index}`} className="min-w-0 border-b border-line pb-4 last:border-b-0">
+                          <p className="text-xs font-semibold tabular-nums text-brand-ink">{phase.timeClock}</p>
+                          <h4 className="mt-1 text-sm font-semibold">{phase.phase}</h4>
+                          <p className="mt-1 text-sm leading-6 text-ink-muted">{phase.actionSummary}</p>
+                          <p className="mt-2 text-xs tabular-nums text-ink-muted">{phase.temperatureC}°C · Kelembapan {phase.humidityPercent}% · {phase.status === "COMPLETED" ? "Selesai" : phase.status === "ACTIVE" ? "Aktif" : "Menunggu"}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </section>
+                <p className="break-words border-t border-line pt-3 text-xs leading-5 text-ink-muted">Percobaan {dlhReport.trialId} · Dijalankan {dateLabel(dlhReport.executedAt)}</p>
+              </>
+            )}
+            <button type="button" className={marketSecondary + " w-full justify-center"} onClick={() => setDlhModalOpen(false)}>Tutup laporan</button>
           </div>
         </MarketDialog>
       )}

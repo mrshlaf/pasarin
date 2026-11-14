@@ -56,28 +56,40 @@ export function AppSidebar() {
     return tier ? offers.filter((offer) => offer.targetTier === tier && offer.status === "active").length : 0;
   }
 
+  function pendingLabel(item: AppRole, count: number) {
+    if (item === "vendor") return `${count} pedagang dengan stok tersedia`;
+    if (item === "logistics") return `${count} pengantaran siap diproses`;
+    return `${count} penawaran aktif`;
+  }
+
   return (
-    <nav aria-label="Ruang kerja" className="w-full shrink-0 rounded-2xl border border-line bg-surface p-3 lg:sticky lg:top-20 lg:w-56 lg:self-start">
-      <label htmlFor="workspace-role" className="block pb-2 text-[13px] font-medium text-ink-muted lg:hidden">Ruang kerja</label>
+    <nav aria-label="Ruang kerja" className="workspace-nav w-full shrink-0 lg:sticky lg:top-24 lg:w-56 lg:self-start">
+      <label htmlFor="workspace-role" className="block pb-2 text-sm font-medium text-cream lg:hidden">Pratinjau ruang kerja</label>
       <select id="workspace-role" value={role} onChange={(event) => setRole(event.target.value as AppRole)}
         className="market-input lg:hidden">
-        {roles.map((item) => <option key={item} value={item}>{ROLE_LABELS[item]}</option>)}
+        {roles.map((item) => {
+          const count = pendingCount(item);
+          return <option key={item} value={item}>{ROLE_LABELS[item]}{count > 0 ? `, ${pendingLabel(item, count)}` : ""}</option>;
+        })}
       </select>
-      <p className="hidden px-2 pb-2 text-[13px] font-medium text-ink-muted lg:block">Ruang kerja</p>
-      <div className="hidden gap-1 lg:grid">
+      <div className="hidden border-b border-rail pb-4 lg:block">
+        <p className="text-sm font-semibold text-cream">Operasional pasar</p>
+        <p className="mt-1 text-xs leading-5 text-sage-soft">Tinjau alur setiap peran.</p>
+      </div>
+      <div className="hidden gap-1 pt-3 lg:grid">
         {roles.map((item) => {
           const Icon = ROLE_ICONS[item];
           const count = pendingCount(item);
           const active = role === item;
           return (
             <button key={item} type="button" aria-pressed={active} onClick={() => setRole(item)}
-              className={`flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-left text-sm font-semibold transition-colors ${active
-                ? "bg-brand text-cream" : "text-brand-ink hover:bg-brand-soft"}`}>
-              <Icon size={16} aria-hidden className={active ? "text-cream" : "text-brand"} />
+              className={`flex min-h-12 items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium transition-colors ${active
+                ? "bg-cream text-brand-strong" : "text-sage-soft hover:bg-cream/10 hover:text-cream"}`}>
+              <Icon size={17} aria-hidden />
               <span className="min-w-0 flex-1 truncate">{ROLE_LABELS[item]}</span>
               {count > 0 && (
-                <span className={`min-w-5 rounded px-1.5 py-0.5 text-center text-[12px] font-semibold tabular-nums ${active
-                  ? "bg-cream/15 text-cream" : "bg-canvas text-ink-muted"}`}>{count}</span>
+                <span aria-label={pendingLabel(item, count)} className={`min-w-5 rounded px-1.5 py-0.5 text-center text-[12px] font-semibold tabular-nums ${active
+                  ? "bg-brand-soft text-brand-ink" : "bg-cream/10 text-cream"}`}>{count}</span>
               )}
             </button>
           );

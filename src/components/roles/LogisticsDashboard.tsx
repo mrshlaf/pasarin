@@ -55,7 +55,7 @@ const DISPATCH_PHASES = [
     window: "15:00 - 21:00 WIB",
     description: "Seluruh antrean pengantaran armada pasar",
     icon: Layers,
-    color: "bg-surface-muted text-ink",
+    color: "bg-canvas text-ink",
     vehicle: "Armada Terpadu Pangkalan",
     driver: "Tim Logistik Pasar",
   },
@@ -177,49 +177,52 @@ export function LogisticsDashboard() {
   }
 
   return (
-    <div className="grid gap-4">
-      {/* Banner Utama Manifes Rute Kurir */}
-      <section className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-5 sm:p-6 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-start gap-4">
-          <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand">
+    <div className="grid min-w-0 gap-6">
+      <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
+        <div className="flex items-start gap-3 sm:gap-4">
+          <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
             <PhaseIcon size={22} />
           </span>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="break-words font-serif text-2xl leading-tight tracking-tight">
-                {activePhase === "all" ? "Pengantaran Hari Ini" : currentPhaseConfig.label}
-              </h2>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-cream px-2.5 py-0.5 text-xs font-semibold text-ink-muted">
-                <Truck size={12} className="text-brand" aria-hidden /> {assignedVehicle}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-ink-muted">
-              {currentPhaseConfig.window} · {currentPhaseConfig.description}
-            </p>
-            <p className="mt-0.5 text-xs font-medium text-ink-muted">
-              Pengemudi: <span className="text-ink font-semibold">{assignedDriver}</span> · Muatan awal rute:{" "}
-              <span className="tabular-nums font-semibold">{kg(currentBatchTotalKg)}</span> (Sisa di bak:{" "}
-              <span className="tabular-nums font-semibold text-brand">{kg(currentQueueKg)}</span>)
-            </p>
-            {activePhase !== "all" && "thresholdKg" in currentPhaseConfig && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1 rounded-md border border-line bg-cream px-2.5 py-0.5 font-medium text-ink-muted">
-                  <Clock size={11} className="text-brand" aria-hidden /> Jadwal Berangkat: {currentPhaseConfig.departureClock}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-md border border-line bg-cream px-2.5 py-0.5 font-medium text-ink-muted">
-                  <PackageCheck size={11} className="text-brand" aria-hidden />
-                  {currentQueueKg >= currentPhaseConfig.thresholdKg
-                    ? `Siap Berangkat (Ambang ${kg(currentPhaseConfig.thresholdKg)} Terpenuhi)`
-                    : `Menunggu Kloter (Target Ambang: ${kg(currentPhaseConfig.thresholdKg)})`}
-                </span>
-              </div>
-            )}
+          <div className="min-w-0 flex-1">
+            <h2 className="font-serif text-2xl leading-tight tracking-tight sm:text-3xl">
+              {activePhase === "all" ? "Manifes pengantaran" : currentPhaseConfig.label}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-ink-muted">{currentPhaseConfig.description}</p>
           </div>
         </div>
+        <dl className="mt-5 grid gap-4 border-t border-line pt-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-ink-muted">Jendela rencana</dt>
+            <dd className="mt-1 text-sm font-semibold">{currentPhaseConfig.window}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-ink-muted">Rekomendasi armada</dt>
+            <dd className="mt-1 break-words text-sm font-semibold">{assignedVehicle}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-ink-muted">Pengemudi dalam konfigurasi</dt>
+            <dd className="mt-1 text-sm font-semibold">{assignedDriver}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-xs font-medium text-ink-muted">Muatan tercatat di tahap ini</dt>
+            <dd className="mt-1 text-sm font-semibold tabular-nums">{kg(currentBatchTotalKg)} <span className="font-normal text-ink-muted">termasuk selesai</span></dd>
+          </div>
+        </dl>
+        {activePhase !== "all" && "thresholdKg" in currentPhaseConfig && (
+          <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-canvas p-3 text-sm">
+            <span className="flex items-center gap-2"><Clock size={16} aria-hidden /> Rencana berangkat {currentPhaseConfig.departureClock}</span>
+            <StatusPill
+              label={currentQueueKg >= currentPhaseConfig.thresholdKg ? "Ambang muatan terpenuhi" : "Menunggu muatan kloter"}
+              tone={currentQueueKg >= currentPhaseConfig.thresholdKg ? "success" : "warning"}
+            />
+            <span className="tabular-nums text-ink-muted">{kg(currentQueueKg)} / {kg(currentPhaseConfig.thresholdKg)}</span>
+          </div>
+        )}
+        <p className="mt-4 text-xs leading-5 text-ink-muted">Jadwal, kendaraan, dan pengemudi adalah rencana dari konfigurasi simulasi, bukan pelacakan armada langsung. Status pengantaran mengikuti konfirmasi serah terima.</p>
       </section>
 
       {/* Tabs Pemilih Tahapan Sirkular */}
-      <nav aria-label="Tahapan pengantaran logistik" className="flex flex-wrap items-center gap-2">
+      <nav aria-label="Tahapan pengantaran logistik" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {DISPATCH_PHASES.map((phase) => {
           const count = phase.id === "all"
             ? queue.length
@@ -232,17 +235,18 @@ export function LogisticsDashboard() {
               key={phase.id}
               type="button"
               onClick={() => setActivePhase(phase.id)}
-              className={`flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-semibold transition ${
+              aria-pressed={isActive}
+              className={`flex min-h-14 min-w-0 items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-semibold transition ${
                 isActive
-                  ? "bg-brand text-cream shadow-sm"
-                  : "border border-line bg-surface text-ink hover:border-brand/40 hover:bg-cream"
+                  ? "border-brand bg-brand text-cream"
+                  : "border-line-strong bg-surface text-ink hover:bg-canvas"
               }`}
             >
-              <IconComponent size={14} aria-hidden />
-              <span>{phase.shortLabel}</span>
+              <IconComponent size={16} className="shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1">{phase.shortLabel}</span>
               <span
-                className={`grid size-5 place-items-center rounded-full text-[11px] tabular-nums ${
-                  isActive ? "bg-cream/20 text-cream" : "bg-cream-shade text-ink-muted"
+                className={`grid size-6 shrink-0 place-items-center rounded-md text-xs tabular-nums ${
+                  isActive ? "bg-cream text-brand-ink" : "bg-canvas text-ink-muted"
                 }`}
               >
                 {count}
@@ -256,7 +260,7 @@ export function LogisticsDashboard() {
       <MarketMetrics
         items={[
           { label: "Siap diantar", value: filteredQueue.length },
-          { label: "Sisa di bak", value: kg(currentQueueKg) },
+          { label: "Muatan menunggu antar", value: kg(currentQueueKg) },
           { label: "Dana ditahan", value: rupiah(currentHeldAmount) },
           { label: "Selesai", value: filteredCompleted.length },
         ]}
@@ -266,6 +270,7 @@ export function LogisticsDashboard() {
       <MarketSection
         variant="plain"
         title={`Antrean ${activePhase === "all" ? "Semua Tahap" : currentPhaseConfig.shortLabel}`}
+        description="Periksa titik ambil, penerima, dan estimasi mutu sebelum mengonfirmasi barang diterima."
       >
         {filteredQueue.length === 0 ? (
           <EmptyState
@@ -286,7 +291,6 @@ export function LogisticsDashboard() {
                   b.id === offer.claimedById ||
                   (offer.claimedBy && b.name.includes(offer.claimedBy))
               );
-              const tierBadge = getTierBadge(offer.targetTier);
               const cardVehicle = getOfferVehicleBadge(offer.targetTier);
               const lotNumber = stockById.get(offer.stockId)?.lotNumber;
 
@@ -297,15 +301,12 @@ export function LogisticsDashboard() {
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusPill label="Siap diantar" tone="info" />
                         <TierChip tier={offer.targetTier} />
-                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${tierBadge.style}`}>
-                          {tierBadge.label}
-                        </span>
-                        <span className="inline-flex items-center gap-1 rounded-md border border-line bg-cream px-2 py-0.5 text-[11px] font-medium text-ink-muted">
-                          <Truck size={11} aria-hidden /> {cardVehicle}
+                        <span className="inline-flex items-center gap-1.5 text-xs leading-5 text-ink-muted">
+                          <Truck size={14} className="shrink-0" aria-hidden /> Rencana: {cardVehicle}
                         </span>
                       </div>
 
-                      <h3 className="mt-2 break-words font-serif text-lg leading-tight tracking-tight">
+                      <h3 className="mt-3 break-words font-serif text-xl leading-tight tracking-tight sm:text-2xl">
                         {commodityName(offer.commodityId)}, {kg(offer.quantityKg)}
                       </h3>
 
@@ -339,9 +340,11 @@ export function LogisticsDashboard() {
                           </p>
                         )}
                         {buyer?.phone && (
-                          <p className="ml-7 mt-0.5 flex items-center gap-1.5 text-[12px] text-ink-muted">
-                            <Phone size={11} className="shrink-0 text-brand" aria-hidden />{" "}
-                            {buyer.ownerName ? `${buyer.ownerName} (${buyer.phone})` : buyer.phone}
+                          <p className="ml-7 mt-1 text-sm text-ink-muted">
+                            <a href={`tel:${buyer.phone.replace(/[^+\d]/g, "")}`} className="inline-flex min-h-11 items-center gap-2 rounded-md underline decoration-line-strong underline-offset-4 hover:text-brand-ink">
+                              <Phone size={14} className="shrink-0" aria-hidden />
+                              {buyer.ownerName ? `${buyer.ownerName} (${buyer.phone})` : buyer.phone}
+                            </a>
                           </p>
                         )}
                       </div>
@@ -350,7 +353,7 @@ export function LogisticsDashboard() {
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock size={13} aria-hidden className="text-brand shrink-0" />
                           <span>
-                            Prioritas antar: sisa simpan{" "}
+                            Estimasi sisa simpan: {" "}
                             <strong className="font-semibold text-ink">
                               {formatRemainingShelfLife(
                                 stockHealth[offer.stockId]?.hoursRemaining ?? 0,
@@ -435,13 +438,13 @@ export function LogisticsDashboard() {
       {/* Riwayat Transaksi & Serah Terima (Escrow Release Ledger) */}
       <MarketSection
         title="Riwayat transaksi & serah terima"
-        description="Catatan pelepasan dana escrow yang telah diserahterimakan ke penerima."
+        description="Buku besar pembayaran: dana ditahan, disalurkan setelah serah terima, atau dikembalikan. Catatan ini mencakup semua tahap."
       >
         {transactions.length === 0 ? (
           <EmptyState
             icon={Receipt}
             title="Belum ada transaksi"
-            description="Transaksi yang berhasil diserahterimakan akan tercatat di sini."
+            description="Pembayaran akan tercatat di sini beserta status penahanan dan pelepasan dananya."
           />
         ) : (
           <ul>
@@ -511,9 +514,10 @@ export function LogisticsDashboard() {
               {error}
             </p>
           )}
+          <p className="mt-3 text-sm leading-6 text-ink-muted">Konfirmasi hanya setelah penerima menerima barang. Untuk pesanan berbayar, tindakan ini juga melepas dana yang ditahan.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className={marketButton} disabled={busy} onClick={finish}>
-              {busy ? "Menyimpan…" : "Konfirmasi"}
+              {busy ? "Menyimpan…" : "Konfirmasi barang diterima"}
             </button>
             <button type="button" className={marketSecondary} onClick={() => setSelected(null)}>
               Batal
