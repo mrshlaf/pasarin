@@ -207,6 +207,7 @@ npm run build
 - `/dashboard` menyediakan ruang kerja tujuh peran: pedagang, Warteg, dapur sosial, sentra maggot, kurir, pengelola, dan administrator. Filter, hasil timbang, klaim sebagian, pembayaran simulasi, serta konfirmasi pengantaran memakai endpoint operasional yang sama.
 - Sinkronisasi menampilkan status memuat dan kegagalan dengan tombol coba lagi. Data terakhir tetap terlihat saat pembaruan gagal; respons lama tidak menimpa hasil tindakan baru atau sesi akun lain.
 - Identitas visual memakai pinus untuk aksi dan angka utama, sage untuk estimasi, serif untuk hierarki judul, serta daftar berjarak untuk membandingkan lot dan pengantaran. Kolom ditumpuk pada layar sempit; dialog mendukung keyboard dan Escape.
+- Dashboard publik dan ruang kerja peran mengintegrasikan foto lanskap editorial (`MarketHeroBackground`) sebagai latar belakang atmosferik dengan lapisan *gradient scrim* pinus gelap elegan. Tekstur visual lapak pasar, olahan pangan, biomassa, dan kargo menyatu alami di latar belakang tanpa menutupi teks metrik atau data operasional.
 
 Rincian komponen dan aliran data: [Dokumentasi frontend](DOKUMENTASI_LENGKAP_FRONTEND_PASARIN.md).
 

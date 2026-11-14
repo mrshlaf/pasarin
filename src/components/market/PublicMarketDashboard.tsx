@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Send, Truck, UtensilsCrossed } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
+import { MarketHeroBackground } from "@/components/common/MarketEditorialImage";
 import { RealtimeWibClock } from "@/components/common/RealtimeWibClock";
 import { EmptyState, kg, marketButton, marketSecondary } from "@/components/common/MarketWorkspace";
 import { useAuth } from "@/lib/authContext";
@@ -83,24 +83,25 @@ export function PublicMarketDashboard() {
           </button>
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr] lg:gap-5" aria-busy={refreshing}>
-          <section className="relative isolate flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-brand-deep p-5 text-cream sm:p-8 lg:p-10" aria-labelledby="market-title">
-            <Image src="/brand/pasarin_icon_white.png" alt="" width={360} height={304} className="pointer-events-none absolute -right-16 -bottom-24 -z-10 w-72 opacity-10 sm:w-96" />
+          <section className="relative isolate flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-brand-deep p-6 text-cream sm:p-9 lg:p-11 shadow-sm min-h-[420px]" aria-labelledby="market-title">
+            <MarketHeroBackground context="public" />
             <div>
-              <h1 id="market-title" className="max-w-[18ch] font-serif text-[clamp(2rem,4.5vw,3.75rem)] leading-[1.08] tracking-tight">Pasokan tersedia, penyaluran tercatat.</h1>
-              <p className="mt-4 max-w-[44ch] text-sm leading-6 text-sage-soft">Ringkasan penawaran dalam aplikasi Pasarin, bukan keseluruhan pasokan pasar.</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-sage-soft">Selamat datang di Pasarin</p>
+              <h1 id="market-title" className="max-w-[18ch] font-serif text-[clamp(2.15rem,4.5vw,3.85rem)] leading-[1.08] tracking-tight">Surplus pasar segar, sampai ke tangan yang tepat.</h1>
+              <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-sage-soft sm:text-base">Yuk, pantau kelebihan pasokan sayur segar dari kios pedagang Kramat Jati yang siap diselamatkan untuk warteg, dapur sosial, dan sentra olahan hari ini!</p>
             </div>
             <dl className="mt-8 border-t border-rail pt-5">
-              <dt className="text-sm text-sage-soft">Volume yang dapat diklaim</dt>
+              <dt className="text-sm text-sage-soft">Volume yang siap diselamatkan hari ini</dt>
               <dd className="mt-1 break-words font-serif text-[clamp(2.75rem,7vw,5rem)] leading-tight tracking-tight tabular-nums">{data ? kg(data.availableKg) : "Belum tersedia"}</dd>
-              <dd className="mt-2 text-sm text-sage-soft">{data ? `${number.format(data.availableLots)} lot penawaran aktif` : "Menunggu ringkasan pasar"}</dd>
+              <dd className="mt-2 text-sm text-sage-soft">{data ? `${number.format(data.availableLots)} lot penawaran aktif siap diklaim` : "Menunggu ringkasan pasar"}</dd>
             </dl>
-            <a href="#jalur" className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 rounded-lg border border-rail px-3.5 text-sm font-semibold text-cream transition-colors hover:bg-white/10 focus-visible:outline-cream">Lihat pembagian pasokan<ArrowDown size={16} aria-hidden /></a>
+            <a href="#jalur" className="mt-6 inline-flex min-h-11 w-fit items-center gap-2 rounded-lg border border-rail/60 bg-white/5 backdrop-blur-sm px-4 text-sm font-semibold text-cream transition-colors hover:bg-white/15 focus-visible:outline-cream">Yuk, intip pembagian pasokan<ArrowDown size={16} aria-hidden /></a>
           </section>
 
           <section aria-labelledby="distribution-totals" className="market-panel flex min-w-0 flex-col justify-between">
             <div>
-              <h2 id="distribution-totals" className="market-section-heading">Hasil penyaluran</h2>
-              <p className="mt-2 text-sm leading-6 text-ink-muted">Akumulasi penawaran yang sudah selesai diserahterimakan di aplikasi.</p>
+              <h2 id="distribution-totals" className="market-section-heading">Pencapaian Penyaluran Bersama</h2>
+              <p className="mt-2 text-sm leading-6 text-ink-muted">Akumulasi bahan pangan yang sukses diselamatkan dan diserahterimakan ke mitra.</p>
               <dl className="mt-6 divide-y divide-line">
                 <div className="pb-5"><dt className="text-sm text-ink-muted">Volume tersalurkan</dt><dd className="mt-1 break-words font-serif text-[clamp(2rem,4vw,3.25rem)] leading-tight tracking-tight tabular-nums">{data ? kg(data.distributedKg) : "Belum tersedia"}</dd></div>
                 <div className="pt-5"><dt className="text-sm text-ink-muted">Pengantaran selesai</dt><dd className="mt-1 font-serif text-3xl leading-tight tabular-nums">{data ? number.format(data.completedDeliveries) : "Belum tersedia"}</dd></div>

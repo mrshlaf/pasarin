@@ -10,9 +10,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
-import { useMarketSimulation } from "@/lib/simulationStore";
+import { useMarketSimulation, type AppRole } from "@/lib/simulationStore";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { AppSidebar, ROLE_LABELS } from "@/components/layout/AppSidebar";
+import { MarketHeroBackground } from "@/components/common/MarketEditorialImage";
 import { VendorDashboard } from "@/components/roles/VendorDashboard";
 import { LogisticsDashboard } from "@/components/roles/LogisticsDashboard";
 
@@ -20,14 +21,35 @@ import { BuyerDashboard } from "@/components/roles/BuyerDashboard";
 import { OversightDashboard } from "@/components/roles/OversightDashboard";
 
 
-const workspaceDescriptions = {
-  vendor: "Pantau mutu stok, timbang sisa dagangan, dan terbitkan penawaran.",
-  warteg: "Temukan bahan layak masak dan kelola pesanan dari kios pasar.",
-  social_kitchen: "Kelola bahan untuk dapur sosial, dari reservasi sampai diterima.",
-  maggot: "Salurkan bahan biomassa pasar ke proses biokonversi.",
-  logistics: "Atur antrean pengantaran dan konfirmasi serah terima barang.",
-  manager: "Pantau pasokan, distribusi, dan transaksi lintas peran pasar.",
-  admin: "Tinjau seluruh alur pasar dan evaluasi penawaran yang perlu ditindaklanjuti.",
+const friendlyRoleCopy: Record<AppRole, { greeting: string; description: string }> = {
+  vendor: {
+    greeting: "Hai, Pedagang! Selamat datang!",
+    description: "Yuk, pantau mutu stok kiosmu hari ini, konfirmasi hasil timbang sisa dagangan, dan tawarkan harga terbaik untuk diselamatkan!",
+  },
+  warteg: {
+    greeting: "Hai, Rekan Warteg! Selamat datang!",
+    description: "Yuk, temukan pasokan sayuran segar layak masak dengan harga hemat untuk sajian menu lezat usahamu hari ini!",
+  },
+  social_kitchen: {
+    greeting: "Hai, Tim Dapur Sosial! Selamat datang!",
+    description: "Semangat berbagi! Yuk, klaim donasi pangan bergizi dan siapkan porsi makanan hangat terbaik untuk saudara kita.",
+  },
+  maggot: {
+    greeting: "Hai, Sentra Maggot! Selamat datang!",
+    description: "Yuk, olah biomassa organik pasar menjadi biokonversi bernilai tinggi dan bantu lingkungan bebas dari tumpukan sampah!",
+  },
+  logistics: {
+    greeting: "Hai, Tim Kurir! Selamat datang!",
+    description: "Siap meluncur? Cek antrean penjemputan di los kios pasar dan antarkan paket bahan pangan ke mitra tepat waktu!",
+  },
+  manager: {
+    greeting: "Hai, Pengelola Pasar! Selamat datang!",
+    description: "Pantau kelancaran sirkulasi pangan, ketercapaian target redistribusi surplus, dan transparansi transaksi pasar hari ini.",
+  },
+  admin: {
+    greeting: "Hai, Administrator! Selamat datang!",
+    description: "Kelola ekosistem pasar, jalankan evaluasi mutu stok los, dan pastikan seluruh aliran redistribusi surplus berjalan optimal!",
+  },
 };
 /**
  * Komponen konten dasbor yang merender tampilan ruang kerja sesuai peran terotorisasi.
@@ -41,20 +63,30 @@ function DashboardContent() {
       <a className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface focus:p-3" href="#market-content">Lewati ke ruang kerja</a>
       <AppHeader />
       <div className="market-shell pb-8">
-        <div className="workspace-masthead">
-          <div className="min-w-0">
-            <p className="market-eyebrow mb-2">Pasar Induk Kramat Jati / Ruang kerja</p>
-            <h1 className="workspace-heading break-words">{ROLE_LABELS[role]}</h1>
-            <p className="mt-2 max-w-prose text-sm leading-6 text-ink-muted">{workspaceDescriptions[role]}</p>
+        <section aria-labelledby="workspace-role-title" className="relative isolate my-4 flex min-h-[250px] flex-col justify-center overflow-hidden rounded-3xl bg-brand-deep p-6 text-cream shadow-md sm:min-h-[290px] sm:p-10 lg:min-h-[320px] lg:p-12">
+          <MarketHeroBackground context={role} />
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div className="min-w-0 max-w-2xl">
+              <p className="text-xs font-semibold uppercase tracking-widest text-sage-soft">Pasar Induk Kramat Jati · Ruang Kerja {ROLE_LABELS[role]}</p>
+              <h1 id="workspace-role-title" className="mt-2 font-serif text-3xl font-bold tracking-tight text-cream sm:text-4xl lg:text-[2.85rem] leading-[1.12]">{friendlyRoleCopy[role].greeting}</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-sage-soft/95 sm:text-base">{friendlyRoleCopy[role].description}</p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span className="inline-flex min-h-11 items-center rounded-xl border border-white/20 bg-black/20 px-3.5 py-1.5 text-xs font-medium text-cream backdrop-blur-md">
+                  {user?.organization || user?.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={refreshMarket}
+                  disabled={busy || isSyncing}
+                  aria-busy={isSyncing}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-4 text-xs font-semibold text-cream backdrop-blur-md transition-all hover:border-white/40 hover:bg-white/20 focus-visible:outline-cream disabled:opacity-60"
+                >
+                  <RefreshCw size={14} aria-hidden /> {isSyncing ? "Memuat ulang…" : "Segarkan data"}
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="min-w-0 break-words text-sm font-medium text-ink-soft">{user?.organization || user?.name}</p>
-            <button type="button" onClick={refreshMarket} disabled={busy || isSyncing} aria-busy={isSyncing}
-              className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-semibold text-brand hover:bg-brand-soft disabled:opacity-60">
-              <RefreshCw size={15} aria-hidden /> {isSyncing ? "Memuat ulang…" : "Muat ulang"}
-            </button>
-          </div>
-        </div>
+        </section>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <AppSidebar />

@@ -256,7 +256,7 @@ export function VendorDashboard() {
 
         <div className="grid min-w-0 gap-4 xl:sticky xl:top-20 xl:self-start">
           {canManage && (
-            <MarketSection title="Pasokan masuk" description="Catat berat saat komoditas tiba di kios. Sisa fisik ditimbang terpisah setelah penjualan.">
+            <MarketSection title="Catat Pasokan Masuk" description="Ada sayuran baru tiba di kios? Yuk catat berat awalnya di sini! Sisa fisik nantinya bisa ditimbang saat siap diselamatkan.">
               <form onSubmit={recordArrival} className="grid gap-4" aria-busy={busy}>
                 <label className="grid gap-1.5 text-sm font-semibold">Komoditas
                   <select className="market-input" value={commodity} onChange={(event) => setCommodity(event.target.value)}>
@@ -306,13 +306,13 @@ export function VendorDashboard() {
         </div>
       </div>
 
-      <MarketSection title="Penawaran & persetujuan" description="Usulan sistem belum masuk katalog. Konfirmasi hasil timbang untuk menerbitkannya, atau tolak bila tidak sesuai."
+      <MarketSection title="Penawaran & Persetujuan Kios" description="Yuk tinjau usulan penyelamatan stokmu! Cukup konfirmasi hasil timbang fisik untuk menerbitkannya ke katalog pembeli."
         action={<div className="flex items-center gap-3 text-[13px] font-semibold tabular-nums">
           <span className="text-ink-muted">{activeCount} aktif</span>
           <span className="inline-flex items-center gap-1.5 text-brand-ink"><Wallet size={14} aria-hidden /> {rupiah(vendorWalletBalanceIdr)}</span>
         </div>}>
         {kioskOffers.length === 0 ? (
-          <EmptyState icon={Store} title="Belum ada penawaran" description="Terbitkan lot dari inventaris." />
+          <EmptyState icon={Store} title="Belum ada penawaran aktif" description="Yuk, terbitkan lot dari inventaris stok di atas agar bisa segera diambil pembeli!" />
         ) : (
           <ul>{sortedOffers.map((offer) => (
             <li key={offer.id} className="grid min-w-0 gap-3 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">

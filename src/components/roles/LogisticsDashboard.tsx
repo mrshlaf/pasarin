@@ -270,7 +270,7 @@ export function LogisticsDashboard() {
       <MarketSection
         variant="plain"
         title={`Antrean ${activePhase === "all" ? "Semua Tahap" : currentPhaseConfig.shortLabel}`}
-        description="Periksa titik ambil, penerima, dan estimasi mutu sebelum mengonfirmasi barang diterima."
+        description="Yuk periksa titik jemput kios, lokasi tujuan mitra, dan pastikan serah terima muatan berjalan lancar!"
       >
         {filteredQueue.length === 0 ? (
           <EmptyState
@@ -278,7 +278,7 @@ export function LogisticsDashboard() {
             title={`Belum ada antrean ${currentPhaseConfig.shortLabel}`}
             description={
               activePhase === "all"
-                ? "Lot gratis, donasi, dan pesanan yang sudah dibayar akan muncul di sini."
+                ? "Bagus! Semua pesanan sudah terantar. Pesanan baru yang dibayar atau siap didonasikan akan langsung tampil di sini."
                 : `Tidak ada pesanan aktif pada ${currentPhaseConfig.label} saat ini.`
             }
           />

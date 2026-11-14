@@ -1,6 +1,6 @@
 # Dokumentasi Frontend PASARIN
 
-Dokumen ini mencakup 18 berkas frontend: rute, navigasi, dasbor peran, komponen bersama, autentikasi, dan penyimpan state klien. Nama komponen dan perilaku mengacu pada sumber saat pembaruan ini. Endpoint disebut sebagai batas komunikasi frontend, bukan bukti bahwa layanan eksternal telah terintegrasi atau diuji.
+Dokumen ini mencakup 19 berkas frontend: rute, navigasi, dasbor peran, komponen bersama (termasuk komponen foto editorial), autentikasi, dan penyimpan state klien. Nama komponen dan perilaku mengacu pada sumber saat pembaruan ini. Endpoint disebut sebagai batas komunikasi frontend, bukan bukti bahwa layanan eksternal telah terintegrasi atau diuji.
 
 ## Alur aplikasi
 
@@ -118,7 +118,11 @@ Pemanggil dapat menolak penutupan ketika `busy`, misalnya saat klaim atau pembay
 
 `RealtimeWibClock` menyediakan jam/tanggal WIB dengan opsi `className`, `showSeconds`, dan `showDate`. Pembaruan berjalan pada klien dengan zona waktu Jakarta. Jam ini merupakan waktu peramban yang diformat ke WIB, bukan bukti sinkronisasi waktu server atau waktu pembaruan snapshot.
 
-## 17. `src/lib/authContext.tsx`
+## 17. `src/components/common/MarketEditorialImage.tsx`
+
+Komponen `MarketHeroBackground` (dan alias `MarketEditorialImage`) merender latar belakang foto lanskap atmosferik (`market`, `meals`, `cooking`, `biomass`, dan `cargo`) dengan lapisan *gradient scrim* multi-layer hijau pinus gelap (`from-brand-deep/96 via-brand-deep/88 to-transparent`) per peran (`public`, `vendor`, `warteg`, `social_kitchen`, `maggot`, `logistics`, `manager`, dan `admin`). Foto bersumber dari berkas WebP lokal beresolusi tinggi di `public/images/editorial/` tanpa menampilkan teks nama akun/atribusi di atas antarmuka sesuai arahan desain visual. Pola scrim ini memastikan warna dan tekstur alami komoditas pangan tampak hidup dan lapang di sisi kanan, sementara teks judul serif dan angka metrik di sisi kiri terlindungi penuh dengan kontras superior WCAG AAA (>10:1).
+
+## 18. `src/lib/authContext.tsx`
 
 `AuthProvider` dan `useAuth` menyediakan pengguna, `isAuthenticated`, `isLoading`, `signInWithPassword`, `signOut`, serta `isRoleAccessible`.
 
@@ -126,7 +130,7 @@ Mode ditentukan konfigurasi: `NEXT_PUBLIC_PASARIN_SERVER_AUTH === "1"` memakai s
 
 Galat meliputi kredensial tidak cocok, layanan masuk belum dikonfigurasi, dan akun tanpa profil peran Pasarin. `signOut` memeriksa kegagalan penghapusan sesi server/lokal maupun Supabase, lalu memperbarui state sesuai hasilnya. `isRoleAccessible` mengizinkan peran sendiri serta akses pratinjau bagi admin/pengelola. `useAuth` melempar error bila digunakan di luar provider.
 
-## 18. `src/lib/simulationStore.tsx`
+## 19. `src/lib/simulationStore.tsx`
 
 `SimulationProvider` dan `useMarketSimulation` menyediakan kontrak `SimulationContextType`. Server tetap menjadi sumber snapshot operasional; nama simulationStore tidak berarti seluruh transaksi hanya tersimpan di memori browser.
 

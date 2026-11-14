@@ -106,11 +106,11 @@ export function OversightDashboard() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
-          <MarketSection title="Pantauan penawaran"
-            description="Urutan dimulai dari persetujuan pedagang. Perkiraan sisa dan mutu berasal dari model; hasil timbang tetap menjadi catatan fisik lot."
+          <MarketSection title="Pantauan Penawaran Pasar"
+            description="Yuk pantau aliran penawaran surplus dari kios pedagang menuju mitra warteg, dapur sosial, dan sentra maggot!"
             action={<span className="text-sm font-semibold tabular-nums text-ink-muted">{activeOffers} aktif · {stockItems.length} lot</span>}>
             {offers.length === 0 ? (
-              <EmptyState icon={Boxes} title="Belum ada penawaran" description="Lot muncul dari pasokan pedagang." />
+              <EmptyState icon={Boxes} title="Belum ada penawaran aktif" description="Penawaran baru dari kios pedagang akan segera muncul di sini." />
             ) : (
               <ul>{visibleOffers.map((offer) => {
                 const stock = stockById.get(offer.stockId);
@@ -155,7 +155,7 @@ export function OversightDashboard() {
         </div>
 
         <div className="col-start-1 row-start-2 min-w-0 xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:self-start">
-          <MarketSection title="Buku besar pembayaran" description="Status dana per transaksi, termasuk penahanan sebelum barang diterima.">
+          <MarketSection title="Buku Besar Transaksi & Escrow" description="Pantau status dana per transaksi, pengamanan dana di rekening penampung (escrow), hingga pencairan ke pedagang.">
             {transactions.length === 0 ? (
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
             ) : (
