@@ -5,14 +5,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f3eb;
+  --background: #f2f4ef;
   --foreground: #182d2a;
   --brand-teal: #2a5c5f;
   --brand-teal-dark: #1e4345;
   --brand-teal-light: #f0f6f6;
   --surface-border: #e2e8f0;
 
-  --market-surface: #fffef8;
+  --market-surface: #ffffff;
   --market-ink: #182d2a;
   --market-brand: #214d43;
   --market-brand-strong: #173b34;
@@ -27,7 +27,7 @@
   --market-gutter: clamp(1rem, 3vw, 2rem);
   --market-panel-padding: clamp(1rem, 2vw, 1.5rem);
   --market-display-font: Georgia, "Times New Roman", serif;
-  --market-panel-radius: 1.25rem;
+  --market-panel-radius: 1rem;
 }
 
 @theme inline {
@@ -163,6 +163,7 @@ p {
   border-radius: var(--market-panel-radius);
   background: var(--market-surface);
   padding: var(--market-panel-padding);
+  box-shadow: 0 2px 3px rgb(24 45 42 / 2%);
 }
 
 .market-workspace-heading {
@@ -219,4 +220,70 @@ p {
 
 .market-role-content .text-slate-400 {
   color: #546479;
+}
+
+.workspace-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding-block: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.workspace-heading {
+  font-size: clamp(2rem, 3.5vw, 3rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+
+.workspace-nav {
+  background: var(--market-brand-strong);
+  color: var(--market-cream);
+  border-radius: var(--market-panel-radius);
+  padding: 1rem;
+}
+
+.workspace-nav :focus-visible {
+  outline-color: var(--market-cream);
+}
+
+.workspace-nav .market-input {
+  background: var(--market-surface);
+  color: var(--market-ink);
+}
+
+.market-metrics {
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--market-line);
+  border-radius: var(--market-panel-radius);
+  background: var(--market-line);
+  overflow: hidden;
+}
+
+.market-metric {
+  min-width: 0;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background: var(--market-surface);
+}
+
+.market-metric dd {
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: clamp(1.5rem, 2.7vw, 2.1rem);
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.045em;
+  font-variant-numeric: tabular-nums;
+}
+
+.market-role-content > div {
+  gap: 1.5rem;
+}
+
+@media (max-width: 639px) {
+  .workspace-masthead { padding-block: 1.5rem; }
+  .market-role-content > div { gap: 1rem; }
 }

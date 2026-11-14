@@ -201,6 +201,15 @@ npm run build
 2. Pembeli memilih jumlah kilogram. Sisa penawaran tetap tersedia bagi pembeli lain. Pesanan jual masuk antrean kurir setelah pembayaran simulasi. Donasi langsung siap diantar.
 3. Kurir mengonfirmasi serah terima dan stok fisik berkurang sebesar jumlah pesanan. Penjualan menambah saldo simulasi. Donasi yang selesai menambah satu poin reputasi per lot sumber, maksimal 100.
 
+### Dashboard dan ringkasan publik
+
+- `/` menampilkan volume yang dapat diklaim, penyaluran selesai, tujuan distribusi, dan komoditas dari `/api/market/overview`. Estimasi porsi dan kendaraan dipisahkan dari hasil aktual; asumsi 4 porsi/kg dan alokasi minimum kendaraan tetap terlihat.
+- `/dashboard` menyediakan ruang kerja tujuh peran: pedagang, Warteg, dapur sosial, sentra maggot, kurir, pengelola, dan administrator. Filter, hasil timbang, klaim sebagian, pembayaran simulasi, serta konfirmasi pengantaran memakai endpoint operasional yang sama.
+- Sinkronisasi menampilkan status memuat dan kegagalan dengan tombol coba lagi. Data terakhir tetap terlihat saat pembaruan gagal; respons lama tidak menimpa hasil tindakan baru atau sesi akun lain.
+- Identitas visual memakai pinus untuk aksi dan angka utama, sage untuk estimasi, serif untuk hierarki judul, serta daftar berjarak untuk membandingkan lot dan pengantaran. Kolom ditumpuk pada layar sempit; dialog mendukung keyboard dan Escape.
+
+Rincian komponen dan aliran data: [Dokumentasi frontend](DOKUMENTASI_LENGKAP_FRONTEND_PASARIN.md).
+
 ### Kontrak dan batas simulasi
 
 Kontrak HTTP tersedia di [public/openapi.json](public/openapi.json). Pembayaran dicatat dalam ledger simulasi. Kurir mengonfirmasi serah terima donasi dan pesanan yang sudah dibayar.

@@ -364,8 +364,8 @@ async function seedTestingScenarios() {
       } else {
         console.log(`[PASS] Supabase Cloud Database (Vercel State) Terupdate ke Revisi ${nextRevision} (100% Sinkron dengan Localhost)!\n`);
       }
-    } catch (e: any) {
-      console.warn(`[WARN] Gagal menyinkronkan ke Supabase: ${e.message}\n`);
+    } catch (e: unknown) {
+      console.warn(`[WARN] Gagal menyinkronkan ke Supabase: ${e instanceof Error ? e.message : String(e)}\n`);
     }
   }
 
@@ -387,9 +387,9 @@ async function seedTestingScenarios() {
         await client.query(sql);
         await client.query("COMMIT");
         console.log("[PASS] Supabase PostgreSQL Database Berhasil Di-seed dengan SQL Skenario!");
-      } catch (err: any) {
+      } catch (err: unknown) {
         await client.query("ROLLBACK").catch(() => {});
-        console.warn(`[WARN] Eksekusi Postgres dilewati / error: ${err.message}`);
+        console.warn(`[WARN] Eksekusi Postgres dilewati / error: ${err instanceof Error ? err.message : String(err)}`);
       } finally {
         await client.end().catch(() => {});
       }

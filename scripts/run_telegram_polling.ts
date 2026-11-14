@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Eksekutor Polling Real-Time Bot Telegram PASARIN.
  * Menghubungkan bot Telegram nyata (@agent_pasarin_bot) secara langsung
@@ -24,6 +23,7 @@ import {
 import { handleTelegramCommand, handleTelegramAction } from "../src/lib/telegramWorkspace";
 import { telegramChatSessions, startTelegramSession, currentTelegramAccount } from "../src/lib/telegramSessions";
 import { localTestProfile } from "../src/lib/localTestAuth";
+import type { AuthUser } from "../src/data/accounts";
 
 // Muat .env.local
 try {
@@ -48,7 +48,7 @@ const API_BASE = `https://api.telegram.org/bot${token}`;
 let offset = 0;
 let running = true;
 
-async function apiCall(method: string, body?: any) {
+async function apiCall(method: string, body?: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -74,7 +74,8 @@ async function startPolling() {
   await apiCall("deleteWebhook", { drop_pending_updates: false });
   console.log("[INFO] Mode Long-Polling Aktif. Menunggu pesan masuk dari Telegram...\n");
 
-  const defaultAdminActor: any = {
+  const defaultAdminActor: AuthUser = {
+    ...localTestProfile("admin1")!,
     id: "local:admin1",
     role: "admin",
     name: "Pengelola Pasar (Telegram)",
@@ -94,13 +95,13 @@ async function startPolling() {
 
           // Tangani Pesan Teks
           if (update.message && update.message.text) {
-            const chatId = update.message.chat.id;
+            const chatId = update.message.chat.id as number;
             const text = update.message.text.trim();
             const senderName = update.message.from?.first_name || "Pengguna";
             console.log(`[PESAN MASUK] Dari: ${senderName} (${chatId}): "${text}"`);
 
             const sessions = await telegramChatSessions(chatId);
-            let activeUser = sessions.active ? await currentTelegramAccount(sessions.active.user) : undefined;
+            const activeUser = sessions.active ? await currentTelegramAccount(sessions.active.user) : undefined;
 
             // Fasilitas login lokal via teks untuk kemudahan polling developer
             if (text.startsWith("/masuk ") || text.startsWith("/login ")) {
@@ -133,11 +134,11 @@ async function startPolling() {
           if (update.callback_query && update.callback_query.data) {
             const cb = update.callback_query;
             const data = cb.data;
-            const chatId = cb.message?.chat.id || 0;
+            const chatId = (cb.message?.chat.id || 0) as number;
             console.log(`[CALLBACK KLIK] Dari: ${cb.from.first_name}: "${data}"`);
 
             const sessions = await telegramChatSessions(chatId);
-            const activeUser = sessions.active ? await currentTelegramAccount(sessions.active.user) : defaultAdminActor;
+            const activeUser = sessions.active ? (await currentTelegramAccount(sessions.active.user))! : defaultAdminActor;
 
             let parts = (data || "").split(":");
             if (sessions.active && parts[0] === sessions.active.key) {
@@ -162,9 +163,10 @@ async function startPolling() {
           }
         }
       }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        console.error("[ERROR POLLING]:", err.message);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : undefined;
+      if (error?.name !== "AbortError") {
+        console.error("[ERROR POLLING]:", error?.message);
       }
       await new Promise((r) => setTimeout(r, 2000));
     }

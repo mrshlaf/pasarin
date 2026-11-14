@@ -78,14 +78,14 @@ const metricTones = {
  * Menampilkan metrik dan saldo real-time dalam panel baris berpembatas halus.
  */
 export function MarketMetrics({ items }: { items: MarketMetric[] }) {
-  const baseCols = items.length === 1 ? "grid-cols-1" : items.length === 3 ? "grid-cols-3" : "grid-cols-2";
+  const baseCols = items.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2";
   const wideCols = items.length === 1 ? "lg:grid-cols-1" : items.length === 2 ? "lg:grid-cols-2" : items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return (
-    <dl className={`grid ${baseCols} gap-px overflow-hidden rounded-2xl border border-line bg-line ${wideCols}`}>
-      {items.map(({ label, value, tone = "brand" }) => (
-        <div key={label} className="min-w-0 bg-surface px-3 py-3.5 sm:p-4">
-          <dt className="text-[13px] leading-5 text-ink-muted">{label}</dt>
-          <dd className={`mt-1.5 break-words text-[clamp(1.125rem,2.4vw,1.5rem)] font-semibold leading-tight tracking-tight tabular-nums ${metricTones[tone]}`}>
+    <dl className={`market-metrics ${baseCols} ${wideCols}`}>
+      {items.map(({ label, value, tone = "brand" }, index) => (
+        <div key={label} className={`market-metric ${items.length > 1 && items.length % 2 === 1 && index === items.length - 1 ? "sm:col-span-2 lg:col-span-1" : ""}`}>
+          <dt className="text-[13px] font-medium leading-5 text-ink-muted">{label}</dt>
+          <dd className={`mt-3 ${metricTones[tone]}`}>
             {value}
           </dd>
         </div>
