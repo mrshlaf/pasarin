@@ -18,6 +18,10 @@ import {
   executeDecomposedManagerialQuery,
 } from "../src/lib/toolCallingRegistry";
 
+function toolData(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
 // Variabel pelacak asersi uji lulus dan gagal
 let passedCount = 0;
 let failedCount = 0;
@@ -144,9 +148,9 @@ async function runToolCallingRegistryTests() {
   const weatherRes = await executeRegisteredTool("fetchOpenWeatherTelemetry", {});
   // Memvalidasi eksekusi pembacaan suhu mikro los pasar berhasil
   assert(
-    weatherRes.success && typeof weatherRes.data?.temperatureCelsius === "number",
+    weatherRes.success && typeof toolData(weatherRes.data).temperatureCelsius === "number",
     "Eksekusi alat 'fetchOpenWeatherTelemetry' berhasil mengembalikan suhu mikro pasar",
-    `Suhu: ${weatherRes.data?.temperatureCelsius}°C`
+    `Suhu: ${toolData(weatherRes.data).temperatureCelsius}°C`
   );
 
   // Eksekusi alat peluruhan Arrhenius
@@ -158,18 +162,18 @@ async function runToolCallingRegistryTests() {
   });
   // Memvalidasi eksekusi kalkulasi kinetika peluruhan kangkung menghasilkan angka DecayScore yang valid
   assert(
-    decayRes.success && typeof decayRes.data?.decayScore === "number",
+    decayRes.success && typeof toolData(decayRes.data).decayScore === "number",
     "Eksekusi alat 'calculateDecayRate' berhasil menghitung kinetika susut kangkung",
-    `DecayScore: ${decayRes.data?.decayScore}`
+    `DecayScore: ${toolData(decayRes.data).decayScore}`
   );
 
   // Eksekusi alat alokasi armada kargo
   const fleetRes = await executeRegisteredTool("assignVehicleType", { payloadKg: 650 });
   // Memvalidasi alat alokasi armada mengembalikan jenis GranMax untuk muatan 650 kg
   assert(
-    fleetRes.success && fleetRes.data?.vehicleType === "pickup_granmax",
+    fleetRes.success && toolData(fleetRes.data).vehicleType === "pickup_granmax",
     "Eksekusi alat 'assignVehicleType' mengalokasikan GranMax Bak untuk muatan 650 kg",
-    `Vehicle: ${fleetRes.data?.vehicleType}`
+    `Vehicle: ${toolData(fleetRes.data).vehicleType}`
   );
 
   // Eksekusi alat pengurai satuan bahasa daerah

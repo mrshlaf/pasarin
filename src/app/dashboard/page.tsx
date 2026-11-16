@@ -19,6 +19,7 @@ import { LogisticsDashboard } from "@/components/roles/LogisticsDashboard";
 
 import { BuyerDashboard } from "@/components/roles/BuyerDashboard";
 import { OversightDashboard } from "@/components/roles/OversightDashboard";
+import { MarketChatbot } from "@/components/common/MarketChatbot";
 
 
 const friendlyRoleCopy: Record<AppRole, { greeting: string; description: string }> = {
@@ -142,6 +143,7 @@ function DashboardContent() {
           <span>Pasokan, penawaran, dan distribusi dalam satu ruang kerja.</span>
         </footer>
       </div>
+      <MarketChatbot />
     </div>
   );
 }

@@ -370,7 +370,9 @@ async function checkGemini() {
   // Mock fetch khusus endpoint Google Generative Language API
   globalThis.fetch = async (input, init) => {
     const url = input instanceof Request ? input.url : String(input);
-    if (!url.includes("generativelanguage.googleapis.com")) return fetchBefore(input, init);
+    const configuredGeminiBase = process.env.GOOGLE_GEMINI_BASE_URL;
+    const configuredOrigin = configuredGeminiBase ? new URL(configuredGeminiBase).origin : undefined;
+    if (!url.includes("generativelanguage.googleapis.com") && new URL(url).origin !== configuredOrigin) return fetchBefore(input, init);
     called = true;
     const body = typeof init?.body === "string" ? init.body : input instanceof Request ? await input.text() : "";
     // Memvalidasi payload kueri memuat konteks deliveriesToday

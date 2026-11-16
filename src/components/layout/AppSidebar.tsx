@@ -9,7 +9,7 @@
 import { Building2, HeartHandshake, Recycle, ShieldCheck, Store, Truck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation, type AppRole } from "@/lib/simulationStore";
-import { isReadyForDelivery } from "@/types/market";
+import { distributionTierForDecay, isReadyForDelivery } from "@/types/market";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   vendor: "Pedagang",
@@ -41,7 +41,7 @@ const PREVIEW_TIERS: Partial<Record<AppRole, "tier_1" | "tier_2" | "tier_3">> = 
  * Komponen bilah samping navigasi pratinjau peran untuk pengguna pengawas (Admin/Manajer).
  */
 export function AppSidebar() {
-  const { role, setRole, offers, stockItems } = useMarketSimulation();
+  const { role, setRole, offers, stockItems, stockHealth } = useMarketSimulation();
   const { user, isRoleAccessible } = useAuth();
   if (user?.role !== "admin" && user?.role !== "manager") return null;
   const roles = (Object.keys(ROLE_LABELS) as AppRole[]).filter(isRoleAccessible);
@@ -52,8 +52,14 @@ export function AppSidebar() {
   function pendingCount(item: AppRole) {
     if (item === "vendor") return new Set(stockItems.filter((stock) => stock.remainingKg > 0).map((stock) => stock.vendorId)).size;
     if (item === "logistics") return offers.filter((offer) => isReadyForDelivery(offer)).length;
-    const tier = PREVIEW_TIERS[item];
-    return tier ? offers.filter((offer) => offer.targetTier === tier && offer.status === "active").length : 0;
+    const roleTier = PREVIEW_TIERS[item];
+    if (!roleTier) return 0;
+    return offers.filter((offer) => {
+      if (offer.targetTier !== roleTier || offer.status !== "active") return false;
+      const health = stockHealth[offer.stockId];
+      if (health && distributionTierForDecay(health.decayScore) !== roleTier) return false;
+      return true;
+    }).length;
   }
 
   function pendingLabel(item: AppRole, count: number) {

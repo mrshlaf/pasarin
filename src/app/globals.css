@@ -287,3 +287,51 @@ p {
   .workspace-masthead { padding-block: 1.5rem; }
   .market-role-content > div { gap: 1rem; }
 }
+
+.market-chat-trigger {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--market-brand-strong);
+  border-radius: 0.875rem;
+  background: var(--market-brand);
+  color: var(--market-cream);
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgb(24 45 42 / 16%);
+}
+.market-chat-trigger:hover { background: var(--market-brand-strong); }
+.market-chat-dialog {
+  position: fixed;
+  inset: auto 1.5rem 1.5rem auto;
+  margin: 0;
+  width: min(28rem, calc(100vw - 3rem));
+  height: min(42rem, calc(100dvh - 3rem));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--market-dialog-border);
+  border-radius: 1rem;
+  background: var(--market-surface);
+  color: var(--market-ink);
+  box-shadow: 0 16px 64px rgb(14 35 31 / 20%);
+}
+.market-chat-dialog::backdrop { background: var(--market-backdrop); }
+@media (max-width: 639px) {
+  .market-chat-dialog {
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

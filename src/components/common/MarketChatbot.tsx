@@ -1,0 +1,161 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, MessageCircle, Send, X } from "lucide-react";
+import { useAuth } from "@/lib/authContext";
+import { apiFetch } from "@/lib/apiFetch";
+import { ROLE_LABELS } from "@/components/layout/AppSidebar";
+import type { AppRole } from "@/data/accounts";
+
+type Message = { id: number; sender: "user" | "assistant"; text: string; source?: string };
+type Answer = { success?: boolean; error?: string; data?: { summary?: string; source?: string } };
+
+const suggestions: Record<AppRole, string[]> = {
+  vendor: ["Ringkas stok kios saya", "Apa yang perlu ditimbang?", "Bagaimana diskon dihitung?"],
+  warteg: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana cara membayar?"],
+  social_kitchen: ["Apa donasi yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana prioritas dapur sosial?"],
+  maggot: ["Apa biomassa yang tersedia?", "Bagaimana status pesanan saya?", "Bahan apa yang boleh diklaim?"],
+  logistics: ["Apa yang siap diantar?", "Bagaimana kendaraan dipilih?", "Bagaimana konfirmasi serah terima?"],
+  manager: ["Ringkas operasional pasar", "Berapa stok yang berisiko?", "Apa yang siap diantar?"],
+  admin: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
+};
+
+export function MarketChatbot() {
+  const { user } = useAuth();
+  // A different account gets a new conversation, including after switching role.
+  return user ? <ChatWorkspace key={`${user.id}:${user.role}`} name={user.name} role={user.role} /> : null;
+}
+
+function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [retryQuery, setRetryQuery] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const transcript = useRef<HTMLDivElement>(null);
+  const controller = useRef<AbortController | null>(null);
+  const inFlight = useRef(false);
+  const nextId = useRef(0);
+
+  useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => {
+    if (open) {
+      dialog.current?.showModal();
+      input.current?.focus();
+    } else {
+      dialog.current?.close();
+    }
+  }, [open]);
+  useEffect(() => {
+    const area = transcript.current;
+    if (area) area.scrollTop = area.scrollHeight;
+  }, [messages, loading, error, open]);
+
+  function close() {
+    setOpen(false);
+    trigger.current?.focus();
+  }
+
+  async function send(text: string, retry = false) {
+    const question = text.trim();
+    if (!question || question.length > 1000 || inFlight.current) return;
+    inFlight.current = true;
+    setLoading(true);
+    setError("");
+    setRetryQuery(question);
+    setQuery("");
+    if (!retry) setMessages((previous) => [...previous, { id: ++nextId.current, sender: "user", text: question }]);
+    const request = new AbortController();
+    controller.current = request;
+    const timeout = window.setTimeout(() => request.abort(), 25000);
+    try {
+      const response = await apiFetch("/api/orchestrator/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: question }),
+        signal: request.signal,
+      });
+      const result: Answer = await response.json();
+      if (!response.ok || !result.success || !result.data?.summary) {
+        throw new Error(result.error || "Jawaban belum tersedia. Silakan coba lagi.");
+      }
+      const answer = { text: result.data.summary, source: result.data.source };
+      setMessages((previous) => [...previous, {
+        id: ++nextId.current, sender: "assistant", ...answer,
+      }]);
+    } catch (cause) {
+      setError(request.signal.aborted ? "Permintaan terlalu lama. Silakan coba lagi." : cause instanceof Error ? cause.message : "Koneksi terputus. Silakan coba lagi.");
+    } finally {
+      window.clearTimeout(timeout);
+      inFlight.current = false;
+      setLoading(false);
+      input.current?.focus();
+    }
+  }
+
+  return (
+    <>
+      <button ref={trigger} type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}
+        aria-controls="market-assistant" className="market-chat-trigger">
+        <MessageCircle size={19} aria-hidden /> <span>Tanya asisten</span>
+      </button>
+      <dialog ref={dialog} id="market-assistant" aria-labelledby="market-assistant-title" className="market-chat-dialog"
+        onCancel={(event) => { event.preventDefault(); close(); }}
+        onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+        <div className="flex h-full min-h-0 flex-col">
+          <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-5 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><MessageCircle size={21} aria-hidden /></span>
+              <div><h2 id="market-assistant-title" className="font-serif text-xl text-ink">Asisten PASARIN</h2>
+                <p className="mt-0.5 text-xs text-ink-muted">Ruang kerja {ROLE_LABELS[role]}</p></div>
+            </div>
+            <button type="button" onClick={close} aria-label="Tutup asisten" className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-brand-soft"><X size={20} aria-hidden /></button>
+          </header>
+
+          <div ref={transcript} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-5 py-5">
+            {messages.length === 0 ? (
+              <div className="py-4">
+                <p className="text-xs font-semibold text-brand">Bantuan untuk aktivitas pasar</p>
+                <h3 className="mt-3 font-serif text-3xl leading-tight text-ink">Halo, {name}.<br />Ada yang ingin ditanyakan?</h3>
+                <p className="mt-3 text-sm leading-6 text-ink-muted">Tanyakan data ruang kerja atau cara menggunakan PASARIN. Asisten membantu menjelaskan; tindakan tetap Anda konfirmasi di dashboard.</p>
+                <div className="mt-6 grid gap-2">
+                  {suggestions[role].map((text) => <button key={text} type="button" onClick={() => void send(text)}
+                    className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm text-ink hover:border-line-strong hover:bg-brand-soft">
+                    <span>{text}</span><ArrowRight size={16} className="shrink-0 text-brand" aria-hidden />
+                  </button>)}
+                </div>
+              </div>
+            ) : (
+              <div role="log" aria-label="Percakapan dengan asisten" aria-live="polite" aria-relevant="additions" className="space-y-5">
+                {messages.map((message) => <div key={message.id} className={message.sender === "user" ? "ml-8" : "mr-3"}>
+                  <p className="mb-1.5 text-xs font-semibold text-ink-muted">{message.sender === "user" ? "Anda" : "Asisten PASARIN"}</p>
+                  <div className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6 ${message.sender === "user" ? "bg-brand text-cream" : "border border-line bg-surface text-ink"}`}>
+                    {message.text}
+                  </div>
+                  {message.source && <p className="mt-1.5 text-xs text-ink-muted">{message.source === "gemini" ? "Jawaban AI berdasarkan data ruang kerja" : "Ringkasan data dan panduan PASARIN"}</p>}
+                </div>)}
+              </div>
+            )}
+            {loading && <p role="status" className="mt-5 text-sm text-ink-muted">Menyiapkan jawaban…</p>}
+            {error && <div role="alert" className="mt-4 rounded-xl border border-danger/30 bg-danger-soft p-3 text-sm text-danger">
+              <p>{error}</p><button type="button" disabled={loading} onClick={() => void send(retryQuery, true)} className="mt-1 min-h-11 font-semibold underline underline-offset-4">Coba lagi</button>
+            </div>}
+          </div>
+          <footer className="shrink-0 border-t border-line bg-surface px-4 pb-4 pt-3">
+            <form onSubmit={(event) => { event.preventDefault(); void send(query); }} className="flex items-center gap-2">
+              <label htmlFor="market-chat-input" className="sr-only">Pertanyaan untuk asisten</label>
+              <input ref={input} id="market-chat-input" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={1000}
+                placeholder="Tulis pertanyaan Anda…" autoComplete="off" className="market-input min-w-0 flex-1" />
+              <button type="submit" disabled={loading || !query.trim()} aria-label="Kirim pertanyaan" className="grid size-12 shrink-0 place-items-center rounded-xl bg-brand text-cream hover:bg-brand-deep disabled:cursor-not-allowed disabled:opacity-50"><Send size={18} aria-hidden /></button>
+            </form>
+            <p className="mt-2 text-xs leading-5 text-ink-muted">Periksa jawaban sebelum mengambil keputusan. Asisten tidak mengubah stok atau transaksi.</p>
+          </footer>
+        </div>
+      </dialog>
+    </>
+  );
+}

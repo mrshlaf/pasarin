@@ -10,7 +10,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Clock, HeartHandshake, PackageCheck, Receipt, Recycle, UtensilsCrossed } from "lucide-react";
-import { isDonation, isFreeMaggotOffer, type RescueOffer } from "@/types/market";
+import { distributionTierForDecay, isDonation, isFreeMaggotOffer, type RescueOffer } from "@/types/market";
 import type { BuyerRole } from "@/lib/serverSimulationState";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
@@ -56,7 +56,16 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, weather, busy, claimOfferByBuyer, payQrisForOffer } = useMarketSimulation();
   const canBuy = user?.role === role;
-  const listings = offers.filter((offer) => offer.targetTier === tier[role] && offer.status === "active");
+  const listings = offers.filter((offer) => {
+    if (offer.targetTier !== tier[role] || offer.status !== "active") return false;
+    const health = stockHealth[offer.stockId];
+    if (health) {
+      if (health.decayScore >= 0.85 && (role === "warteg" || role === "social_kitchen")) return false;
+      if (health.decayScore < 0.85 && role === "maggot") return false;
+      if (distributionTierForDecay(health.decayScore) !== tier[role]) return false;
+    }
+    return true;
+  });
   const orders = offers.filter((offer) => offer.targetTier === tier[role] &&
     (!canBuy || offer.isMine) && (offer.status === "claimed" || offer.status === "settled"));
   const [invoice, setInvoice] = useState<RescueOffer | null>(null);

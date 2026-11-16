@@ -530,8 +530,19 @@ export function evaluateMarketStock(stock: StockItem, weather: { temperatureC: n
  */
 export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "vendorId">) {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
-  const visible = visibleMarketState(state, user);
   const now = Date.now();
+  const changed = syncOffersWithDecay(state, weather, now);
+  if (changed) {
+    if (!storesStateInDatabase()) {
+      writeLocalState(state);
+    } else {
+      updateState((currentState) => {
+        syncOffersWithDecay(currentState, weather, now);
+        return { success: true, message: "Decay synced" };
+      }).catch((err) => console.error("Decay sync background update failed:", err));
+    }
+  }
+  const visible = visibleMarketState(state, user);
   const stockHealth = Object.fromEntries(visible.stocks.map((stock) => [stock.id, evaluateMarketStock(stock, weather, now)]));
   const estimatesVisible = user.role === "vendor" || user.role === "admin" || user.role === "manager";
   const { footfallDropPercentage } = calculateRainFootfallAttenuation(weather.rainfallMm);
@@ -857,6 +868,74 @@ function validWeight(weight: number) {
 }
 
 /**
+ * Menyelaraskan alokasi tier penawaran (Tier 1/2/3) dan skema harga penyelamatan dengan laju peluruhan mutu fisik terkini (PSR-14 / Invarian 1 & 2).
+ * Mencegah komoditas afkir (decayScore >= 0.85) masuk ke katalog pangan manusia (Warteg & Dapur Sosial)
+ * serta mengalihkan lot yang mutunya menurun secara otomatis ke peruntukan yang sah.
+ *
+ * @param state - Objek ServerState yang memuat daftar penawaran aktif.
+ * @param weather - Telemetri cuaca mikro pasar saat ini.
+ * @param now - Waktu komputasi saat ini (ms).
+ * @returns Boolean bernilai true jika terdapat minimal satu penawaran yang mengalami perubahan tier/mutu.
+ */
+export function syncOffersWithDecay(
+  state: ServerState,
+  weather: { temperatureC: number; humidityPercent: number },
+  now = Date.now()
+): boolean {
+  let changed = false;
+  const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+
+  for (const offer of state.offers) {
+    if (offer.status !== "active" && offer.status !== "pending_vendor") continue;
+    const stock = stockById.get(offer.stockId);
+    if (!stock) continue;
+
+    const health = evaluateMarketStock(stock, weather, now);
+    if (!health) continue;
+
+    const liveTier = distributionTierForDecay(health.decayScore);
+    if (offer.targetTier !== liveTier) {
+      changed = true;
+      offer.targetTier = liveTier;
+
+      if (liveTier === "tier_3") {
+        offer.distributionMode = "free";
+        offer.salvagePricePerKg = 0;
+        offer.totalAmountIdr = 0;
+        offer.discountPercentage = 100;
+        offer.paymentStatus = "not_required";
+      } else if (liveTier === "tier_2") {
+        const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
+        if (commodity) {
+          const price = Math.max(0, health.estimatedSalvagePrice);
+          offer.salvagePricePerKg = price;
+          offer.discountPercentage = Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg));
+          offer.totalAmountIdr = Math.round(price * offer.quantityKg);
+        }
+        if (offer.distributionMode !== "donation") {
+          offer.distributionMode = "sale";
+        }
+      } else if (liveTier === "tier_1") {
+        const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
+        if (commodity) {
+          const floor = commodity.minimumSalvagePricePerKg;
+          const price = Math.max(floor, health.estimatedSalvagePrice);
+          offer.salvagePricePerKg = price;
+          offer.discountPercentage = Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg));
+          offer.totalAmountIdr = Math.round(price * offer.quantityKg);
+        }
+        offer.distributionMode = "sale";
+        if (offer.paymentStatus === "not_required") {
+          offer.paymentStatus = "unpaid";
+        }
+      }
+    }
+  }
+
+  return changed;
+}
+
+/**
  * Memastikan peruntukan tier penawaran tetap selaras dengan kondisi kinetika peluruhan biologis terkini.
  *
  * @param offer - Objek penawaran.
@@ -961,12 +1040,11 @@ export async function publishMarketOffers(vendorId?: string, stockId?: string, c
     }
 
     const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+    syncOffersWithDecay(state, weather);
     for (const offer of state.offers) {
       if (offer.status !== "active") continue;
       const stock = stockById.get(offer.stockId);
-      const score = stock && evaluateMarketStock(stock, weather)?.decayScore;
       if (stock && !stock.verifiedAt) offer.status = "pending_vendor";
-      else if (score !== undefined && !isOfferSuitable(offer, score)) offer.status = "rejected";
     }
 
     const active = new Set(state.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));
