@@ -25,7 +25,7 @@ import { telegramChatSessions, startTelegramSession, currentTelegramAccount } fr
 import { localTestProfile } from "../src/lib/localTestAuth";
 import type { AuthUser } from "../src/data/accounts";
 
-// Muat .env.local
+// Memuat token bot Telegram dari berkas lingkungan .env.local
 try {
   const envPath = path.resolve(process.cwd(), ".env.local");
   if (fs.existsSync(envPath)) {
@@ -37,12 +37,14 @@ try {
   }
 } catch {}
 
+// Validasi keberadaan API Token Bot Telegram
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
   console.error("GALAT: TELEGRAM_BOT_TOKEN tidak ditemukan di .env.local!");
   process.exit(1);
 }
 
+// Basis URL endpoint Telegram Bot API resmi
 const API_BASE = `https://api.telegram.org/bot${token}`;
 
 let offset = 0;

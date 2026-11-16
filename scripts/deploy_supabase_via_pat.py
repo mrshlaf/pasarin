@@ -1,20 +1,31 @@
+"""
+Skrip Eksekusi Migrasi Basis Data Supabase via REST API Personal Access Token (PAT).
+Memungkinkan deploy skema database secara langsung melalui Management API Supabase
+tanpa memerlukan koneksi langsung port PostgreSQL 5432 (berguna untuk lingkungan sandbox/firewall ketat).
+"""
+
 import urllib.request
 import json
 import os
 import sys
 
-# Force UTF-8 output on Windows
+# Memastikan keluaran konsol Windows menggunakan pengkodean UTF-8 standar
 sys.stdout.reconfigure(encoding='utf-8')
 
+# Memuat token akses dan project reference dari environment variables
 token = os.environ.get("SUPABASE_ACCESS_TOKEN")
 project_ref = os.environ.get("SUPABASE_PROJECT_REF")
 endpoint = f"https://api.supabase.com/v1/projects/{project_ref}/database/query"
 
+# Validasi ketersediaan kredensial Management API
 if not token or not project_ref:
     print("[ERROR] Set SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF.")
     sys.exit(1)
 
 def execute_query(sql, description=""):
+    """
+    Mengirimkan kueri SQL ke endpoint Supabase Management API v1.
+    """
     print(f"[*] Executing: {description}...")
     headers = {
         "Authorization": f"Bearer {token}",
@@ -33,18 +44,21 @@ def execute_query(sql, description=""):
         raise Exception(f"Query failed: {err_content}")
 
 if __name__ == "__main__":
+    # 1. Daftar berkas migrasi SQL yang akan dieksekusi secara berurutan
     files = (
         "supabase/migrations/20261005000000_init_pasarin_schema.sql",
         "supabase/migrations/20261108000000_audit_and_simulation_state.sql",
         "supabase/seed.sql",
     )
+    
+    # 2. Membaca isi berkas migrasi ke dalam blok transaksi SQL atomik
     with_statements = []
     for name in files:
         with open(name, "r", encoding="utf-8") as source:
             with_statements.append(source.read())
     execute_query("BEGIN;\n" + "\n".join(with_statements) + "\nCOMMIT;", "Pasarin migrations and seed")
 
-    # 3. Verify Tables & Counts
+    # 3. Verifikasi jumlah baris pada tabel-tabel utama pasca-migrasi
     count_res = execute_query("""
         SELECT 
             (SELECT COUNT(*) FROM kiosks) as total_kiosks,

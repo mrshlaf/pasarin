@@ -8,6 +8,10 @@
  * 5. Skenario Audit Invarian 1: Pencegahan moral hazard dan pemotongan poin reputasi.
  * 6. Skenario Escrow QRIS BI & Antrean Kurir: Status held_in_escrow siap antar armada.
  * 7. Skenario Transaksi Selesai: Konfirmasi serah terima kurir dan pencairan saldo pedagang.
+ *
+ * Catatan Pengujian:
+ * - Menulis ke basis data Supabase PostgreSQL jika SUPABASE_DB_URL dikonfigurasi.
+ * - Menulis snapshot fail-safe ke file sistem lokal JSON untuk pengujian terisolasi.
  */
 
 import fs from "node:fs";
@@ -18,7 +22,7 @@ import type { ServerState } from "../src/lib/serverSimulationState";
 import type { RescueOffer, StockItem, EscrowTransaction } from "../src/types/market";
 import { buildMarketSeedState } from "../src/lib/marketSeed";
 
-// Muat env lokal jika ada
+// Memuat konfigurasi variabel lingkungan lokal dari .env.local
 try {
   const envCandidates = [
     path.resolve(process.cwd(), ".env.local"),
@@ -36,6 +40,7 @@ try {
   }
 } catch {}
 
+// Menentukan lokasi berkas state persisten lokal pasar
 const stateFile = process.env.PASARIN_STATE_FILE ?? path.join(os.tmpdir(), "pasarin_market_state_v2.json");
 
 // Definisi 7 Skenario Pengujian Komprehensif
