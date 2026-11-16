@@ -170,18 +170,21 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   startSuite("SUITE 1: PSR-5", "Telemetri Cuaca Hiperlokal & In-Memory Cache");
   weatherAgent.clearCache();
   const wLive = await weatherAgent.getMarketWeather({ simulateOffline: true });
+  // [TC-W01] Memvalidasi koordinat Los Basah Blok A Pasar Induk Kramat Jati tepat di -6.2675, 106.8702
   assert(
     wLive.location.latitude === -6.2675 && wLive.location.longitude === 106.8702,
     "TC-W01",
     "Koordinat geospasial tepat pada los basah Blok A Pasar Induk Kramat Jati",
     `${wLive.location.latitude}, ${wLive.location.longitude}`
   );
+  // [TC-W02] Memvalidasi suhu fisik los pasar terverifikasi dalam rentang iklim tropis Jakarta (20°C - 45°C)
   assert(
     wLive.temperatureCelsius >= 20.0 && wLive.temperatureCelsius <= 45.0,
     "TC-W02",
     "Suhu fisik los pasar terverifikasi dalam rentang iklim tropis Jakarta",
     `${wLive.temperatureCelsius}°C`
   );
+  // [TC-W03] Memvalidasi kelembapan relatif udara pasar terverifikasi dalam batas realistis (50% - 100% RH)
   assert(
     wLive.relativeHumidityPercent >= 50.0 && wLive.relativeHumidityPercent <= 100.0,
     "TC-W03",
@@ -189,6 +192,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `${wLive.relativeHumidityPercent}% RH`
   );
   const wCached = await weatherAgent.getMarketWeather();
+  // [TC-W04] Memverifikasi efisiensi kuota: panggilan berulang dilayani langsung dari in-memory cache
   assert(
     wCached.source === "cache",
     "TC-W04",
@@ -196,6 +200,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `source: '${wCached.source}'`
   );
   const wFallback = await weatherAgent.getMarketWeather({ simulateOffline: true });
+  // [TC-W05] Memverifikasi fail-safe fallback otomatis mengembalikan profil iklim darurat (32°C, 75% RH) saat offline
   assert(
     wFallback.source === "fallback_offline" && wFallback.temperatureCelsius === 32.0 && wFallback.relativeHumidityPercent === 75.0,
     "TC-W05",
@@ -206,10 +211,12 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 2. Suite 2: PSR-14
   startSuite("SUITE 2: PSR-14", "Kinetika Peluruhan Biologis Arrhenius-Q10");
   const kangkung = COMMODITIES.find((c) => c.id === "kangkung")!;
+  // [TC-K00] Memverifikasi master komoditas Kangkung Darat terdaftar lengkap dalam katalog 30 komoditas
   assert(!!kangkung, "TC-K00", "Komoditas Kangkung Darat tersedia dalam katalog master");
   const rate20C = calculateArrheniusRateConstant(20.0, 75.0, kangkung.q10Coefficient);
   const rate33C = calculateArrheniusRateConstant(33.0, 75.0, kangkung.q10Coefficient);
   const accelerationRatio = rate33C / rate20C;
+  // [TC-K01] Memvalidasi kinetika termal Arrhenius: laju respirasi pada 33°C meningkat ~2.2x lipat dibanding suhu 20°C
   assert(
     accelerationRatio >= 2.0 && accelerationRatio <= 2.6,
     "TC-K01",
@@ -217,6 +224,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Faktor akselerasi: ${accelerationRatio.toFixed(2)}x`
   );
   const decayAt8_5h = evaluateArrheniusDecay(kangkung, 33.0, 75.0, 8.5);
+  // [TC-K02] Memvalidasi batas kritis layu: pemaparan 8.5 jam otomatis memicu status layu_ringan (Tier 1)
   assert(
     decayAt8_5h.condition === "layu_ringan" && decayAt8_5h.decayScore >= 0.35 && decayAt8_5h.decayScore < 0.65,
     "TC-K02",
@@ -224,6 +232,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `DecayScore: ${decayAt8_5h.decayScore}`
   );
   const decayFresh = evaluateArrheniusDecay(kangkung, 28.0, 75.0, 2.0);
+  // [TC-K03] Memvalidasi sayuran pajang subuh 2 jam berkategori segar_prima untuk penjualan retail eceran
   assert(
     decayFresh.condition === "segar_prima" && decayFresh.recommendedTier === "fresh",
     "TC-K03",
@@ -234,6 +243,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 3. Suite 3: PSR-15
   startSuite("SUITE 3: PSR-15", "Model Redaman Pengunjung Pasar saat Hujan");
   const dryFootfall = calculateRainFootfallAttenuation(0.0, false);
+  // [TC-F01] Memvalidasi kondisi cuaca cerah (0 mm hujan) menghasilkan arus pembeli normal tanpa redaman
   assert(
     dryFootfall.footfallDropPercentage === 0.0 && dryFootfall.surplusMultiplier === 1.0,
     "TC-F01",
@@ -241,6 +251,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Kondisi Kering"
   );
   const rain10mm = calculateRainFootfallAttenuation(10.0, true);
+  // [TC-F02] Memvalidasi curah hujan 10 mm menurunkan ~48% arus pembeli retail di lorong pasar becek
   assert(
     rain10mm.footfallDropPercentage === 48.0 && rain10mm.surplusMultiplier > 1.4,
     "TC-F02",
@@ -248,6 +259,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Penurunan: ${rain10mm.footfallDropPercentage}%`
   );
   const heavyRain = calculateRainFootfallAttenuation(25.0, true);
+  // [TC-F03] Memvalidasi hujan lebat 25 mm memicu status becek dan redaman pembeli tembus di atas 70%
   assert(
     heavyRain.footfallDropPercentage >= 70.0 && heavyRain.isMuddy === true,
     "TC-F03",
@@ -258,6 +270,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 4. Suite 4: PSR-20
   startSuite("SUITE 4: PSR-20", "Dynamic Pricing dengan Proteksi Price Floor Modal");
   const price1430 = calculateInverseSurgePricing(kangkung, 14.5, 0.0);
+  // [TC-P01] Memvalidasi penawaran awal sapuan sore 14:30 WIB memberikan diskon proporsional 50% - 70%
   assert(
     price1430.appliedDiscountPercent >= 50 && price1430.appliedDiscountPercent <= 70,
     "TC-P01",
@@ -265,6 +278,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Diskon: ${price1430.appliedDiscountPercent}%`
   );
   const priceRain = calculateInverseSurgePricing(kangkung, 16.0, 15.0);
+  // [TC-P02] Memvalidasi hujan lebat mengaktifkan pengali akselerasi diskon darurat mu_weather = 0.85
   assert(
     priceRain.pricingMechanism === "inverse_surge_rain_accelerated" || priceRain.priceFloorEnforced,
     "TC-P02",
@@ -272,6 +286,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Mekanisme: ${priceRain.pricingMechanism}`
   );
   const price1800 = calculateInverseSurgePricing(kangkung, 18.0, 25.0);
+  // [TC-P03] Memvalidasi proteksi mutlak Price Floor: harga tebus tidak pernah tembus di bawah modal kulakan
   assert(
     price1800.offeredSalvagePrice >= price1800.minimumPriceFloor,
     "TC-P03",
@@ -281,10 +296,15 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
 
   // 5. Suite 5: PSR-19
   startSuite("SUITE 5: PSR-19", "Prediksi Surplus Komposit & Validasi Baseline 1.240 kg");
+  // [TC-U01] Memvalidasi klasifikasi urgensi: sisa waktu < 4 jam masuk Urgency Level 5 (Kritis/Darurat)
   assert(calculateUrgencyLevel(3.2) === 5, "TC-U01", "Sisa waktu < 4 jam masuk Urgency Level 5 (Kritis/Darurat)");
+  // [TC-U02] Memvalidasi klasifikasi urgensi: sisa waktu 4-6 jam masuk Urgency Level 4 (Tinggi)
   assert(calculateUrgencyLevel(5.0) === 4, "TC-U02", "Sisa waktu 4-6 jam masuk Urgency Level 4 (Tinggi)");
+  // [TC-U03] Memvalidasi klasifikasi urgensi: sisa waktu 6-8 jam masuk Urgency Level 3 (Sedang)
   assert(calculateUrgencyLevel(7.5) === 3, "TC-U03", "Sisa waktu 6-8 jam masuk Urgency Level 3 (Sedang)");
+  // [TC-U04] Memvalidasi klasifikasi urgensi: sisa waktu 8-12 jam masuk Urgency Level 2 (Rendah)
   assert(calculateUrgencyLevel(10.0) === 2, "TC-U04", "Sisa waktu 8-12 jam masuk Urgency Level 2 (Rendah)");
+  // [TC-U05] Memvalidasi klasifikasi urgensi: sisa waktu >= 12 jam masuk Urgency Level 1 (Aman)
   assert(calculateUrgencyLevel(15.0) === 1, "TC-U05", "Sisa waktu >= 12 jam masuk Urgency Level 1 (Aman)");
 
   const synthetic30Stalls: KioskStockInput[] = [];
@@ -299,12 +319,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     });
   }
   const compositeResult = calculateCompositeMarketSurplus(synthetic30Stalls, 32.5, 75.0, 12.5, 14.5);
+  // [TC-C01] Memvalidasi analisis komposit mencakup seluruh 30 kios hortikultura binaan Pasar Kramat Jati
   assert(
     compositeResult.summary.totalAnalyzedStalls === 30,
     "TC-C01",
     "Analisis komposit mencakup seluruh 30 kios pasar hortikultura",
     `${compositeResult.summary.totalAnalyzedStalls} kios`
   );
+  // [TC-C02] Memvalidasi estimasi agregasi surplus pasar Kramat Jati memvalidasi baseline empiris ~1.240 kg (+-10%)
   assert(
     compositeResult.summary.totalPredictedSurplusKg >= 1150.0 && compositeResult.summary.totalPredictedSurplusKg <= 1350.0,
     "TC-C02",
@@ -315,6 +337,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 6. Suite 6: PSR-21
   startSuite("SUITE 6: PSR-21", "Gerbang Mutu Etis & Proteksi Moral Hazard");
   const blockMaggot = validateQualityGateMoralHazard(0.50, "tier_3");
+  // [TC-Q01] Memvalidasi Invarian 1: sistem memblokir sayuran layak makan (mutu >= 0.35) dialihkan ke Maggot
   assert(
     blockMaggot.isPermitted === false && !!blockMaggot.violationReason,
     "TC-Q01",
@@ -322,6 +345,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Status: BLOCKED SECURELY"
   );
   const allowMaggot = validateQualityGateMoralHazard(0.90, "tier_3");
+  // [TC-Q02] Memvalidasi kelayakan afkir: sayuran rusak (DecayScore >= 0.85) sah dialihkan ke pakan Maggot
   assert(
     allowMaggot.isPermitted === true,
     "TC-Q02",
@@ -334,12 +358,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     requestedTier: "tier_3",
     vendorId: "vendor_kramat_nakal",
   });
+  // [TC-Q03] Memvalidasi penolakan otomatis dan penandaan status pelanggaran moral hazard pada gerbang mutu
   assert(
     qgAudit.gateStatus === "blocked" && qgAudit.isMoralHazardViolation === true,
     "TC-Q03",
     "Uji Invarian 1 ketat: penolakan otomatis dan penandaan pelanggaran moral hazard",
     `Status: ${qgAudit.gateStatus}`
   );
+  // [TC-Q04] Memvalidasi penjatuhan sanksi pemotongan 5 poin reputasi bagi pedagang pemicu moral hazard
   assert(
     qgAudit.reputationPenaltyApplied === 5,
     "TC-Q04",
@@ -347,6 +373,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Penalti: -5 poin`
   );
   const visualCheck = evaluateChlorophyllLoss({ chlorophyllRatio: 0.90, commodityId: "bayam" });
+  // [TC-Q05] Memvalidasi klasifikasi citra MobileNetV3: daun berklorofil 90% tervalidasi layak konsumsi manusia
   assert(
     visualCheck.isHumanConsumable === true && visualCheck.gateStatus === "passed",
     "TC-Q05",
@@ -361,24 +388,28 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     forceHeuristic: true,
     recordResult: false,
   });
+  // [TC-R01] Memvalidasi eksekusi siklus sapuan otonom 14:30 WIB tereksekusi mandiri tanpa kesalahan alur
   assert(
     orchestratorRun.executionMode === "scheduled_autonomous_cron",
     "TC-R01",
     "Siklus sapuan otonom 14:30 WIB tereksekusi mandiri tanpa kesalahan alur",
     "Mode: scheduled_autonomous_cron"
   );
+  // [TC-R02] Memvalidasi pemindaian seluruh 30 kios pedagang binaan oleh Central ReAct Orchestrator
   assert(
     orchestratorRun.kiosksScanned === 30,
     "TC-R02",
     "Orkestrator berhasil memindai 30 kios pedagang binaan",
     `Kiosks: ${orchestratorRun.kiosksScanned}`
   );
+  // [TC-R03] Memvalidasi batas invarian putaran ReAct dipatuhi (maksimal 5 putaran penalaran anti-loop)
   assert(
     orchestratorRun.thoughtProcess.length <= MAX_REACT_TURNS,
     "TC-R03",
     "Invarian pembatasan putaran ReAct dipatuhi (maksimal 5 putaran penalaran)",
     `Langkah: ${orchestratorRun.thoughtProcess.length} (Maks: ${MAX_REACT_TURNS})`
   );
+  // [TC-R04] Memvalidasi penugasan armada logistik teralokasi berdasarkan kalkulasi volume tonase surplus
   assert(
     orchestratorRun.fleetAssignmentsCount >= 1,
     "TC-R04",
@@ -386,6 +417,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Armada: ${orchestratorRun.fleetAssignmentsCount} unit`
   );
   const liveQueryOutput = await processManagerialNaturalQuery("Lusa perlu berapa armada?", { forceHeuristic: true, recordResult: false });
+  // [TC-R05] Memvalidasi proses dekomposisi kueri manajerial mengembalikan ringkasan eksekutif padat terstruktur
   assert(
     liveQueryOutput.executiveSummary.length > 20 && geminiOrchestrator.name === "GeminiOrchestratorAgent",
     "TC-R05",
@@ -394,6 +426,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
   // 8. Suite 8: PSR-18
   startSuite("SUITE 8: PSR-18", "Tool Calling Registry & Dekomposisi Kueri Bahasa Alami");
+  // [TC-T01] Memvalidasi pendaftaran sedikitnya 9 spesifikasi fungsi alat sub-agen pada Tool Calling Registry
   assert(
     PASARIN_TOOL_DECLARATIONS.length >= 9,
     "TC-T01",
@@ -401,12 +434,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Total alat: ${PASARIN_TOOL_DECLARATIONS.length}`
   );
   const fleetQueryPlan = decomposeManagerialQuery("Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?");
+  // [TC-T02] Memvalidasi dekomposisi maksud kueri manajerial menghasilkan rencana pemanggilan sub-agen relevan
   assert(
     fleetQueryPlan.detectedIntent === "logistics_fleet" && fleetQueryPlan.requiredTools.includes("assignVehicleType"),
     "TC-T02",
     "Dekomposisi kueri manajerial armada lusa menghasilkan rencana pemanggilan sub-agen yang relevan",
     `Intent: '${fleetQueryPlan.detectedIntent}'`
   );
+  // [TC-T03] Memvalidasi isolasi eksekusi ReAct: sub-agen yang tidak dibutuhkan tidak dipanggil
   assert(
     !fleetQueryPlan.requiredTools.includes("parseLocalMarketUnits") && !fleetQueryPlan.requiredTools.includes("calculateMethaneAvoidance"),
     "TC-T03",
@@ -416,6 +451,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   const queryExecStart = Date.now();
   const queryResult = await executeDecomposedManagerialQuery("Lusa itu perlu berapa mobil?");
   const queryDuration = Date.now() - queryExecStart;
+  // [TC-T04] Memvalidasi SLA waktu eksekusi kueri kompleks selesai di bawah batas target 1.500 ms
   assert(
     queryDuration < 1500 && queryResult.thoughtProcess.length >= 3,
     "TC-T04",
@@ -423,6 +459,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Durasi: ${queryDuration} ms, Langkah: ${queryResult.thoughtProcess.length}`
   );
   const toolExecSample = await executeRegisteredTool("assignVehicleType", { payloadKg: 500 });
+  // [TC-T05] Memvalidasi dispatcher executeRegisteredTool dan fasad toolCallingRegistry operasional valid
   assert(
     toolExecSample.success && toolCallingRegistry.declarations.length >= 9,
     "TC-T05",
@@ -434,6 +471,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   const allocLight = calculateFleetAllocation(250, "warteg");
   const allocMedium = calculateFleetAllocation(750, "social_kitchen");
   const allocHeavy = calculateFleetAllocation(1800, "maggot");
+  // [TC-PSR27-01] Memvalidasi Weight Dispatch Rule: Viar <=300kg, GranMax 301-1000kg, Truk >1000kg
   assert(
     allocLight.vehicleType === "viar_trike" &&
     allocMedium.vehicleType === "granmax_pickup" &&
@@ -447,6 +485,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     { kioskStall: "A-12", kioskName: "Kios Sayur Daun", block: "A" as const, commodityName: "Kangkung", weightKg: 40 },
   ];
   const sampleManifest = generateDeliveryManifest(sampleStops, { name: "Warteg Condet", role: "warteg", distanceKm: 2.0 });
+  // [TC-PSR27-02] Memvalidasi manifes perjalanan menghasilkan rute terurut (Blok A->B->C) dan estimasi BBM
   assert(
     sampleManifest.orderedPickUpStops[0].block === "A" &&
     sampleManifest.fuelConsumptionLiters > 0 &&
@@ -458,13 +497,16 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 9. Suite 9: PSR-40
   startSuite("SUITE 9: PSR-40", "Supabase Role Authentication & Role Isolation");
   for (const role of APP_ROLES) {
+    // [TC-A01] Memvalidasi keabsahan registrasi peran resmi aplikasi pengguna
     assert(isAppRole(role), "TC-A01-" + role, "Peran resmi dapat diverifikasi");
   }
+  // [TC-A02] Memvalidasi format email tidak dapat disalahgunakan sebagai peran pengguna
   assert(!isAppRole("admin@pasarin.id"), "TC-A02", "Email tidak dapat digunakan sebagai peran.");
 
   // 10. Suite 10: PSR-3, 4, 24, 25
   startSuite("SUITE 10: PSR-3, 4, 24, 25", "Arsitektur API Envelope & Telegram Inline Gateway");
   const env = envSchema.parse({ CRON_SECRET_KEY: "cron-fixture", TELEGRAM_WEBHOOK_SECRET: "telegram-fixture" });
+  // [TC-E01] Memvalidasi konfigurasi variabel lingkungan CRON_SECRET_KEY untuk proteksi scheduler 14:30 WIB
   assert(
     !!env.CRON_SECRET_KEY && env.CRON_SECRET_KEY.length > 0,
     "TC-E01",
@@ -473,6 +515,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
   const testPayload = { status: "test_ok", code: 200 };
   const envelope = successResponse(testPayload, 200);
+  // [TC-E02] Memvalidasi helper successResponse menghasilkan amplop standar HTTP 200 OK yang valid
   assert(
     envelope.status === 200,
     "TC-E02",
@@ -480,6 +523,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Envelope Status 200"
   );
   const errorEnvelope = errorResponse("Pesan uji coba galat", 400);
+  // [TC-E03] Memvalidasi helper errorResponse menghasilkan amplop kegagalan terstruktur HTTP 400
   assert(
     errorEnvelope.status === 400,
     "TC-E03",
@@ -489,6 +533,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
 
   // Pengujian Verifikasi PSR-24 Telegram Bot API Gateway & Webhook
   const isSecretValid = verifyTelegramWebhookSecret(env.TELEGRAM_WEBHOOK_SECRET, env.TELEGRAM_WEBHOOK_SECRET);
+  // [TC-TG01] Memvalidasi keamanan webhook Telegram: secret token membedakan token sah vs token palsu
   assert(
     isSecretValid === true && verifyTelegramWebhookSecret("token_palsu", env.TELEGRAM_WEBHOOK_SECRET) === false,
     "TC-TG01",
@@ -496,6 +541,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Token Protection Active"
   );
   const tgCommand = await handleTelegramCommand("/start", "9001201");
+  // [TC-TG02] Memvalidasi pemrosesan perintah /start pada Telegram bot menghasilkan respons terstruktur
   assert(
     tgCommand.actionTaken.includes("welcome") && tgCommand.responseText.length > 0,
     "TC-TG02",
@@ -503,6 +549,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     tgCommand.actionTaken
   );
   const tgDispatch = await dispatchTelegramMessage("9001201", "Pesan uji coba latensi sistem PASARIN", { simulate: true });
+  // [TC-TG03] Memvalidasi SLA pengiriman notifikasi instan Telegram ke ponsel mitra di bawah 3.000 ms
   assert(
     tgDispatch.success === true && tgDispatch.latencyMs < 3000,
     "TC-TG03",
@@ -512,6 +559,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
 
   // 11. Suite 11: PSR-16
   startSuite("SUITE 11: PSR-16", "Integritas Master Data 30 Kios & 30 Komoditas");
+  // [TC-D01] Memvalidasi integritas direktori data master memuat tepat 30 kios binaan Kramat Jati
   assert(
     KIOSKS.length === 30,
     "TC-D01",
@@ -521,12 +569,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   const hasBlockA = KIOSKS.some((k) => k.block === "A");
   const hasBlockB = KIOSKS.some((k) => k.block === "B");
   const hasBlockC = KIOSKS.some((k) => k.block === "C");
+  // [TC-D02] Memvalidasi cakupan sebaran blok kios mencakup Blok A (Basah), B (Bumbu), dan C (Kering)
   assert(
     hasBlockA && hasBlockB && hasBlockC,
     "TC-D02",
     "Sebaran blok kios mencakup seluruh zona: Blok A (Basah), Blok B (Bumbu), Blok C (Kering)",
     "Blok A, B, C Lengkap"
   );
+  // [TC-D03] Memvalidasi katalog komoditas master memuat tepat 30 profil biologis sayur dan buah tropis
   assert(
     COMMODITIES.length === 30,
     "TC-D03",
@@ -536,6 +586,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   const allHavePriceFloor = COMMODITIES.every(
     (c) => c.minimumSalvagePricePerKg > 0 && c.minimumSalvagePricePerKg < c.baseWholesalePricePerKg
   );
+  // [TC-D04] Memvalidasi seluruh komoditas memiliki batas bawah harga modal (Price Floor) valid di atas Rp 0
   assert(
     allHavePriceFloor,
     "TC-D04",
@@ -549,6 +600,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   const pTier1 = calculateInverseSurgePricing(tomat, 14.5, 0.0).offeredSalvagePrice;
   const pTier2 = Math.max(tomat.minimumSalvagePricePerKg, Math.round(tomat.baseWholesalePricePerKg * 0.20));
   const pTier3 = 1500;
+  // [TC-INV02] Memvalidasi Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg
   assert(
     pTier1 > pTier2 && pTier2 >= pTier3 && pTier3 >= 1500,
     "TC-INV02",
@@ -556,6 +608,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Rp ${pTier1} > Rp ${pTier2} >= Rp ${pTier3} >= Rp 1.500/kg`
   );
   const socialWindowMinutes = qualityGateAgent.SOCIAL_RESERVATION_WINDOW_MINUTES;
+  // [TC-INV03] Memvalidasi Invarian 3 (30-Minute Priority Window): Tier 2 terkunci 30 menit khusus Dapur Sosial
   assert(
     socialWindowMinutes === 30,
     "TC-INV03",
@@ -580,6 +633,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     paymentStatus: "unpaid" as const,
   };
   const maggotBlockCheck = validateClaimAgainstPriorityWindow(sampleT2Offer, "maggot");
+  // [TC-PSR23-01] Memvalidasi penolakan mutlak terhadap klaim Maggot selama masa reservasi 30 menit berlangsung
   assert(
     maggotBlockCheck.allowed === false,
     "TC-PSR23-01",
@@ -594,6 +648,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     },
   ];
   const downgradeCheck = processPriorityWindowDowngrades(expiredT2List);
+  // [TC-PSR23-02] Memvalidasi auto-downgrade otomatis: penawaran Tier 2 yang lewat 30 menit turun ke Tier 3
   assert(
     downgradeCheck.downgradedCount === 1 && downgradeCheck.updatedOffers[0].targetTier === "tier_3",
     "TC-PSR23-02",
@@ -604,6 +659,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // Pengujian Verifikasi PSR-37 Bank Indonesia Dynamic QRIS Escrow Payment Gateway
   const qrisSample = generateBankIndonesiaQrisPayload(87500, "INV-TB-37");
   const qrisStructure = validateQrisPayloadStructure(qrisSample.qrisPayload);
+  // [TC-PSR37-01] Memvalidasi string QRIS EMVCo TLV Bank Indonesia sah dengan checksum CRC16 yang presisi
   assert(
     qrisStructure.valid === true && qrisStructure.amountIdr === 87500 && qrisSample.crc16.length === 4,
     "TC-PSR37-01",
@@ -611,6 +667,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `CRC: ${qrisSample.crc16} | Rp ${qrisStructure.amountIdr}`
   );
   const escrowPoDSettlement = executeEscrowSettlement(87500, "held_in_escrow");
+  // [TC-PSR37-02] Memvalidasi escrow settlement otomatis cair ke saldo pedagang saat serah terima dikonfirmasi
   assert(
     escrowPoDSettlement.settled === true && escrowPoDSettlement.newStatus === "released_to_vendor",
     "TC-PSR37-02",
@@ -620,12 +677,14 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
 
   // Pengujian Verifikasi PSR-31 24-Hour Market Metabolism Simulation Trial
   const trialReport = await run24HourMarketMetabolismTrial();
+  // [TC-PSR31-01] Memvalidasi simulasi metabolisme 24 jam pasar sukses dari hulu ke hilir (5/5 Fase Selesai)
   assert(
     trialReport.allPhasesCompleted === true && trialReport.phasesCount === 5,
     "TC-PSR31-01",
     "PSR-31 Metabolism Trial: Siklus 24 jam berhasil disimulasikan dari hulu ke hilir (5/5 Fase Sukses)",
     "5/5 Fase Selesai"
   );
+  // [TC-PSR31-02] Memvalidasi target DLH DKI: efisiensi pengalihan sampah organik >= 90% dan 3 invarian lolos
   assert(
     trialReport.meetsDlhThreshold === true && trialReport.invariantsAudit.allInvariantsPassed === true,
     "TC-PSR31-02",
@@ -643,6 +702,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     -6.264,
     106.872
   );
+  // [TC-MM01] Memvalidasi formula Haversine menghitung jarak presisi ke Warteg Hek (~0.43 km)
   assert(
     distYayu >= 0.35 && distYayu <= 0.55,
     "TC-MM01",
@@ -657,6 +717,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     -6.275,
     106.862
   );
+  // [TC-MM02] Memvalidasi formula Haversine menghitung jarak presisi ke Warteg Condet (~1.22 km)
   assert(
     distCondet >= 1.0 && distCondet <= 1.5,
     "TC-MM02",
@@ -671,6 +732,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     MARKET_ANCHOR_COORDINATES.latitude,
     MARKET_ANCHOR_COORDINATES.longitude
   );
+  // [TC-MM03] Memvalidasi jarak geospasial titik terhadap dirinya sendiri bernilai nol mutlak (0.000 km)
   assert(
     distZero === 0,
     "TC-MM03",
@@ -687,6 +749,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
   const matchResultTier1 = findMatchesForOffer(sampleOfferTier1);
   const allTier1 = matchResultTier1.rankedMatches.every((m) => m.tier === "tier_1");
+  // [TC-MM04] Memvalidasi penawaran Tier 1 hanya dipasangkan ke mitra berstatus Warteg & Kuliner UMKM
   assert(
     allTier1 && matchResultTier1.rankedMatches.length > 0,
     "TC-MM04",
@@ -703,6 +766,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
   const matchResultTier3 = findMatchesForOffer(sampleOfferTier3);
   const allTier3 = matchResultTier3.rankedMatches.every((m) => m.tier === "tier_3");
+  // [TC-MM05] Memvalidasi penawaran Tier 3 afkir hanya dipasangkan ke Sentra Budidaya Maggot BSF
   assert(
     allTier3 && matchResultTier3.rankedMatches.length > 0,
     "TC-MM05",
@@ -729,6 +793,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
   const matchWithFar = findMatchesForOffer(sampleOfferTier1, { customBuyers: [...CIRCULAR_BUYERS, farBuyer] });
   const farMatch = matchWithFar.rankedMatches.find((m) => m.buyerId === "buyer_far_bogor")!;
+  // [TC-MM06] Memvalidasi mitra di luar radius geospasial operasional (> 5.0 km) ditolak (TIDAK ELIGIBLE)
   assert(
     farMatch.isEligible === false && farMatch.distanceKm > 5.0,
     "TC-MM06",
@@ -745,6 +810,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
   const matchGiant = findMatchesForOffer(giantOffer);
   const yayuMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_02")!;
+  // [TC-MM07] Memvalidasi proteksi kapasitas: mitra yang kuota tampungnya kurang ditolak (TIDAK ELIGIBLE)
   assert(
     yayuMatch.isEligible === false,
     "TC-MM07",
@@ -752,6 +818,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     `Sisa Kuota: ${yayuMatch.remainingCapacityKg} kg vs Muatan: 75 kg`
   );
   const cawangMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_04")!;
+  // [TC-MM08] Memvalidasi mitra dengan sisa kuota kapasitas memadai tetap berstatus ELIGIBLE
   assert(
     cawangMatch.isEligible === true && cawangMatch.remainingCapacityKg >= 75,
     "TC-MM08",
@@ -767,6 +834,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     targetTier: "tier_1",
   });
   const topBuyer = rankedNormal.topRecommendedBuyer!;
+  // [TC-MM09] Memvalidasi pemeringkatan jarak: mitra terdekat (0.43 km) menempati peringkat teratas (Top Rank)
   assert(
     topBuyer.id === "buyer_warteg_02",
     "TC-MM09",
@@ -781,6 +849,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     { id: "lot_02", commodityId: "bayam", quantityKg: 25, targetTier: "tier_1" },
   ]);
   const benchDuration = Number((performance.now() - benchStart).toFixed(2));
+  // [TC-MM10] Memvalidasi SLA kalkulasi batch matching seluruh lot selesai dalam durasi di bawah 100 ms
   assert(
     benchDuration < 100.0 && batchRes.length === 2,
     "TC-MM10",

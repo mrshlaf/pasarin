@@ -27,6 +27,7 @@
 /.agents/
 /.claude/
 /.omp/
+/antigravity-fixer/
 /src/data/simulationState.json
 # debug
 npm-debug.log*

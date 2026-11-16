@@ -16,10 +16,19 @@ import {
   CircularBuyer,
 } from "../src/data/buyers";
 
+// Variabel penghitung metrik pengujian
 let totalTests = 0;
 let passedTests = 0;
 let failedTests = 0;
 
+/**
+ * Fungsi asersi pengujian untuk memverifikasi kebenaran logika matchmaking.
+ *
+ * @param condition - Kondisi kebenaran ekspresi logika (wajib bernilai true).
+ * @param testId - ID unik kasus uji (misal: TC-MM01).
+ * @param testName - Deskripsi tujuan pengujian.
+ * @param detail - Detail informasi nilai hasil pengujian aktual.
+ */
 function assert(condition: boolean, testId: string, testName: string, detail?: string) {
   totalTests++;
   if (condition) {
@@ -31,6 +40,9 @@ function assert(condition: boolean, testId: string, testName: string, detail?: s
   }
 }
 
+/**
+ * Runner utama untuk mengeksekusi seluruh skenario uji mesin pencocokan 3-tier PSR-22.
+ */
 async function runMatchmakingTestSuite() {
   console.log("\nPASARIN PSR-22 Circular 3-Tier Matchmaking Engine Test Suite");
   console.log("Mata Kuliah : Rekayasa Perangkat Lunak - Fakultas Teknik Universitas Indonesia");
@@ -40,13 +52,14 @@ async function runMatchmakingTestSuite() {
   // Uji 1: Akurasi Geospasial Formula Haversine
   console.log("\x1b[33m▶ [Uji 1] Akurasi Geospasial Formula Haversine (Haversine Distance Accuracy)\x1b[0m");
 
-  // Jarak ke Warteg Ibu Yayu Hek (-6.264, 106.872) ~0.4 km
+  // Menghitung jarak bumi lengkung besar dari pasar Kramat Jati ke Warteg Ibu Yayu Hek (-6.264, 106.872)
   const distYayu = haversineDistanceKm(
     MARKET_ANCHOR_COORDINATES.latitude,
     MARKET_ANCHOR_COORDINATES.longitude,
     -6.264,
     106.872
   );
+  // Memvalidasi formula Haversine menghitung jarak presisi ke Warteg Hek dalam batas toleransi (0.35 km - 0.55 km)
   assert(
     distYayu >= 0.35 && distYayu <= 0.55,
     "TC-MM01",
@@ -54,13 +67,14 @@ async function runMatchmakingTestSuite() {
     `Jarak aktual: ${distYayu} km`
   );
 
-  // Jarak ke Warteg Condet (-6.275, 106.862) ~1.2 km
+  // Menghitung jarak dari pasar Kramat Jati ke Warteg Condet (-6.275, 106.862)
   const distCondet = haversineDistanceKm(
     MARKET_ANCHOR_COORDINATES.latitude,
     MARKET_ANCHOR_COORDINATES.longitude,
     -6.275,
     106.862
   );
+  // Memvalidasi formula Haversine menghasilkan jarak presisi ke Condet dalam rentang (1.0 km - 1.5 km)
   assert(
     distCondet >= 1.0 && distCondet <= 1.5,
     "TC-MM02",
@@ -68,13 +82,14 @@ async function runMatchmakingTestSuite() {
     `Jarak aktual: ${distCondet} km`
   );
 
-  // Jarak ke titik yang sama persis harus 0.000 km
+  // Menghitung jarak antara koordinat yang sama persis (titik terhadap dirinya sendiri)
   const distZero = haversineDistanceKm(
     MARKET_ANCHOR_COORDINATES.latitude,
     MARKET_ANCHOR_COORDINATES.longitude,
     MARKET_ANCHOR_COORDINATES.latitude,
     MARKET_ANCHOR_COORDINATES.longitude
   );
+  // Memvalidasi bahwa jarak titik identik terhadap dirinya sendiri bernilai nol mutlak (0.000 km)
   assert(
     distZero === 0,
     "TC-MM03",
@@ -85,6 +100,7 @@ async function runMatchmakingTestSuite() {
   // Uji 2: Isolasi Kategori 3-Tier
   console.log("\n\x1b[33m▶ [Uji 2] Isolasi Peran 3-Tier (Tier Filtering Integrity)\x1b[0m");
 
+  // Menyiapkan sampel penawaran surplus Tier 1 (Komersial Warteg & Katering UMKM)
   const sampleOfferTier1 = {
     id: "ofr_test_01",
     commodityId: "kangkung",
@@ -93,6 +109,7 @@ async function runMatchmakingTestSuite() {
   };
   const matchResultTier1 = findMatchesForOffer(sampleOfferTier1);
   const allTier1 = matchResultTier1.rankedMatches.every((m) => m.tier === "tier_1");
+  // Memvalidasi bahwa seluruh kandidat hasil filter penawaran Tier 1 HANYA berasal dari mitra berstatus tier_1
   assert(
     allTier1 && matchResultTier1.rankedMatches.length > 0,
     "TC-MM04",
@@ -100,6 +117,7 @@ async function runMatchmakingTestSuite() {
     `Total kandidat terfilter: ${matchResultTier1.rankedMatches.length} mitra`
   );
 
+  // Menyiapkan sampel penawaran afkir Tier 3 (Biokonversi Sentra Maggot BSF)
   const sampleOfferTier3 = {
     id: "ofr_test_03",
     commodityId: "sawi_hijau",
@@ -108,6 +126,7 @@ async function runMatchmakingTestSuite() {
   };
   const matchResultTier3 = findMatchesForOffer(sampleOfferTier3);
   const allTier3 = matchResultTier3.rankedMatches.every((m) => m.tier === "tier_3");
+  // Memvalidasi bahwa penawaran Tier 3 afkir non-pangan manusia HANYA dipasangkan ke sentra maggot BSF (tier_3)
   assert(
     allTier3 && matchResultTier3.rankedMatches.length > 0,
     "TC-MM05",
@@ -118,7 +137,7 @@ async function runMatchmakingTestSuite() {
   // Uji 3: Pembatasan Radius Geospasial (Maksimal 5.0 km)
   console.log("\n\x1b[33m▶ [Uji 3] Pembatasan Radius Geospasial Maksimal 5.0 km (Radius Enforcing)\x1b[0m");
 
-  // Tambahkan mock pembeli di Depok / Bogor (jarak > 15 km)
+  // Menyiapkan data tiruan pembeli berlokasi di Margonda Depok yang berjarak > 12 km dari pasar Kramat Jati
   const farBuyer: CircularBuyer = {
     id: "buyer_far_bogor",
     name: "Warteg Jauh di Depok Margonda",
@@ -140,6 +159,7 @@ async function runMatchmakingTestSuite() {
   const matchWithFar = findMatchesForOffer(sampleOfferTier1, { customBuyers: poolWithFarBuyer });
   const farMatch = matchWithFar.rankedMatches.find((m) => m.buyerId === "buyer_far_bogor")!;
 
+  // Memvalidasi bahwa mitra dengan jarak di luar radius operasional (> 5.0 km) otomatis ditolak (isEligible = false)
   assert(
     farMatch.isEligible === false && farMatch.distanceKm > 5.0,
     "TC-MM06",
@@ -150,7 +170,7 @@ async function runMatchmakingTestSuite() {
   // Uji 4: Proteksi Kelebihan Kapasitas Harian (Anti-Overcapacity Guard)
   console.log("\n\x1b[33m▶ [Uji 4] Proteksi Batas Kapasitas Harian Mitra (Capacity Overload Guard)\x1b[0m");
 
-  // Muatan raksasa 75 kg (melebihi kapasitas tersisa Warteg Ibu Yayu yang hanya 40 kg tersisa)
+  // Menyiapkan muatan besar 75 kg (melebihi kapasitas tersisa Warteg Ibu Yayu yang hanya tersisa 40 kg)
   const giantOffer = {
     id: "ofr_giant_01",
     commodityId: "kangkung",
@@ -160,6 +180,7 @@ async function runMatchmakingTestSuite() {
   const matchGiant = findMatchesForOffer(giantOffer);
   const yayuMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_02")!;
 
+  // Memvalidasi bahwa mitra yang kuota tampungnya tidak mencukupi muatan surplus otomatis ditolak (isEligible = false)
   assert(
     yayuMatch.isEligible === false,
     "TC-MM07",
@@ -167,8 +188,9 @@ async function runMatchmakingTestSuite() {
     `Sisa Kuota: ${yayuMatch.remainingCapacityKg} kg vs Muatan: 75 kg`
   );
 
-  // Katering Berkah Cawang (kuota tersisa 80 kg) harus tetap eligible
+  // Katering Berkah Cawang (kuota tersisa 80 kg) harus tetap memenuhi syarat karena muatan 75 kg <= kuota 80 kg
   const cawangMatch = matchGiant.rankedMatches.find((m) => m.buyerId === "buyer_warteg_04")!;
+  // Memvalidasi bahwa mitra dengan sisa kuota kapasitas memadai tetap berstatus memenuhi syarat (isEligible = true)
   assert(
     cawangMatch.isEligible === true && cawangMatch.remainingCapacityKg >= 75,
     "TC-MM08",
@@ -179,6 +201,7 @@ async function runMatchmakingTestSuite() {
   // Uji 5: Pemeringkatan Prioritas Jarak Terdekat
   console.log("\n\x1b[33m▶ [Uji 5] Pemeringkatan Prioritas Mitra Terdekat (DoD Acceptance Criteria)\x1b[0m");
 
+  // Menyiapkan penawaran normal 20 kg untuk dievaluasi pemeringkatan jaraknya
   const normalOffer = {
     id: "ofr_normal_01",
     commodityId: "kangkung",
@@ -188,6 +211,7 @@ async function runMatchmakingTestSuite() {
   const rankedNormal = findMatchesForOffer(normalOffer);
   const topBuyer = rankedNormal.topRecommendedBuyer!;
 
+  // Memvalidasi bahwa mitra pada radius geografis terdekat (0.43 km) secara otomatis berada pada urutan rekomendasi nomor satu
   assert(
     topBuyer.id === "buyer_warteg_02", // Warteg Ibu Yayu Hek (0.43 km terdekat)
     "TC-MM09",
@@ -198,6 +222,7 @@ async function runMatchmakingTestSuite() {
   // Uji 6: SLA Kecepatan Perhitungan (< 100 ms)
   console.log("\n\x1b[33m▶ [Uji 6] Tolok Ukur Kecepatan Eksekusi / SLA (< 100 ms)\x1b[0m");
 
+  // Sekumpulan lot penawaran untuk pengujian batch matching
   const sampleLots = [
     { id: "lot_01", commodityId: "kangkung", quantityKg: 40, targetTier: "tier_1" as const },
     { id: "lot_02", commodityId: "bayam", quantityKg: 25, targetTier: "tier_1" as const },
@@ -210,6 +235,7 @@ async function runMatchmakingTestSuite() {
   const benchEnd = performance.now();
   const batchDuration = Number((benchEnd - benchStart).toFixed(2));
 
+  // Memvalidasi bahwa pemadanan serentak seluruh lot selesai dalam latensi komputasi super cepat di bawah 100 ms
   assert(
     batchDuration < 100.0 && batchResults.length === 4,
     "TC-MM10",
@@ -220,6 +246,7 @@ async function runMatchmakingTestSuite() {
   // Uji 7: Integritas Fasad Modul
   console.log("\n\x1b[33m▶ [Uji 7] Integritas Fasad Modul matchmakingEngine\x1b[0m");
 
+  // Memverifikasi bahwa objek fasad matchmakingEngine mengekspos fungsi pencocokan dan konstanta batas radius 5.0 km
   assert(
     typeof matchmakingEngine.findMatchesForOffer === "function" &&
     typeof matchmakingEngine.haversineDistanceKm === "function" &&
@@ -229,6 +256,7 @@ async function runMatchmakingTestSuite() {
     `Radius acuan: ${matchmakingEngine.MAX_RADIUS_KM} km`
   );
 
+  // Ringkasan hasil seluruh pengujian
   if (failedTests === 0) {
     console.log(`\n\x1b[32m✔ Seluruh pengujian PSR-22 lulus (${passedTests}/${totalTests} pengujian lolos)\x1b[0m`);
     console.log("Kriteria penerimaan tiket PSR-22 terpenuhi tanpa catatan galat.\n");
@@ -241,6 +269,7 @@ async function runMatchmakingTestSuite() {
   }
 }
 
+// Menjalankan testbench matchmaking engine
 runMatchmakingTestSuite().catch((err) => {
   console.error("Testbench execution error:", err);
   process.exit(1);
