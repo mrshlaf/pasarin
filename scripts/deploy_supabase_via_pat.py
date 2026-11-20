@@ -48,6 +48,7 @@ if __name__ == "__main__":
     files = (
         "supabase/migrations/20261005000000_init_pasarin_schema.sql",
         "supabase/migrations/20261108000000_audit_and_simulation_state.sql",
+        "supabase/migrations/20261120000000_align_relational_schema.sql",
         "supabase/seed.sql",
     )
     

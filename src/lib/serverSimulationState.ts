@@ -88,7 +88,9 @@ function normalizeState(state: ServerState): ServerState {
     ...state,
     offers: state.offers.map((offer: RescueOffer & { podToken?: string }) => {
       const { podToken, ...safe } = offer;
-      if (offer.targetTier === "tier_3" && offer.paymentStatus === "unpaid" && offer.status !== "settled" && offer.status !== "rejected") {
+      const maggotPaymentPending = offer.paymentStatus === "unpaid" ||
+        (offer.paymentStatus === "not_required" && offer.status !== "claimed");
+      if (offer.targetTier === "tier_3" && maggotPaymentPending && offer.status !== "settled" && offer.status !== "rejected") {
         return { ...safe, distributionMode: "free", salvagePricePerKg: 0, totalAmountIdr: 0, discountPercentage: 100,
           paymentStatus: offer.status === "claimed" ? "not_required" : "unpaid" };
       }
@@ -533,14 +535,12 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
   const now = Date.now();
   const changed = syncOffersWithDecay(state, weather, now);
   if (changed) {
-    if (!storesStateInDatabase()) {
-      writeLocalState(state);
-    } else {
-      updateState((currentState) => {
-        syncOffersWithDecay(currentState, weather, now);
-        return { success: true, message: "Decay synced" };
-      }).catch((err) => console.error("Decay sync background update failed:", err));
-    }
+    // Ditunggu, bukan fire-and-forget: di Vercel proses dibekukan setelah respons terkirim sehingga
+    // penulisan latar bisa hilang. Lewat updateState juga agar tidak menimpa mutasi lain (antrean lokal / CAS).
+    await updateState((current) => syncOffersWithDecay(current, weather, now)
+      ? { success: true, message: "Decay synced" }
+      : { success: false, status: 409, message: "Tidak ada perubahan tier." })
+      .catch((err) => console.error("Decay sync update failed:", err));
   }
   const visible = visibleMarketState(state, user);
   const stockHealth = Object.fromEntries(visible.stocks.map((stock) => [stock.id, evaluateMarketStock(stock, weather, now)]));
@@ -623,22 +623,19 @@ Format persis:
 RINGKASAN: [isi 1 kalimat ringkas]
 REKOMENDASI: [isi 1 kalimat instruksi]`;
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-
+    // Kunci dikirim lewat header agar tidak ikut tercatat di log URL.
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${apiKey}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: { maxOutputTokens: 180, temperature: 0.2 },
         }),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(4000),
       }
     );
-    clearTimeout(timeout);
 
     if (response.ok) {
       const json = await response.json();
@@ -903,7 +900,8 @@ export function syncOffersWithDecay(
         offer.salvagePricePerKg = 0;
         offer.totalAmountIdr = 0;
         offer.discountPercentage = 100;
-        offer.paymentStatus = "not_required";
+        // paymentStatus sengaja tetap "unpaid": "not_required" baru diberikan saat lot diklaim,
+        // agar lot yang belum diklaim tidak masuk antrean kurir (yang memfilter paymentStatus !== "unpaid").
       } else if (liveTier === "tier_2") {
         const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
         if (commodity) {

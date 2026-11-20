@@ -188,6 +188,7 @@ npm run build
 ### Supabase dan integrasi
 
 - Set `NEXT_PUBLIC_SUPABASE_URL` dan `NEXT_PUBLIC_SUPABASE_ANON_KEY` dengan URL proyek dan kunci publishable atau anon. Untuk deployment, tambahkan `SUPABASE_SERVICE_ROLE_KEY` dan terapkan migrasi terlacak. Atur `SUPABASE_DB_URL` jika menerapkan migrasi lewat `npm run db:migrate`. Simpan semua kredensial di environment.
+- State pasar disimpan sebagai satu dokumen JSON di `pasarin_simulation_state` (revisi CAS). Trigger dari migrasi `20261120000000_align_relational_schema.sql` memproyeksikan dokumen itu ke tabel `stock_items`, `offers`, dan `claims` setiap kali state berubah (baris bertanda `source = 'state'`). Baris dari `seed.sql` dan `seed_testing_scenarios.sql` bertanda `source = 'fixture'` dan tidak disentuh proyeksi. Akses klien ke tabel relasional hanya baca; semua penulisan lewat API server.
 - Isi `app_metadata.pasarin_role` melalui admin Supabase dengan salah satu nilai `vendor`, `warteg`, `social_kitchen`, `maggot`, `logistics`, `manager`, atau `admin`. Untuk pedagang, set `app_metadata.pasarin_vendor_id` ke ID kios.
 - Set `CRON_SECRET` untuk sapuan 14.30 WIB. Sapuan memakai model surplus berbasis stok awal dan cuaca untuk membuat usulan. Katalog pembeli baru menerima jumlah yang disetujui pedagang setelah timbang.
 - Set `OPENWEATHER_API_KEY` untuk cuaca aktual. Jika data cuaca tidak tersedia, skor tetap dihitung dari usia stok dan profil cuaca estimasi yang diberi label. Dashboard memperbarui data sekitar setiap 15 detik.

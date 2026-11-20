@@ -72,12 +72,12 @@ INSERT INTO stock_items (
 INSERT INTO offers (
     id, stock_id, vendor_id, commodity_id, target_tier, quantity_kg,
     original_wholesale_price_per_kg, salvage_price_per_kg, discount_percentage,
-    total_amount_idr, expires_at, status
+    total_amount_idr, expires_at, status, distribution_mode
 ) VALUES
 ('ofr_test_04_maggot_sawi', 'stk_test_06_afkir_tier3', 'vendor_kramat_04', 'sawi_hijau', 'tier_3', 60.00,
- 6500.00, 0.00, 100.00, 0.00, NOW() + INTERVAL '2 hours', 'active'),
+ 6500.00, 0.00, 100.00, 0.00, NOW() + INTERVAL '2 hours', 'active', 'free'),
 ('ofr_test_05_maggot_tomat', 'stk_test_07_afkir_tier3', 'vendor_kramat_12', 'tomat', 'tier_3', 40.00,
- 9000.00, 0.00, 100.00, 0.00, NOW() + INTERVAL '2 hours', 'active');
+ 9000.00, 0.00, 100.00, 0.00, NOW() + INTERVAL '2 hours', 'active', 'free');
 
 -- Skenario 5: Jejak Audit Invarian 1 (Percobaan moral hazard diblokir)
 -- Upaya mengalihkan bayam segar prima (decay 0.15) ke pakan maggot ditolak sistem.
@@ -109,10 +109,10 @@ INSERT INTO stock_items (
 INSERT INTO offers (
     id, stock_id, vendor_id, commodity_id, target_tier, quantity_kg,
     original_wholesale_price_per_kg, salvage_price_per_kg, discount_percentage,
-    total_amount_idr, expires_at, status
+    total_amount_idr, expires_at, status, payment_status, distribution_mode
 ) VALUES
 ('ofr_test_06_in_transit', 'stk_test_08_escrow_active', 'vendor_kramat_01', 'kangkung', 'tier_1', 25.00,
- 6000.00, 2500.00, 58.33, 62500.00, NOW() + INTERVAL '1 hour', 'claimed');
+ 6000.00, 2500.00, 58.33, 62500.00, NOW() + INTERVAL '1 hour', 'claimed', 'held_in_escrow', 'sale');
 
 INSERT INTO claims (
     id, offer_id, buyer_id, buyer_type, buyer_name, buyer_phone,
@@ -120,7 +120,7 @@ INSERT INTO claims (
 ) VALUES
 ('claim_test_01_escrow', 'ofr_test_06_in_transit', 'buyer_warteg_01', 'warteg',
  'Warteg Kharisma Bahari Condet', '081288991122', 25.00, 62500.00,
- 'escrow_locked', 'in_transit');
+ 'held_in_escrow', 'in_transit');
 
 -- Skenario 7: Transaksi Selesai (Settled - Dana cair ke dompet pedagang)
 -- Pengantaran selesai diverifikasi kurir dengan GPS dan foto PoD.
@@ -134,10 +134,10 @@ INSERT INTO stock_items (
 INSERT INTO offers (
     id, stock_id, vendor_id, commodity_id, target_tier, quantity_kg,
     original_wholesale_price_per_kg, salvage_price_per_kg, discount_percentage,
-    total_amount_idr, expires_at, status
+    total_amount_idr, expires_at, status, payment_status, distribution_mode
 ) VALUES
 ('ofr_test_07_settled', 'stk_test_09_settled', 'vendor_kramat_02', 'sawi_hijau', 'tier_1', 20.00,
- 6500.00, 2500.00, 61.54, 50000.00, NOW() - INTERVAL '2 hours', 'claimed');
+ 6500.00, 2500.00, 61.54, 50000.00, NOW() - INTERVAL '2 hours', 'settled', 'released_to_vendor', 'sale');
 
 INSERT INTO claims (
     id, offer_id, buyer_id, buyer_type, buyer_name, buyer_phone,

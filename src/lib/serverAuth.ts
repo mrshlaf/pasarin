@@ -48,9 +48,12 @@ export function serverAuthEnabled() {
  * @throws Galat jika variabel lingkungan rahasia belum diatur.
  */
 function sessionSecret() {
-  const secret = process.env.PASARIN_SESSION_SECRET || process.env.PASARIN_SEED_SECRET;
-  if (!secret) throw new Error("PASARIN_SESSION_SECRET belum diatur.");
-  return secret;
+  const secret = process.env.PASARIN_SESSION_SECRET;
+  if (secret) return secret;
+  // Fallback: turunkan kunci terpisah dari seed secret agar nilai mentahnya tidak dipakai untuk dua keperluan.
+  const seed = process.env.PASARIN_SEED_SECRET;
+  if (!seed) throw new Error("PASARIN_SESSION_SECRET belum diatur.");
+  return createHmac("sha256", seed).update("pasarin-session-signing-v1").digest("base64url");
 }
 
 /**
