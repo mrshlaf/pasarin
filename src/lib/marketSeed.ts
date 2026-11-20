@@ -237,7 +237,8 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
       createdAt: nowClock,
       ...(settled ? { releasedAt: nowClock } : {}),
     };
-    if (offer.paymentStatus !== "not_required") transactions.push(transaction);
+    // Pesanan yang belum dibayar belum punya catatan escrow; catatan baru dibuat saat pembayaran.
+    if (offer.paymentStatus === "held_in_escrow" || offer.paymentStatus === "released_to_vendor") transactions.push(transaction);
     if (settled) {
       const stock = stocks.find((item) => item.id === offer.stockId);
       if (stock) stock.remainingKg = 0;

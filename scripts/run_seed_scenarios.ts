@@ -48,7 +48,7 @@ const scenarioStocks: StockItem[] = [
   // 1. Skenario Segar Prima
   {
     id: "stk_test_01_segar",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
     initialKg: 50,
     remainingKg: 50,
@@ -59,7 +59,7 @@ const scenarioStocks: StockItem[] = [
   },
   {
     id: "stk_test_02_segar",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "bayam",
     initialKg: 40,
     remainingKg: 40,
@@ -72,7 +72,7 @@ const scenarioStocks: StockItem[] = [
   // 2. Skenario Layu Ringan (Tier 1 Warteg)
   {
     id: "stk_test_03_layu_tier1",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
     initialKg: 35,
     remainingKg: 35,
@@ -83,7 +83,7 @@ const scenarioStocks: StockItem[] = [
   },
   {
     id: "stk_test_04_layu_tier1",
-    vendorId: "kiosk_02",
+    vendorId: "vendor_kramat_02",
     commodityId: "pakcoy",
     initialKg: 30,
     remainingKg: 30,
@@ -96,7 +96,7 @@ const scenarioStocks: StockItem[] = [
   // 3. Skenario Layu Kritis (Tier 2 Dapur Sosial)
   {
     id: "stk_test_05_layu_tier2",
-    vendorId: "kiosk_03",
+    vendorId: "vendor_kramat_03",
     commodityId: "sawi_hijau",
     initialKg: 25,
     remainingKg: 25,
@@ -109,7 +109,7 @@ const scenarioStocks: StockItem[] = [
   // 4. Skenario Tidak Layak / Afkir (Tier 3 Maggot BSF)
   {
     id: "stk_test_06_afkir_tier3",
-    vendorId: "kiosk_04",
+    vendorId: "vendor_kramat_04",
     commodityId: "sawi_hijau",
     initialKg: 60,
     remainingKg: 60,
@@ -120,7 +120,7 @@ const scenarioStocks: StockItem[] = [
   },
   {
     id: "stk_test_07_afkir_tier3",
-    vendorId: "kiosk_12",
+    vendorId: "vendor_kramat_12",
     commodityId: "tomat",
     initialKg: 40,
     remainingKg: 40,
@@ -133,7 +133,7 @@ const scenarioStocks: StockItem[] = [
   // 6. Skenario Escrow In-Transit
   {
     id: "stk_test_08_escrow_active",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
     initialKg: 25,
     remainingKg: 0,
@@ -146,7 +146,7 @@ const scenarioStocks: StockItem[] = [
   // 7. Skenario Settled
   {
     id: "stk_test_09_settled",
-    vendorId: "kiosk_02",
+    vendorId: "vendor_kramat_02",
     commodityId: "sawi_hijau",
     initialKg: 20,
     remainingKg: 0,
@@ -162,7 +162,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_01_warteg_kangkung",
     stockId: "stk_test_03_layu_tier1",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
     targetTier: "tier_1",
     quantityKg: 35,
@@ -178,7 +178,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_02_warteg_pakcoy",
     stockId: "stk_test_04_layu_tier1",
-    vendorId: "kiosk_02",
+    vendorId: "vendor_kramat_02",
     commodityId: "pakcoy",
     targetTier: "tier_1",
     quantityKg: 30,
@@ -196,7 +196,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_03_sosial_sawi",
     stockId: "stk_test_05_layu_tier2",
-    vendorId: "kiosk_03",
+    vendorId: "vendor_kramat_03",
     commodityId: "sawi_hijau",
     targetTier: "tier_2",
     quantityKg: 25,
@@ -214,7 +214,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_04_maggot_sawi",
     stockId: "stk_test_06_afkir_tier3",
-    vendorId: "kiosk_04",
+    vendorId: "vendor_kramat_04",
     commodityId: "sawi_hijau",
     targetTier: "tier_3",
     quantityKg: 60,
@@ -230,7 +230,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_05_maggot_tomat",
     stockId: "stk_test_07_afkir_tier3",
-    vendorId: "kiosk_12",
+    vendorId: "vendor_kramat_12",
     commodityId: "tomat",
     targetTier: "tier_3",
     quantityKg: 40,
@@ -248,7 +248,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_06_in_transit",
     stockId: "stk_test_08_escrow_active",
-    vendorId: "kiosk_01",
+    vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
     targetTier: "tier_1",
     quantityKg: 25,
@@ -269,7 +269,7 @@ const scenarioOffers: RescueOffer[] = [
   {
     id: "ofr_test_07_settled",
     stockId: "stk_test_09_settled",
-    vendorId: "kiosk_02",
+    vendorId: "vendor_kramat_02",
     commodityId: "sawi_hijau",
     targetTier: "tier_1",
     quantityKg: 20,
@@ -355,13 +355,30 @@ async function seedTestingScenarios() {
         .eq("id", "market")
         .maybeSingle();
 
+      // State lokal memakai ID "local:<username>"; di cloud pemilik pesanan harus UUID akun Supabase
+      // agar pembeli dapat melihat pesanannya sendiri (visibleMarketState membandingkan claimedById === user.id).
+      const { data: users, error: usersErr } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      if (usersErr) throw usersErr;
+      const actorIds = new Map<string, string>(users.users.flatMap((account) => {
+        const username = account.app_metadata?.pasarin_username;
+        return typeof username === "string" ? [[`local:${username}`, account.id] as [string, string]] : [];
+      }));
+      const cloudState: ServerState = {
+        ...currentState,
+        offers: currentState.offers.map((offer) => offer.claimedById && actorIds.has(offer.claimedById)
+          ? { ...offer, claimedById: actorIds.get(offer.claimedById) }
+          : offer),
+      };
+      const unresolved = cloudState.offers.filter((offer) => offer.claimedById?.startsWith("local:"));
+      if (unresolved.length) throw new Error(`Akun pemilik pesanan belum ada di Supabase: ${unresolved.map((offer) => offer.claimedById).join(", ")}`);
+
       const nextRevision = (current?.revision ?? 0) + 1;
       const { error: upsertErr } = await supabase
         .from("pasarin_simulation_state")
         .upsert({
           id: "market",
           revision: nextRevision,
-          state: currentState,
+          state: cloudState,
         });
 
       if (upsertErr) {

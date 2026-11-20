@@ -1,0 +1,237 @@
+/**
+ * Uji Konsistensi Lintas Peran dan Asisten Chatbot.
+ * Memastikan angka yang dijawab asisten sama dengan angka yang dihitung dashboard tiap peran,
+ * tombol saran asisten selalu terjawab, dan alur jual-bayar-antar menjaga invarian buku besar
+ * (status pembayaran pesanan selaras dengan catatan escrow) dari sudut pandang setiap peran.
+ */
+
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { AuthApiError, type User } from "@supabase/supabase-js";
+import { NextRequest } from "next/server";
+import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "../src/data/marketAccounts";
+import { KIOSKS } from "../src/data/kiosks";
+import type { ServerState } from "../src/lib/serverSimulationState";
+import { isDonation, isReadyForDelivery, type RescueOffer, type StockItem } from "../src/types/market";
+
+type Snapshot = ServerState & { stockHealth: Record<string, { decayScore: number } | null> };
+
+/** Saran yang ditampilkan tombol asisten (src/components/common/MarketChatbot.tsx). */
+const SUGGESTIONS: Record<string, string[]> = {
+  pasar1: ["Ringkas stok kios saya", "Apa yang perlu ditimbang?", "Bagaimana diskon dihitung?"],
+  warteg1: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana cara membayar?"],
+  sosial1: ["Apa donasi yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana prioritas dapur sosial?"],
+  maggot1: ["Apa biomassa yang tersedia?", "Bagaimana status pesanan saya?", "Bahan apa yang boleh diklaim?"],
+  kurir1: ["Apa yang siap diantar?", "Bagaimana kendaraan dipilih?", "Bagaimana konfirmasi serah terima?"],
+  pengelola1: ["Ringkas operasional pasar", "Berapa stok yang berisiko?", "Apa yang siap diantar?"],
+  admin1: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
+};
+
+const numbers = (text: string) => (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((value) => Number(value.replace(",", ".")));
+
+/** Invarian buku besar yang harus berlaku untuk state server lengkap. */
+function assertLedgerInvariants(state: ServerState, label: string) {
+  const kioskIds = new Set(KIOSKS.map((kiosk) => kiosk.id));
+  const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+  for (const stock of state.stocks) assert.ok(kioskIds.has(stock.vendorId), `${label}: stok ${stock.id} milik kios tak dikenal ${stock.vendorId}`);
+  for (const offer of state.offers) {
+    const stock = stockById.get(offer.stockId);
+    assert.ok(stock, `${label}: penawaran ${offer.id} tanpa stok`);
+    assert.equal(offer.vendorId, stock.vendorId, `${label}: kios penawaran ${offer.id} beda dengan stoknya`);
+    const txs = state.transactions.filter((item) => item.offerId === offer.id);
+    const held = txs.filter((item) => item.status === "held_in_escrow").length;
+    const released = txs.filter((item) => item.status === "released").length;
+    if (offer.paymentStatus === "unpaid" || offer.paymentStatus === "not_required") {
+      assert.equal(held + released, 0, `${label}: ${offer.id} berstatus ${offer.paymentStatus} tapi punya catatan escrow`);
+    }
+    if (offer.paymentStatus === "held_in_escrow") assert.equal(held, 1, `${label}: ${offer.id} harus punya tepat 1 dana tertahan`);
+    if (offer.paymentStatus === "released_to_vendor") assert.equal(released, 1, `${label}: ${offer.id} harus punya tepat 1 dana cair`);
+    if (offer.paymentStatus === "not_required") assert.equal(offer.targetTier, "tier_3", `${label}: hanya lot Maggot yang gratis`);
+    if (offer.targetTier === "tier_3" && (offer.status === "active" || offer.status === "pending_vendor")) {
+      assert.equal(offer.paymentStatus, "unpaid", `${label}: lot Maggot ${offer.id} belum diklaim tidak boleh masuk antrean kurir`);
+    }
+    if (offer.status === "claimed" || offer.status === "settled") assert.ok(offer.claimedById, `${label}: ${offer.id} tanpa pemilik`);
+  }
+  const releasedTotal = state.transactions.filter((item) => item.status === "released").reduce((sum, item) => sum + item.amountIdr, 0);
+  assert.equal(state.vendorWalletIdr, releasedTotal, `${label}: saldo pedagang harus sama dengan total dana cair`);
+}
+
+async function run() {
+  const originalEnv = { ...process.env };
+  const originalFetch = globalThis.fetch;
+  const directory = mkdtempSync(join(process.cwd(), ".consistency-test-"));
+  const stateFile = join(directory, "state.json");
+  Object.assign(process.env, { NODE_ENV: "test", PASARIN_STATE_FILE: stateFile });
+  for (const key of ["SUPABASE_DB_URL", "PASARIN_STATE_BACKEND", "OPENWEATHER_API_KEY", "GEMINI_API_KEY", "PASARIN_SERVER_AUTH", "NEXT_PUBLIC_PASARIN_SERVER_AUTH"]) delete process.env[key];
+  const { resetEnvCache } = await import("../src/lib/env");
+  const { resetWeatherMemoryCache } = await import("../src/lib/weatherAgent");
+  resetEnvCache();
+  resetWeatherMemoryCache();
+  globalThis.fetch = async () => { throw new Error("Network disabled in consistency test"); };
+
+  // Token Bearer = username akun pasar; ID pengguna = ID aktor lokal seperti pada seed.
+  const { supabase } = await import("../src/lib/supabase");
+  const originalGetUser = supabase.auth.getUser;
+  supabase.auth.getUser = async (token) => {
+    const account = token ? MARKET_ACCOUNT_BY_USERNAME.get(token) : undefined;
+    if (!account) return { data: { user: null }, error: new AuthApiError("Invalid test token", 401, "bad_jwt") };
+    const user: User = {
+      id: localActorId(account.username), email: `${account.username}@pasarin.id`, aud: "authenticated", created_at: new Date().toISOString(),
+      app_metadata: { pasarin_role: account.role, ...(account.vendorId ? { pasarin_vendor_id: account.vendorId } : {}) },
+      user_metadata: { name: account.name, organization: account.organization },
+    };
+    return { data: { user }, error: null };
+  };
+
+  let passed = 0;
+  const check = (condition: unknown, message: string) => {
+    assert.ok(condition, message);
+    passed++;
+    console.log(`  ✅ [PASS] ${message}`);
+  };
+
+  try {
+    const { buildMarketSeedState } = await import("../src/lib/marketSeed");
+    const { getServerSimulationState } = await import("../src/lib/serverSimulationState");
+    const stateRoute = await import("../src/app/api/simulation/state/route");
+    const claimRoute = await import("../src/app/api/offers/claim/route");
+    const chatRoute = await import("../src/app/api/orchestrator/query/route");
+    writeFileSync(stateFile, JSON.stringify(buildMarketSeedState()));
+
+    const request = (url: string, username: string, body?: unknown) => new NextRequest(`http://localhost${url}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${username}` },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const snapshot = async (username: string): Promise<Snapshot> => {
+      const response = await stateRoute.GET(request("/api/simulation/state", username));
+      assert.equal(response.status, 200, `snapshot ${username}`);
+      return (await response.json()).data;
+    };
+    const mutate = async (username: string, body: unknown) => {
+      const response = await stateRoute.POST(request("/api/simulation/state", username, body));
+      const json = await response.json();
+      assert.equal(response.status, 200, `${username} ${JSON.stringify(body)}: ${json.error ?? ""}`);
+      return json.data;
+    };
+    const ask = async (username: string, query: string): Promise<string> => {
+      const response = await chatRoute.POST(request("/api/orchestrator/query", username, { query, forceHeuristic: true }));
+      const json = await response.json();
+      assert.equal(response.status, 200, `chatbot ${username}: ${query}`);
+      return json.data.summary as string;
+    };
+
+    // Rumus dashboard (BuyerDashboard, VendorDashboard, LogisticsDashboard, OversightDashboard).
+    const buyerTier = { warteg1: "tier_1", sosial1: "tier_2", maggot1: "tier_3" } as const;
+    const buyerView = (view: Snapshot, username: keyof typeof buyerTier) => {
+      const listings = view.offers.filter((offer) => offer.targetTier === buyerTier[username] && offer.status === "active");
+      const orders = view.offers.filter((offer) => offer.targetTier === buyerTier[username] && offer.isMine &&
+        (offer.status === "claimed" || offer.status === "settled"));
+      return { listings, orders };
+    };
+    const ordersSummary = (orders: RescueOffer[]) => [orders.length,
+      orders.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length,
+      orders.filter(isReadyForDelivery).length, orders.filter((offer) => offer.status === "settled").length];
+    const verifiedActive = (view: Snapshot) => {
+      const weighed = new Set(view.stocks.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
+      return view.offers.filter((offer) => offer.status === "active" && weighed.has(offer.stockId));
+    };
+    const risky = (view: Snapshot) => view.stocks.filter((stock: StockItem) => stock.remainingKg > 0 && (view.stockHealth[stock.id]?.decayScore ?? 0) >= 0.35);
+
+    const compareAll = async (label: string) => {
+      console.log(`\n[${label}] Asisten vs dashboard untuk setiap peran`);
+      assertLedgerInvariants(await getServerSimulationState(), label);
+      check(true, `${label}: invarian buku besar (escrow ⇔ status bayar, saldo, kepemilikan) terpenuhi`);
+
+      for (const [username, prompts] of Object.entries(SUGGESTIONS)) {
+        for (const prompt of prompts) {
+          const answer = await ask(username, prompt);
+          check(!/belum cukup untuk menjawab/.test(answer), `${label}: ${username} "${prompt}" terjawab`);
+        }
+      }
+      for (const username of ["warteg1", "sosial1", "maggot1"] as const) {
+        const view = await snapshot(username);
+        const { listings, orders } = buyerView(view, username);
+        check(view.offers.every((offer) => offer.isMine || offer.status === "active"), `${label}: ${username} tidak melihat pesanan akun lain`);
+        const status = numbers(await ask(username, "Bagaimana status pesanan saya?"));
+        const expected = ordersSummary(orders);
+        check(orders.length === 0 ? status.length === 0 : expected.every((value, index) => status[index] === value),
+          `${label}: ${username} status pesanan asisten = dashboard [${expected.join(", ")}]`);
+        const catalog = numbers(await ask(username, username === "sosial1" ? "Apa penawaran yang tersedia?" : SUGGESTIONS[username][0]));
+        check(catalog[0] === listings.length, `${label}: ${username} jumlah penawaran asisten (${catalog[0]}) = katalog dashboard (${listings.length})`);
+      }
+      const donationListings = buyerView(await snapshot("sosial1"), "sosial1").listings.filter((offer) => isDonation(offer));
+      check(numbers(await ask("sosial1", "Apa donasi yang tersedia?"))[0] === donationListings.length,
+        `${label}: sosial1 jumlah donasi asisten = katalog filter Donasi (${donationListings.length})`);
+
+      const vendor = await snapshot("pasar1");
+      const needsWeighing = vendor.stocks.filter((stock) => stock.remainingKg > 0 && !stock.verifiedAt).length;
+      check(numbers(await ask("pasar1", "Apa yang perlu ditimbang?"))[0] === needsWeighing,
+        `${label}: pasar1 lot perlu timbang asisten = kartu "Perlu timbang" (${needsWeighing})`);
+      check(numbers(await ask("pasar1", "Apa penawaran yang tersedia?"))[0] === verifiedActive(vendor).length,
+        `${label}: pasar1 penawaran aktif asisten = dashboard (${verifiedActive(vendor).length})`);
+
+      const courier = await snapshot("kurir1");
+      const queue = courier.offers.filter(isReadyForDelivery).length;
+      check(numbers(await ask("kurir1", "Apa yang siap diantar?"))[0] === queue, `${label}: kurir1 antrean asisten = antrean dashboard (${queue})`);
+      check(courier.offers.every((offer) => offer.paymentStatus !== "unpaid"), `${label}: kurir tidak menerima lot yang belum diklaim/dibayar`);
+
+      for (const username of ["pengelola1", "admin1"]) {
+        const view = await snapshot(username);
+        const ready = view.offers.filter(isReadyForDelivery).length;
+        check(numbers(await ask(username, "Apa yang siap diantar?"))[0] === ready, `${label}: ${username} siap diantar asisten = dashboard (${ready})`);
+        check(numbers(await ask(username, "Berapa stok yang berisiko?"))[0] === risky(view).length, `${label}: ${username} lot berisiko asisten = dashboard (${risky(view).length})`);
+        const summary = numbers(await ask(username, "Ringkas operasional pasar"));
+        check(summary[2] === verifiedActive(view).length, `${label}: ${username} penawaran aktif di ringkasan = dashboard (${verifiedActive(view).length})`);
+        const unpaid = view.offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length;
+        check(numbers(await ask(username, "Berapa pesanan belum dibayar?"))[0] === unpaid, `${label}: ${username} pesanan belum dibayar asisten = dashboard (${unpaid})`);
+      }
+      check(queue === (await snapshot("admin1")).offers.filter(isReadyForDelivery).length, `${label}: antrean kurir = "Siap diantar" pengelola`);
+    };
+
+    await compareAll("Seed awal");
+
+    // Alur lengkap: pedagang mencatat & menimbang -> Warteg klaim & bayar -> kurir antar.
+    console.log("\n[Alur] Pedagang -> Warteg -> Kurir");
+    await mutate("pasar1", { action: "stock", commodityId: "kangkung", quantityKg: 40 });
+    const fresh = (await snapshot("pasar1")).stocks.find((stock) => stock.commodityId === "kangkung" && !stock.verifiedAt && stock.initialKg === 40);
+    assert.ok(fresh, "stok baru tercatat");
+    await mutate("pasar1", { action: "publish", stockId: fresh.id, confirmation: { confirmedKg: 30 } });
+    const listing = (await snapshot("warteg1")).offers.find((offer) => offer.stockId === fresh.id && offer.status === "active");
+    check(listing, "Penawaran hasil timbang pedagang muncul di katalog Warteg");
+    const claim = await claimRoute.POST(request("/api/offers/claim", "warteg1", { offerId: listing!.id, quantityKg: 10, requestId: "consistency-1" }));
+    check(claim.status === 200, "Warteg mengklaim 10 kg dari lot tersebut");
+    const order = (await snapshot("warteg1")).offers.find((offer) => offer.isMine && offer.stockId === fresh.id)!;
+    check(!(await snapshot("kurir1")).offers.some((offer) => offer.id === order.id), "Pesanan belum dibayar belum masuk antrean kurir");
+    await compareAll("Setelah klaim");
+    await mutate("warteg1", { action: "payment", offerId: order.id });
+    check((await snapshot("kurir1")).offers.some((offer) => offer.id === order.id && isReadyForDelivery(offer)), "Setelah dibayar pesanan masuk antrean kurir");
+    check((await snapshot("pasar1")).transactions.some((item) => item.offerId === order.id && item.status === "held_in_escrow"), "Pedagang melihat dana tertahan di escrow");
+    await compareAll("Setelah bayar");
+    await mutate("kurir1", { action: "delivery", offerId: order.id });
+    check((await snapshot("warteg1")).offers.find((offer) => offer.id === order.id)?.status === "settled", "Warteg melihat pesanan selesai");
+    check((await snapshot("pasar1")).transactions.some((item) => item.offerId === order.id && item.status === "released"), "Pedagang melihat dana cair");
+
+    // Lot Maggot gratis: klaim langsung siap antar tanpa catatan escrow.
+    const maggotLot = buyerView(await snapshot("maggot1"), "maggot1").listings[0];
+    if (maggotLot) {
+      const maggotClaim = await claimRoute.POST(request("/api/offers/claim", "maggot1", { offerId: maggotLot.id, requestId: "consistency-2" }));
+      check(maggotClaim.status === 200, "Maggot mengklaim lot biomassa gratis");
+      await mutate("kurir1", { action: "delivery", offerId: maggotLot.id });
+    }
+    await compareAll("Setelah serah terima");
+    console.log(`\nHasil akhir uji konsistensi lintas peran: ${passed} lulus, 0 gagal`);
+  } finally {
+    supabase.auth.getUser = originalGetUser;
+    globalThis.fetch = originalFetch;
+    for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key];
+    Object.assign(process.env, originalEnv);
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+run().catch((error) => {
+  console.error("\n❌ [FAIL]", error instanceof Error ? error.message : error);
+  process.exit(1);
+});

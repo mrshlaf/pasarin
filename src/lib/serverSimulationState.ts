@@ -558,6 +558,9 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
   return { ...visible, stockHealth, estimatedUnsoldKg, weather: { isEstimated: weather.isEstimated ?? false, temperatureC: weather.temperatureC, humidityPercent: weather.humidityPercent } };
 }
 
+/** Model Gemini mengikuti GEMINI_MODEL, sama dengan chatbot dan orkestrator. */
+const forecastModel = () => process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+
 let aiForecastCache: {
   key: string;
   expiresAt: number;
@@ -599,7 +602,7 @@ async function generateOverviewAiAnalysis(
   const defaultHeuristic = {
     summary: `Suhu los ${temperatureC}°C (${humidityPercent}% RH). Total ${roundKg(wartegKg + socialKg + maggotKg)} kg komoditas siap salur (${wartegKg} kg Warteg, ${socialKg} kg Dapur Sosial, ${maggotKg} kg Maggot).`,
     recommendation: `Prioritas penjemputan sayuran daun Blok A sebelum 15:00 WIB menggunakan ${couriersCount} kurir armada (${vehiclesList}).`,
-    model: "gemini-3.5-flash-lite",
+    model: forecastModel(),
     source: "heuristik" as const,
   };
 
@@ -625,7 +628,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
 
     // Kunci dikirim lewat header agar tidak ikut tercatat di log URL.
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(forecastModel())}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -653,7 +656,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
         const geminiResult = {
           summary,
           recommendation,
-          model: "gemini-3.5-flash-lite",
+          model: forecastModel(),
           source: "gemini" as const,
         };
         aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 10 * 60 * 1000, data: geminiResult };

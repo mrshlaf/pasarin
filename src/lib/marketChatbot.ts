@@ -4,7 +4,7 @@ import { COMMODITIES } from "@/data/commodities";
 import { getEnv } from "@/lib/env";
 import { getMarketOperations } from "@/lib/marketOperations";
 import { readMarketSnapshot } from "@/lib/serverSimulationState";
-import { isReadyForDelivery, roundKg } from "@/types/market";
+import { isDonation, isReadyForDelivery, roundKg } from "@/types/market";
 
 export async function answerDashboardQuestion(user: AuthUser, question: string, forceHeuristic = false) {
   const snapshot = await readMarketSnapshot(user);
@@ -13,7 +13,15 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
   const commodity = COMMODITIES.find((item) => text.includes(item.id.toLowerCase()) || text.includes(item.localName.toLowerCase()));
   const stocks = snapshot.stocks.filter((item) => !commodity || item.commodityId === commodity.id);
   const offers = snapshot.offers.filter((item) => !commodity || item.commodityId === commodity.id);
-  const active = offers.filter((item) => item.status === "active");
+  // Sama dengan dashboard: penawaran baru dihitung aktif setelah lotnya ditimbang.
+  const weighed = new Set(snapshot.stocks.filter((item) => item.verifiedAt).map((item) => item.id));
+  const active = offers.filter((item) => item.status === "active" && weighed.has(item.stockId));
+  const buyer = user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot";
+  // Pembeli hanya melihat pesanan miliknya (sama dengan daftar "Pesanan & pengantaran").
+  const orders = offers.filter((item) => (item.status === "claimed" || item.status === "settled") && (!buyer || item.isMine));
+  // Sama dengan kartu "Perlu timbang" di dashboard pedagang.
+  const needsWeighing = stocks.filter((item) => item.remainingKg > 0 && !item.verifiedAt);
+  const proposals = offers.filter((item) => item.status === "pending_vendor");
   const risky = stocks.filter((item) => item.remainingKg > 0 && (snapshot.stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
   const distinctCommodities = Array.from(
     new Set(
@@ -34,19 +42,22 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
     arrivalsToday: stocks.filter((item) => isToday(item.createdAt)).length,
     deliveriesToday: offers.filter((item) => isToday(item.deliveredOn)).length,
     commodity: commodity?.localName ?? "semua komoditas yang terlihat",
-    unverifiedStockLots: stocks.filter((item) => !item.verifiedAt).length,
+    unverifiedStockLots: needsWeighing.length,
+    pendingProposals: proposals.length,
     verifiedStockKg: roundKg(stocks.filter((item) => item.verifiedAt).reduce((sum, item) => sum + item.remainingKg, 0)),
     estimatedRiskKg: roundKg(risky.reduce((sum, item) => sum + item.remainingKg, 0)),
     atRisk: risky.length,
     activeOffers: active.length,
     availableKg: roundKg(active.reduce((sum, item) => sum + item.quantityKg, 0)),
     lowestPricePerKg: active.length ? Math.min(...active.map((item) => item.salvagePricePerKg)) : null,
-    unpaid: offers.filter((item) => item.status === "claimed" && item.paymentStatus === "unpaid").length,
-    ready: offers.filter(isReadyForDelivery).length,
-    settled: offers.filter((item) => item.status === "settled").length,
+    unpaid: orders.filter((item) => item.status === "claimed" && item.paymentStatus === "unpaid").length,
+    ready: orders.filter(isReadyForDelivery).length,
+    settled: orders.filter((item) => item.status === "settled").length,
+    orders: orders.length,
     weather: snapshot.weather,
   };
-  const metrics = oversight ? await getMarketOperations() : {
+  const operations = oversight ? await getMarketOperations() : null;
+  const metrics = operations ?? {
     date: new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" }).format(new Date()),
     ...facts,
   };
@@ -57,6 +68,17 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
   if (/^(hi|hai|halo|hello|hey|selamat pagi|selamat siang|selamat sore|selamat malam)[!.,\s]*$/i.test(text.trim())) {
     useModel = false;
     answer = "Halo! Saya bisa membantu memeriksa stok, penawaran, pembayaran, pengantaran, dan cuaca sesuai akses akun Anda. Apa yang ingin Anda periksa?";
+  } else if (/evaluasi|perlu (ditinjau|ditangani|dicek|diperiksa)|tindak lanjut/.test(text)) {
+    useModel = false;
+    if (operations) {
+      const ops = operations;
+      answer = `${ops.pending} penawaran menunggu timbang atau konfirmasi pedagang, ${ops.atRisk} lot berisiko menurut model, ${ops.unpaid} pesanan menunggu pembayaran, dan ${ops.ready} pesanan siap diantar.` +
+        (ops.workstreams.length ? ` Alur yang perlu ditangani: ${ops.workstreams.join(", ")}.` : " Tidak ada alur yang perlu ditangani saat ini.");
+    } else if (user.role === "vendor") {
+      answer = `${facts.unverifiedStockLots} lot perlu ditimbang dan ${facts.pendingProposals} usulan penawaran menunggu persetujuan Anda. ${facts.atRisk} lot berisiko menurut model.`;
+    } else {
+      answer = `${facts.unpaid} pesanan menunggu pembayaran dan ${facts.ready} pesanan siap diantar dalam data akun Anda.`;
+    }
   } else if (/berapa.*(kurir|pengemudi|driver|armada)|jumlah.*(kurir|pengemudi|driver|armada)/.test(text)) {
     useModel = false;
     answer = `Jumlah kurir atau pengemudi yang bertugas belum tercatat dalam data yang tersedia. Ada ${facts.ready} pesanan siap diantar; angka ini adalah jumlah pesanan, bukan jumlah kurir.`;
@@ -66,7 +88,7 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
   } else if (/bagaimana|cara|apa yang|bahan apa/.test(text) && /diskon|ditimbang|kendaraan|serah terima|prioritas.*dapur|boleh diklaim|membayar/.test(text)) {
     useModel = false;
     if (/diskon/.test(text)) answer = "Diskon dihitung dari selisih harga awal dan harga penyelamatan: (1 − harga penyelamatan ÷ harga awal) × 100%. Harga mempertimbangkan estimasi mutu; penawaran Warteg memiliki batas harga minimum per komoditas. Lot donasi dapur sosial dan lot Maggot gratis memiliki harga Rp0.";
-    else if (/ditimbang/.test(text)) answer = `Timbang sisa fisik yang belum dipesan dari lot kios Anda, lalu konfirmasi berat dalam kg. ${snapshot.stocks.filter((item) => !item.verifiedAt).length} lot yang terlihat belum memiliki konfirmasi timbang. Hasil estimasi perlu diperiksa dengan timbangan. Untuk lot dapur sosial, pilih jual atau donasi sebelum menerbitkan penawaran.`;
+    else if (/ditimbang/.test(text)) answer = `Timbang sisa fisik yang belum dipesan dari lot kios Anda, lalu konfirmasi berat dalam kg. ${facts.unverifiedStockLots} lot yang terlihat belum memiliki konfirmasi timbang${facts.pendingProposals ? ` dan ${facts.pendingProposals} usulan penawaran menunggu konfirmasi Anda` : ""}. Hasil estimasi perlu diperiksa dengan timbangan. Untuk lot dapur sosial, pilih jual atau donasi sebelum menerbitkan penawaran.`;
     else if (/kendaraan/.test(text)) answer = "Rencana kendaraan mengikuti alokasi dan berat muatan: Viar berkapasitas 300 kg, Gran Max 1.000 kg, dan Isuzu 4.000 kg per unit. Rekomendasi armada merupakan perencanaan; penugasan pengemudi perlu dikonfirmasi di operasional logistik.";
     else if (/serah terima/.test(text)) answer = "Pada dashboard logistik, pilih pesanan yang siap diantar lalu konfirmasi serah terima setelah barang diterima. Pesanan berbayar harus memiliki dana tertahan di escrow; lot gratis harus sudah diklaim. Konfirmasi mengubah status pesanan menjadi selesai dan mencatat pengurangan stok.";
     else if (/prioritas.*dapur/.test(text)) answer = "Dapur sosial mengakses penawaran Tier 2 yang sesuai estimasi mutu. Pedagang menimbang sisa fisik lalu memilih jual atau donasi. Periksa berat, mutu, dan ketersediaan sebelum klaim; alokasi Tier 3 ditujukan untuk Maggot.";
@@ -129,10 +151,25 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
     answer = `${facts.settled} pesanan berstatus settled untuk ${facts.commodity} dalam snapshot yang dapat Anda akses.`;
   } else if (/bayar|pembayaran|escrow/.test(text)) {
     answer = `${facts.unpaid} pesanan menunggu pembayaran untuk ${facts.commodity}.`;
+  } else if (/pesanan|order/.test(text) && !/penawaran/.test(text)) {
+    const owner = buyer ? "Anda" : user.role === "vendor" ? "kios Anda" : oversight ? "di pasar" : "yang terlihat di akun Anda";
+    answer = facts.orders === 0
+      ? `Belum ada pesanan ${owner}.`
+      : `Ada ${facts.orders} pesanan ${owner}: ${facts.unpaid} menunggu pembayaran, ${facts.ready} siap diantar, dan ${facts.settled} selesai diserahterimakan.`;
   } else if (/penawaran|murah|harga|donasi|alokasi|biomassa|maggot|tersedia/.test(text)) {
-    answer = `${facts.commodity}: ${facts.activeOffers} penawaran aktif dengan total ${facts.availableKg} kg${facts.lowestPricePerKg === null ? ". Belum ada harga penawaran aktif." : `, harga terendah Rp${facts.lowestPricePerKg}/kg.`} Ketersediaan perlu diperiksa kembali saat klaim.`;
-  } else if (/ringkasan|kondisi|status|halo|bantu|summary/.test(text)) {
-    answer = `${facts.activeOffers} penawaran aktif (${facts.availableKg} kg), ${facts.unpaid} pesanan menunggu pembayaran, dan ${facts.ready} siap diantar. Anda dapat bertanya tentang stok, penawaran, pengantaran, transaksi selesai, atau cuaca.`;
+    // Pertanyaan donasi hanya menghitung lot donasi, sama dengan filter "Donasi" di katalog dapur sosial.
+    const listed = /donasi/.test(text) ? active.filter((item) => isDonation(item)) : active;
+    const listedKg = roundKg(listed.reduce((sum, item) => sum + item.quantityKg, 0));
+    const label = /donasi/.test(text) ? "penawaran donasi aktif" : "penawaran aktif";
+    const lowest = listed.length ? Math.min(...listed.map((item) => item.salvagePricePerKg)) : null;
+    answer = `${facts.commodity}: ${listed.length} ${label} dengan total ${listedKg} kg${lowest === null ? ". Belum ada harga penawaran aktif." : lowest === 0 ? ", tanpa biaya (Rp0)." : `, harga terendah Rp${lowest}/kg.`} Ketersediaan perlu diperiksa kembali saat klaim.`;
+  } else if (/ringkas|kondisi|status|halo|bantu|summary/.test(text)) {
+    if (operations) {
+      const ops = operations;
+      answer = `Hari ini ${ops.arrivalsToday} lot pasokan masuk dan ${ops.deliveriesToday} pesanan selesai diantar. Ada ${ops.activeOffers} penawaran aktif, ${ops.pending} menunggu timbang atau konfirmasi pedagang, ${ops.unpaid} pesanan menunggu pembayaran, ${ops.ready} siap diantar, dan ${ops.atRisk} lot berisiko menurut model.`;
+    } else {
+      answer = `${facts.activeOffers} penawaran aktif (${facts.availableKg} kg), ${facts.unpaid} pesanan menunggu pembayaran, dan ${facts.ready} siap diantar. Anda dapat bertanya tentang stok, penawaran, pengantaran, transaksi selesai, atau cuaca.`;
+    }
   } else {
     answer = "Data yang tersedia belum cukup untuk menjawab pertanyaan tersebut. Tanyakan stok, risiko layu, harga penawaran, pembayaran, pengantaran, transaksi selesai, atau cuaca.";
   }
