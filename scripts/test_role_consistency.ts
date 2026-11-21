@@ -171,6 +171,11 @@ async function run() {
         `${label}: pasar1 lot perlu timbang asisten = kartu "Perlu timbang" (${needsWeighing})`);
       check(numbers(await ask("pasar1", "Apa penawaran yang tersedia?"))[0] === verifiedActive(vendor).length,
         `${label}: pasar1 penawaran aktif asisten = dashboard (${verifiedActive(vendor).length})`);
+      const earnings = await ask("pasar1", "berapa keuntunganku");
+      const heldIdr = vendor.transactions.filter((item) => item.status === "held_in_escrow").reduce((sum, item) => sum + item.amountIdr, 0);
+      check(earnings.includes(`Saldo dompet Anda Rp${vendor.vendorWalletIdr.toLocaleString("id-ID")}`) &&
+        earnings.includes(`Rp${heldIdr.toLocaleString("id-ID")} masih ditahan di escrow`),
+        `${label}: saldo dompet dan dana tertahan di asisten sesuai snapshot pedagang`);
 
       const courier = await snapshot("kurir1");
       const queue = courier.offers.filter(isReadyForDelivery).length;
@@ -191,6 +196,48 @@ async function run() {
     };
 
     await compareAll("Seed awal");
+
+    // Variasi pertanyaan nyata (bahasa santai, salah ketik, akhiran -ku) harus dijawab dari data, bukan jatuh ke fallback.
+    console.log("\n[Variasi] Pertanyaan bebas per peran");
+    const PARAPHRASES: Record<string, Array<[string, RegExp]>> = {
+      pasar1: [
+        ["cek sayutrku bisa dijual dimana", /Tujuan penyaluran stok/], ["berapa keuntunganku", /Saldo dompet Anda Rp/],
+        ["brp untung gw hari ini?", /Saldo dompet Anda/], ["daganganku cocoknya buat siapa", /Tujuan penyaluran/],
+        ["lot mana yg paling cepet busuk", /paling perlu didahulukan/], ["sayur gw mau busuk ga", /paling perlu didahulukan/],
+        ["harga jual bayam saya berapa", /Harga lot|Belum ada stok/], ["siapa yang beli sayur saya", /pesanan|Belum ada pesanan/],
+        ["kapan duit gw cair", /cair ke saldo dompet/], ["ngapain ya sekarang", /sebaiknya Anda lakukan|Tidak ada tindakan/],
+        ["kenapa penawaranku ga muncul", /Timbang & konfirmasi/], ["kamu bisa apa", /Asisten PASARIN untuk ruang kerja Pedagang/],
+        ["makasih ya", /Sama-sama/], ["berapa dampak kios saya", /diserahterimakan|Belum ada pesanan/],
+      ],
+      warteg1: [
+        ["sayur apa yg paling murah", /Termurah lebih dulu|Belum ada penawaran/], ["harga kangkung brp/kg", /penawaran aktif|Belum ada penawaran/],
+        ["pesenanku udh sampe mana", /Pesanan Anda|Belum ada pesanan/], ["brp total belanja gw", /Total pembayaran pesanan Anda/],
+        ["berapa penghematan saya", /Penghematan sekitar|Belum ada pesanan/], ["bayam bisa dibeli dmn", /penawaran aktif|Belum ada penawaran/],
+        ["apakah sayurnya aman dimakan", /bukan hasil pemeriksaan fisik/], ["kenapa katalog kosong", /hanya menampilkan penawaran/],
+      ],
+      sosial1: [["apa saran buat saya", /sebaiknya Anda lakukan|Tidak ada tindakan/], ["kapan pesanan saya diantar", /Pesanan Anda|Belum ada pesanan/]],
+      maggot1: [["berapa biaya saya", /gratis/], ["yang paling segar mana", /paling segar|Belum ada penawaran/]],
+      kurir1: [["ke mana aja tujuan antar", /siap diantar|Belum ada pesanan siap/], ["total muatan brp kg", /Rekomendasi kendaraan|Belum ada pesanan siap/],
+        ["berapa pendapatan saya", /pendapatan kurir belum tercatat/]],
+      pengelola1: [["kios mana paling banyak stok berisiko", /Kios dengan stok/], ["komoditas apa yang paling berisiko", /Komoditas dengan stok berisiko/],
+        ["berapa pangan yang sudah tersalurkan", /selesai diserahterimakan/], ["harga termurah di pasar", /Termurah lebih dulu/]],
+      admin1: [["apa yang harus saya lakukan", /menunggu timbang/], ["total dana cair brp", /sudah cair ke pedagang/]],
+    };
+    const misses: string[] = [];
+    for (const [username, cases] of Object.entries(PARAPHRASES)) {
+      for (const [prompt, expected] of cases) {
+        const answer = await ask(username, prompt);
+        if (/belum memahami/.test(answer) || !expected.test(answer)) misses.push(`${username} "${prompt}" -> ${answer.slice(0, 160)}`);
+      }
+    }
+    if (misses.length) console.error(misses.join("\n"));
+    check(misses.length === 0, `${Object.values(PARAPHRASES).flat().length} variasi pertanyaan dijawab dari data`);
+    const vendorView = await snapshot("pasar1");
+    const ownKiosk = MARKET_ACCOUNT_BY_USERNAME.get("pasar1")!.vendorId!;
+    const routeAnswer = await ask("pasar1", "cek sayutrku bisa dijual dimana");
+    check(vendorView.stocks.every((stock) => stock.vendorId === ownKiosk) && !KIOSKS.filter((kiosk) => kiosk.id !== ownKiosk).some((kiosk) => routeAnswer.includes(kiosk.name)),
+      "Jawaban pedagang hanya memuat stok kiosnya sendiri");
+    check(/belum memahami/.test(await ask("pasar1", "xyz qwerty")), "Pertanyaan tak bermakna tanpa model menampilkan contoh pertanyaan");
 
     // Alur lengkap: pedagang mencatat & menimbang -> Warteg klaim & bayar -> kurir antar.
     console.log("\n[Alur] Pedagang -> Warteg -> Kurir");

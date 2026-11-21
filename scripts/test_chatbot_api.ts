@@ -45,7 +45,11 @@ async function run() {
     ],
     offers: [offer("w", "tier_1", "warteg"), offer("s", "tier_2", "social_kitchen"), offer("m", "tier_3", "maggot"),
       { ...offer("private", "tier_1", "private-buyer"), vendorId: "vendor-private", stockId: "private-stock", commodityId: "kangkung", status: "settled", paymentStatus: "released_to_vendor", deliveredOn: now }],
-    transactions: [], vendorWalletIdr: 999999, biomassProcessedKg: 9876, socialMealsServed: 9876, lastUpdated: now,
+    transactions: [
+      { id: "w-held", offerId: "w", buyerName: "warteg", vendorName: "vendor-own", commodityName: "Bayam", amountIdr: 8000, status: "held_in_escrow", createdAt: now },
+      { id: "s-held", offerId: "s", buyerName: "social_kitchen", vendorName: "vendor-own", commodityName: "Bayam", amountIdr: 8000, status: "held_in_escrow", createdAt: now },
+      { id: "private-released", offerId: "private", buyerName: "private-buyer", vendorName: "vendor-private", commodityName: "Kangkung", amountIdr: 999999, status: "released", createdAt: now },
+    ], vendorWalletIdr: 999999, biomassProcessedKg: 9876, socialMealsServed: 9876, lastUpdated: now,
   };
   writeFileSync(stateFile, JSON.stringify(fixture));
   const before = readFileSync(stateFile, "utf8");
@@ -118,7 +122,23 @@ async function run() {
     await ask("hi", "vendor", false);
     await ask("Buat hello world C++", "vendor", false);
     await ask("Berapa kurir tersedia?", "logistics", false);
-    assert.equal(networkCalls, 0, "Greetings, unrelated programming, and unrecorded courier counts bypass the model");
+    const destination = await ask("cek sayutrku bisa dijual dimana", "vendor", false);
+    assert.equal(destination.source, "data_pasar");
+    assert.match(destination.summary, /Warteg & UMKM.*Bayam Hijau \(6 kg terkonfirmasi\)/);
+    assert.doesNotMatch(destination.summary, /Kangkung|9876/);
+    assert.match((await ask("Kangkung saya bisa dijual ke mana?")).summary, /Belum ada stok Kangkung Darat/);
+    assert.match((await ask("Bayam bisa dibeli di mana?", "warteg")).summary, /Belum ada penawaran aktif Bayam Hijau/);
+    const earnings = await ask("berapa keuntunganku", "vendor", false);
+    assert.equal(earnings.source, "data_pasar");
+    assert.match(earnings.summary, /Saldo dompet Anda Rp0.*Rp16\.000 masih ditahan.*keuntungan bersih belum bisa dihitung/);
+    assert.doesNotMatch(earnings.summary, /999\.999/);
+    assert.match((await ask("Berapa pengeluaran saya?", "warteg", false)).summary, /Total pembayaran pesanan Anda Rp8\.000/);
+    assert.match((await ask("Berapa dana yang sudah cair?", "admin", false)).summary, /sudah cair ke pedagang Rp999\.999/);
+    const fallback = await ask("hmm gimana ya", "vendor", false);
+    assert.equal(fallback.source, "data_pasar");
+    assert.match(fallback.summary, /Sayur saya bisa dijual ke mana\?/);
+    assert.match((await ask("hmm gimana ya", "logistics", false)).summary, /Apa yang siap diantar\?/);
+    assert.equal(networkCalls, 0, "Deterministic answers and too-vague questions (clarification) bypass the model");
     const failed = await ask("Ringkasan kondisi pasar", "vendor", false);
     assert.equal(failed.source, "data_pasar");
     assert.match(failed.summary, /3 siap diantar/);
@@ -134,6 +154,22 @@ async function run() {
     assert.equal(modelAnswer.source, "gemini");
     assert.equal(modelAnswer.summary, "Ada 3 pesanan siap diantar.");
     assert.ok(modelAnswer.model);
+    // Pertanyaan bebas dijawab model dari data akun yang sudah disaring; data kios lain tidak ikut terkirim.
+    const sentBodies: string[] = [];
+    globalThis.fetch = async (_input, init) => {
+      sentBodies.push(typeof init?.body === "string" ? init.body : "");
+      return Response.json({ candidates: [{ content: { role: "model", parts: [{ text: "Bayam Hijau di kios Anda tersisa 12 kg." }] }, finishReason: "STOP" }] });
+    };
+    const openAnswer = await ask("jelaskan bedanya tier 1 dan tier 2 untuk saya", "vendor", false);
+    assert.equal(openAnswer.source, "gemini");
+    assert.equal(openAnswer.summary, "Bayam Hijau di kios Anda tersisa 12 kg.");
+    const openBody = sentBodies.at(-1) ?? "";
+    assert.match(openBody, /OWN/, "Open questions send the account's own lots to the model");
+    assert.match(openBody, /hanya membaca data/, "Open questions include the platform rules");
+    assert.doesNotMatch(openBody, /SECRET|9876|999999|private-buyer/, "Open questions never send other vendors' data or market totals");
+    const buyerOpen = await ask("menu masakan apa yang cocok dari kiriman minggu lalu?", "warteg", false);
+    assert.equal(buyerOpen.source, "gemini");
+    assert.doesNotMatch(sentBodies.at(-1) ?? "", /SECRET|9876|private-buyer/, "Buyer context excludes other accounts' orders");
     assert.equal(readFileSync(stateFile, "utf8"), before, "Questions must not mutate market state");
     console.log("PASS: chatbot authorization, validation, all roles, scoped answers, no-key mode, model failure, and read-only state");
   } finally {

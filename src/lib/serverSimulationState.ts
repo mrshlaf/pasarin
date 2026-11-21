@@ -672,6 +672,28 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
 }
 
 /**
+ * Katalog publik: penawaran aktif yang masih bisa diklaim di seluruh pasar.
+ * Hanya memuat data etalase (komoditas, kios penjual, tujuan, harga, berat); tanpa pembeli, pesanan, atau dana.
+ */
+export async function readPublicCatalog() {
+  const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
+  const now = Date.now();
+  const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+  return state.offers.flatMap((offer) => {
+    if (offer.status !== "active") return [];
+    const stock = stockById.get(offer.stockId);
+    const score = stock && evaluateMarketStock(stock, weather, now)?.decayScore;
+    if (!canClaimStock(state, offer, stock, score)) return [];
+    return [{
+      id: offer.id, stockId: offer.stockId, vendorId: offer.vendorId, commodityId: offer.commodityId, targetTier: offer.targetTier,
+      quantityKg: offer.quantityKg, originalPricePerKg: offer.originalPricePerKg, salvagePricePerKg: offer.salvagePricePerKg,
+      discountPercentage: offer.discountPercentage, totalAmountIdr: offer.totalAmountIdr, distributionMode: offer.distributionMode,
+      status: offer.status, paymentStatus: "unpaid" as const, expiresInMinutes: offer.expiresInMinutes, isMine: false,
+    }];
+  });
+}
+
+/**
  * Menyusun ringkasan agregat pasar publik untuk beranda tanpa membocorkan privasi akun maupun transaksi.
  * Memetakan proyeksi serapan 3-tier, kebutuhan armada kurir, serta sintesis catatan operasional AI.
  *
