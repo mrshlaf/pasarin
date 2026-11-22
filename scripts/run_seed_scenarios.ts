@@ -41,12 +41,14 @@ try {
 } catch {}
 
 // Menentukan lokasi berkas state persisten lokal pasar
+// Berkas yang sama dengan yang dibaca server lokal, sehingga skenario langsung tampil di aplikasi yang berjalan.
 const stateFile = process.env.PASARIN_STATE_FILE ?? path.join(os.tmpdir(), "pasarin_market_state_v2.json");
 
 // Definisi 7 Skenario Pengujian Komprehensif
 const scenarioStocks: StockItem[] = [
   // 1. Skenario Segar Prima
   {
+    // Stok sudah habis (sisa 0) karena seluruhnya telah diserahterimakan.
     id: "stk_test_01_segar",
     vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
@@ -57,6 +59,7 @@ const scenarioStocks: StockItem[] = [
     hoursOffset: 2.0,
     createdAt: new Date(Date.now() - 2 * 3600000).toISOString(),
   },
+  // Harga dan diskon ditulis manual agar angka demo tidak berubah mengikuti waktu.
   {
     id: "stk_test_02_segar",
     vendorId: "vendor_kramat_01",
@@ -71,6 +74,7 @@ const scenarioStocks: StockItem[] = [
 
   // 2. Skenario Layu Ringan (Tier 1 Warteg)
   {
+    // Transaksi sudah cair sehingga tercatat releasedAt dan menambah saldo dompet pedagang.
     id: "stk_test_03_layu_tier1",
     vendorId: "vendor_kramat_01",
     commodityId: "kangkung",
@@ -321,9 +325,11 @@ async function seedTestingScenarios() {
   console.log("\nInisialisasi dan Verifikasi Skenario Pengujian PASARIN\n");
 
   // 1. Buat Fresh Seed State untuk seluruh 30 Kios pasar berstandar sirkular
+  // Seed dasar 30 kios dipakai sebagai latar; skenario ditambahkan di depan agar mudah dilihat pertama.
   const baseSeed = buildMarketSeedState();
   const currentState: ServerState = {
     ...baseSeed,
+    // Saldo dompet awal Rp50.000 sesuai transaksi skenario yang sudah cair.
     vendorWalletIdr: 50000,
     biomassProcessedKg: 100,
     socialMealsServed: 100,
@@ -338,6 +344,7 @@ async function seedTestingScenarios() {
   currentState.lastUpdated = new Date().toISOString();
 
   // Tulis kembali ke file state
+  // State ditulis sebagai JSON terformat supaya mudah dibaca saat debugging.
   fs.writeFileSync(stateFile, JSON.stringify(currentState, null, 2), "utf-8");
   console.log(`[PASS] State File Terupdate: ${stateFile}`);
   console.log(`       -> ${scenarioStocks.length} Stok Skenario Disuntikkan`);
@@ -345,6 +352,7 @@ async function seedTestingScenarios() {
   console.log(`       -> ${scenarioTransactions.length} Transaksi Escrow Disuntikkan\n`);
 
   // 2. Sinkronkan ke Supabase Cloud (pasarin_simulation_state) agar Vercel otomatis sinkron 100%
+  // Sinkronisasi cloud hanya berjalan bila URL dan service role key tersedia; kegagalan hanya memberi peringatan.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (supabaseUrl && serviceKey) {
@@ -372,6 +380,7 @@ async function seedTestingScenarios() {
           ? { ...offer, claimedById: actorIds.get(offer.claimedById) }
           : offer),
       };
+      // Bila ada pemilik pesanan yang belum punya akun di Supabase, sinkronisasi dibatalkan supaya tidak menulis ID lokal ke cloud.
       const unresolved = cloudState.offers.filter((offer) => offer.claimedById?.startsWith("local:"));
       if (unresolved.length) throw new Error(`Akun pemilik pesanan belum ada di Supabase: ${unresolved.map((offer) => offer.claimedById).join(", ")}`);
 
@@ -396,6 +405,7 @@ async function seedTestingScenarios() {
   }
 
   // 3. Jika SUPABASE_DB_URL tersedia, jalankan SQL ke Postgres
+  // Langkah 3 opsional: bila ada koneksi Postgres langsung, skenario juga dijalankan lewat SQL dalam satu transaksi dan dibatalkan jika gagal.
   const dbUrl = process.env.SUPABASE_DB_URL;
   if (dbUrl) {
     console.log("[INFO] Menginjeksikan ke Supabase PostgreSQL Database...");
@@ -422,6 +432,7 @@ async function seedTestingScenarios() {
     }
   }
 
+  // Ringkasan skenario dan akun demo untuk mencobanya.
   // 4. Ringkasan Peta Skenario untuk Pengujian dan Demonstrasi
   console.log("\nRingkasan 7 Skenario Pengujian PASARIN:");
   console.log("1. SKENARIO SEGAR PRIMA (Retail Normal):");
