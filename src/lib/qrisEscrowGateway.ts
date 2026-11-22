@@ -41,12 +41,14 @@ export interface DynamicQrisResult {
 
 // Menghitung checksum CRC16-CCITT berstandar EMVCo / ASPI (Polinomial 0x1021, Nilai Awal 0xFFFF).
 export function calculateQrisCrc16(str: string): string {
+  // CRC16-CCITT: tiap karakter di-XOR ke byte atas register 16 bit, lalu digeser 8 kali. Bila bit paling kiri 1, hasil geser di-XOR dengan polinomial 0x1021. Hasil akhir berupa 4 digit heksadesimal yang dipakai pemindai untuk mendeteksi QR yang rusak atau diubah.
   let crc = 0xffff;
   const strlen = str.length;
 
   for (let c = 0; c < strlen; c++) {
     crc ^= str.charCodeAt(c) << 8;
     for (let i = 0; i < 8; i++) {
+      // Bit paling kiri (0x8000) 1: geser kiri lalu XOR polinomial; jika 0: cukup geser. Mask 0xffff menjaga register tetap 16 bit.
       if ((crc & 0x8000) !== 0) {
         crc = ((crc << 1) ^ 0x1021) & 0xffff;
       } else {
@@ -61,6 +63,7 @@ export function calculateQrisCrc16(str: string): string {
 
 // Format string bantuan untuk menyusun Tag-Length-Value (TLV) standar EMVCo QRIS.
 function formatTlv(tag: string, value: string): string {
+  // Format TLV: tag 2 karakter, panjang 2 digit, lalu nilai. Contoh: tag 54 dengan nilai 62500 menjadi 540562500 (54, 05, 62500).
   const len = String(value.length).padStart(2, "0");
   return `${tag}${len}${value}`;
 }
@@ -75,10 +78,12 @@ export function generateBankIndonesiaQrisPayload(
   }
 ): DynamicQrisResult {
   // Nominal minimal Rp100; nama merchant dan referensi dipotong agar panjang TLV tetap dua digit dan sesuai batas tag.
+  // Nominal dibulatkan ke rupiah dan minimal Rp100.
   const cleanAmount = Math.max(100, Math.round(amountIdr));
   const safeMerchantName = merchant.merchantName.substring(0, 25);
   const cleanRef = invoiceRef.replace(/[^a-zA-Z0-9_-]/g, "").substring(0, 20);
 
+  // Susunan payload mengikuti urutan tag standar QRIS: 00 versi, 01 jenis dinamis, 26 data merchant, 51 kategori, 52 mata uang, 54 nominal, 58 negara, 59 nama, 60 kota, 62 data tambahan, 63 CRC.
   // 1. Tag 00: Format Indicator (01)
   let payload = formatTlv("00", "01");
 
@@ -115,6 +120,7 @@ export function generateBankIndonesiaQrisPayload(
   payload += formatTlv("62", additionalData);
 
   // 11. Tag 63: Checksum CRC16
+  // CRC dihitung atas seluruh payload ditambah tag dan panjang CRC sendiri (6304); 4 digit hasilnya ditempel di akhir.
   const payloadToCrc = payload + "6304";
   const crcValue = calculateQrisCrc16(payloadToCrc);
   const fullQrisPayload = payloadToCrc + crcValue;
@@ -142,6 +148,7 @@ export function validateQrisPayloadStructure(payload: string): {
   }
 
   // Verifikasi keabsahan checksum CRC16 di 4 karakter terakhir
+  // Validasi: 4 karakter terakhir adalah CRC; dihitung ulang dari sisanya dan harus sama.
   const payloadWithoutCrc = payload.substring(0, payload.length - 4);
   const declaredCrc = payload.substring(payload.length - 4).toUpperCase();
   const computedCrc = calculateQrisCrc16(payloadWithoutCrc);
@@ -184,6 +191,7 @@ export function transitionEscrowPaymentStatus(
   currentStatus: EscrowPaymentStatus,
   action: "confirm_payment" | "release_to_vendor" | "refund"
 ): { success: boolean; newStatus: EscrowPaymentStatus; reason?: string } {
+  // Alur status yang sah: unpaid ke held_in_escrow lewat konfirmasi bayar, held_in_escrow ke released_to_vendor lewat pencairan, atau held_in_escrow ke refunded lewat pengembalian. Transisi lain ditolak.
   if (action === "confirm_payment") {
     if (currentStatus === "unpaid") {
       return { success: true, newStatus: "held_in_escrow" };
@@ -219,6 +227,7 @@ export function executeEscrowSettlement(
   newStatus: EscrowPaymentStatus;
   message: string;
 } {
+  // Nominal harus bilangan terhingga dan tidak negatif.
   if (!Number.isFinite(amountIdr) || amountIdr < 0) {
     return {
       settled: false,
@@ -227,6 +236,7 @@ export function executeEscrowSettlement(
       message: "Nominal transaksi tidak valid.",
     };
   }
+  // Pencairan hanya sah bila dana sedang tertahan; saldo pedagang bertambah sebesar nominal penuh (tanpa potongan biaya).
   const transition = transitionEscrowPaymentStatus(currentStatus, "release_to_vendor");
   if (!transition.success) {
     return {

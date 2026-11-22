@@ -136,6 +136,7 @@ export function calculateFleetAllocation(
   targetCategory: "warteg" | "social_kitchen" | "maggot" | "mixed" = "mixed"
 ): FleetAllocationResult {
   // Bobot minimal 1 kg agar pembagian kapasitas tidak menghasilkan 0 unit atau NaN.
+  // Dibulatkan ke atas ke kelipatan kapasitas: unit = ceil(berat / kapasitas per unit).
   const normalizedWeight = Math.max(1, totalWeightKg);
 
   let vehicleType: VehicleClass;
@@ -159,6 +160,7 @@ export function calculateFleetAllocation(
   // Kapasitas total semua unit dipakai untuk menghitung persentase keterisian.
   const spec = VEHICLE_SPECIFICATIONS[vehicleType];
   const totalCapacity = spec.maxCapacityKg * unitsRequired;
+  // Keterisian = berat / (kapasitas per unit x jumlah unit) x 100. Contoh: 450 kg di GranMax 1.000 kg = 45 persen.
   const capacityUtilizationPct = Number(((normalizedWeight / totalCapacity) * 100).toFixed(1));
 
   // Kalimat penugasan disusun menurut armada terpilih.
@@ -209,16 +211,20 @@ export function generateDeliveryManifest(
   });
 
   // Estimasi jarak total: jarak penjemputan antar kios di pasar (~0.25 km per kios, minimal 0.5 km) + jarak ke tujuan
+  // Jarak keliling pasar = 0,25 km per kios, minimal 0,5 km; ditambahkan ke jarak ke tujuan.
   const internalMarketKm = Math.max(0.5, stops.length * 0.25);
   const totalDistanceKm = Number((internalMarketKm + destination.distanceKm).toFixed(1));
 
   // Estimasi konsumsi BBM (liter) dan biaya (IDR)
+  // BBM (liter) = jarak total / efisiensi (km per liter). Contoh: 12 km pada 10,5 km/l = 1,14 liter.
   const fuelConsumptionLiters = Number((totalDistanceKm / spec.fuelEfficiencyKmPerLiter).toFixed(2));
+  // Biaya BBM = liter x harga per liter. Contoh: 1,14 liter x Rp12.100 = sekitar Rp13.800.
   const estimatedFuelCostIdr = Math.round(fuelConsumptionLiters * spec.fuelPricePerLiterIdr);
 
   // Estimasi durasi (menit): 5 menit per kios penjemputan + waktu perjalanan (kecepatan rata-rata 25 km/jam di Jakarta Timur)
   // Durasi = waktu muat di tiap kios + waktu tempuh.
   const loadingTimeMinutes = stops.length * 5;
+  // Waktu tempuh = jarak / 25 km per jam x 60 menit; ditambah 5 menit muat per kios untuk durasi total.
   const transitTimeMinutes = Math.round((totalDistanceKm / 25) * 60);
   const estimatedDurationMinutes = loadingTimeMinutes + transitTimeMinutes;
 

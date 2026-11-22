@@ -38,20 +38,24 @@ export function calculateArrheniusDecayRate(
 ): { kRatePerHour: number; accelerationFactor: number } {
   // Kelipatan termal biologis Q10 (berlipat ganda per kenaikan 10°C)
   const temperatureDelta = (temperatureC - BASELINE_STORAGE_TEMP_C) / 10.0;
+  // Q10 adalah kelipatan laju peluruhan setiap kenaikan suhu 10 C. Contoh: Q10 2,5 pada 35 C menghasilkan 2,5^((35-25)/10) = 2,5 kali lebih cepat daripada pada 25 C.
   const q10Multiplier = Math.pow(q10Coefficient, temperatureDelta);
 
   // Koreksi kelembapan: defisit < 80% picu dehidrasi, kelembapan jenuh > 85% picu bakteri
   let rhFactor = 1.0;
   if (humidityPercent < CRITICAL_RELATIVE_HUMIDITY_PERCENT) {
     const deficitFraction = (CRITICAL_RELATIVE_HUMIDITY_PERCENT - humidityPercent) / 100.0;
+    // Udara terlalu kering menambah laju: tambahan = (80 - RH)/100 x (sensitivitas x 0,15). Contoh: RH 60 dan sensitivitas 1,9 menambah 0,2 x 0,285 = 0,057.
     rhFactor += deficitFraction * (humiditySensitivity * 0.15);
   } else if (humidityPercent > 85.0) {
     const excessFraction = (humidityPercent - 85.0) / 100.0;
+    // Udara terlalu lembap (di atas 85 persen) memicu bakteri: tambahan = (RH - 85)/100 x (0,015 x 10).
     rhFactor += excessFraction * (HUMIDITY_PENALTY_COEFFICIENT * 10.0);
   }
 
   // Akselerasi dibatasi minimal 0,1 agar suhu sangat dingin tidak menghentikan peluruhan; 0,035/jam adalah laju dasar pada 25°C.
   const accelerationFactor = Math.max(0.1, Number((q10Multiplier * rhFactor).toFixed(3)));
+  // Laju per jam = 0,035 x faktor akselerasi; 0,035 adalah laju dasar pada 25 C.
   const kRatePerHour = Number((0.035 * accelerationFactor).toFixed(6));
 
   return {
@@ -76,6 +80,7 @@ export function calculateDecayScore(
   );
 
   // Jam pajang dikonversi ke jam ekuivalen pada 25°C, lalu dipetakan linear per fase layu komoditas.
+  // Jam ekuivalen = jam pajang x faktor akselerasi, yaitu lama pajang bila suhu tetap 25 C. Contoh: 5 jam pada akselerasi 2 sama dengan 10 jam ekuivalen.
   const equivalentHours = hoursElapsed * accelerationFactor;
   const lr = commodity.decayLayuRinganHour;
   const ls = commodity.decayLayuSedangHour;
@@ -87,17 +92,21 @@ export function calculateDecayScore(
     decayScore = 0.0;
   } else if (equivalentHours < lr) {
     // Segar prima (0.00 - 0.35)
+    // Fase segar: skor naik linear dari 0 ke 0,35 selama lr jam ekuivalen. Contoh: lr 7 jam, pada 3,5 jam skor 0,175.
     decayScore = (equivalentHours / lr) * 0.35;
   } else if (equivalentHours < ls) {
     // Layu ringan: Tier 1 Warteg (0.35 - 0.65)
+    // Posisi di dalam fase (0 di awal, 1 di akhir) dikali lebar skor fase. Layu ringan melebar dari 0,35 ke 0,65, jadi skor = 0,35 + posisi x 0,30.
     const step = (equivalentHours - lr) / Math.max(0.1, ls - lr);
     decayScore = 0.35 + step * 0.3;
   } else if (equivalentHours < tl) {
     // Layu sedang: Tier 2 Dapur Sosial (0.65 - 0.85)
+    // Layu sedang melebar dari 0,65 ke 0,85: skor = 0,65 + posisi x 0,20.
     const step = (equivalentHours - ls) / Math.max(0.1, tl - ls);
     decayScore = 0.65 + step * 0.2;
   } else {
     // Tidak layak: Tier 3 Maggot (0.85 - 1.00)
+    // Setelah batas tidak layak, skor naik dari 0,85 ke 1,00 selama 10 jam tambahan (dibatasi 10 jam).
     const extraHours = Math.min(10.0, equivalentHours - tl);
     decayScore = 0.85 + (extraHours / 10.0) * 0.15;
   }
@@ -105,6 +114,7 @@ export function calculateDecayScore(
   const normalizedDecayScore = Math.min(1.0, Math.max(0.0, Number(decayScore.toFixed(4))));
 
   // Sisa jam simpan aman sebelum rusak total
+  // Sisa jam ekuivalen sampai batas tidak layak dibagi akselerasi agar kembali menjadi jam nyata di los.
   const remainingEquivalent = Math.max(0.0, tl - equivalentHours);
   const rawHoursRemaining = remainingEquivalent / Math.max(0.1, accelerationFactor);
   const hoursRemaining = Math.max(0.0, Number(rawHoursRemaining.toFixed(4)));
@@ -135,6 +145,7 @@ export function classifyProduceCondition(decayScore: number): {
 
   if (decayScore < 0.65) {
     // Diskon bertingkat proporsional inverse surge (50% - 70%)
+    // Diskon tier 1 naik linear 50 sampai 70 persen sesuai posisi skor antara 0,35 dan 0,65.
     const surgeStep = (decayScore - 0.35) / 0.3;
     const discount = 50 + Math.round(surgeStep * 20);
     return {
@@ -179,14 +190,17 @@ export function evaluateProduceDecay(
 
   if (arrhenius.condition === 'layu_ringan') {
     // Tier 1 (Warteg): Semakin mendekati busuk, diskon bertambah (50% -> 70%) dan harga semakin murah
+    // surgeStep = posisi skor di dalam fase (0..1); diskon tier 1 = 50 + 20 x surgeStep persen.
     const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.35) / 0.30));
     baseDiscountPercent = 50 + Math.round(surgeStep * 20);
     floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
     // Harga dibulatkan ke kelipatan Rp500 agar mudah dibayar tunai, lalu dikunci di atas harga lantai.
+    // Harga = harga grosir x (1 - diskon). Dibulatkan ke kelipatan Rp500, lalu tidak boleh di bawah harga lantai. Contoh: Rp6.000 diskon 60 persen = Rp2.400, dibulatkan Rp2.500.
     const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
     estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
   } else if (arrhenius.condition === 'layu_sedang') {
     // Tier 2 (Dapur Sosial): Lebih layu dari tier 1, harga lebih murah lagi (diskon 75% -> 85%) jika ditebus subsidi
+    // Tier 2 memakai diskon 75 sampai 85 persen: 75 + 10 x surgeStep, posisi dihitung dari skor 0,65 sampai 0,85.
     const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.65) / 0.20));
     baseDiscountPercent = 75 + Math.round(surgeStep * 10);
     floorPrice = 1000;
@@ -291,6 +305,7 @@ export function calculateArrheniusRateConstant(
   q10: number = ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10
 ): number {
   const { BASELINE_TEMP_CELSIUS, CRITICAL_HUMIDITY_PERCENT, BETA_HUMIDITY_COEFFICIENT } = ARRHENIUS_CONSTANTS;
+  // Laju k per jam = 0,045 x 2,2^((T - 20)/13) x (1 + 0,015 x max(0, RH - 80)). Artinya: 0,045 adalah laju pada 20 C, setiap kenaikan 13 C melipatkan laju 2,2 kali, dan kelembapan di atas 80 persen menambah laju sedikit.
   const k_baseline = 0.045;
   // Q10 komoditas tidak dipakai langsung: nilai positif apa pun diganti 2,2 per 13°C (kalibrasi ~2,2x pada 33°C vs 20°C).
   // Koreksi kelembapan hanya menambah laju di atas 80% RH.
@@ -317,12 +332,16 @@ export function evaluateArrheniusDecay(
     relativeHumidityPercent,
     q10
   );
+  // Rasio akselerasi = laju pada kondisi sekarang dibagi laju pada 20 C dengan kelembapan yang sama.
   const accelerationRatio = rateK / (baselineRate || 1.0);
 
+  // Batas jam sampai tidak layak: dari data komoditas; jika kosong pakai umur simpan standar, dan jika kosong juga 16 jam.
   const safeHorizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
+  // Paparan ternormalisasi = jam pajang dibagi batas jam; bernilai 1 saat tepat di batas.
   const normalizedExposure = hoursElapsed / safeHorizonHours;
   // Penskalaan termal baru aktif di atas ~33°C (rasio > 2,2); eksponen 1,15 membuat peluruhan makin cepat menjelang akhir umur simpan.
   const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
+  // Skor = paparan^1,15 x 0,82 x skala termal. Pada paparan 1 skornya 0,82 (belum 0,85); eksponen 1,15 membuat laju memburuk makin cepat. Contoh: batas 16 jam, pajang 8 jam pada suhu baku: 0,5^1,15 x 0,82 = 0,37.
   const rawScore = Math.pow(normalizedExposure, 1.15) * 0.82 * thermalScaling;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
 
@@ -352,6 +371,7 @@ export function evaluateArrheniusDecay(
   // Dihitung langsung dari invers kinetika Arrhenius agar selaras dengan skor peluruhan.
   let hoursRemaining = 0;
   if (decayScore < 0.85) {
+    // Membalik rumus skor untuk skor 0,85: jam batas = horizon x (0,85 / (0,82 x skala termal))^(1/1,15). Sisa jam = jam batas dikurangi jam yang sudah berlalu.
     const targetHours = safeHorizonHours * Math.pow(0.85 / (0.82 * thermalScaling), 1 / 1.15);
     hoursRemaining = Math.max(0, Number((targetHours - hoursElapsed).toFixed(4)));
   }
@@ -414,6 +434,7 @@ export function calculateRainFootfallAttenuation(
   }
 
   footfallDropPercentage = Number(footfallDropPercentage.toFixed(1));
+  // Indeks pengunjung = 1 - penurunan/100. Pengali surplus = 1 + 0,95 x penurunan/100. Contoh: penurunan 48 persen memberi indeks 0,52 dan pengali 1,456.
   const footfallIndex = Number((1.0 - footfallDropPercentage / 100.0).toFixed(3));
   const surplusMultiplier = Number((1.0 + (footfallDropPercentage / 100.0) * 0.95).toFixed(3));
 
@@ -475,6 +496,7 @@ export function calculateInverseSurgePricing(
   const delta_0 = 0.50; // Diskon awal 50%
   const lambda = 0.65; // Konstanta percepatan eksponensial
 
+  // Jam dibatasi pada 14.30 sampai 18.00; progres waktu 0 pada 14.30 dan 1 pada 18.00.
   const clampedHour = Math.min(t_critical, Math.max(t_trigger, currentHourDecimal));
   const timeProgress = (clampedHour - t_trigger) / (t_critical - t_trigger);
 
@@ -483,10 +505,12 @@ export function calculateInverseSurgePricing(
   const mu_weather = isHeavyRain ? 0.85 : 1.0;
 
   // Formula peluruhan eksponensial harga
+  // Harga = harga pagi x (1 - 0,50) x e^(-0,65 x progres) x faktor hujan. Pada 14.30 harga tinggal 50 persen harga pagi; pada 18.00 sekitar 26 persen (0,5 x e^-0,65 = 0,26). Hujan lebat (>10 mm) mengalikan 0,85.
   const unconstrainedPrice =
     P_morning * (1.0 - delta_0) * Math.exp(-lambda * timeProgress) * mu_weather;
 
   // Kunci batas bawah harga modal
+  // Harga akhir tidak pernah di bawah harga lantai; flag priceFloorEnforced menandai bila lantai yang berlaku.
   const offeredSalvagePrice = Math.round(Math.max(P_floor, unconstrainedPrice));
   const priceFloorEnforced = offeredSalvagePrice <= P_floor;
 
@@ -578,9 +602,12 @@ export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
 export function predictRetailSurplusKg(initialStockKg: number, footfallDropPercentage: number) {
   // Normalnya 82% stok laku eceran; hujan memangkas serapan, tetapi serapan minimal 20% dan surplus minimal 10% stok.
   const baselineRetailClearance = 0.82;
+  // Hujan menurunkan serapan: dampak = penurunan pengunjung/100 x 0,72. Contoh: penurunan 48 persen mengurangi serapan 0,35.
   const weatherDropImpact = (footfallDropPercentage / 100) * 0.72;
   const effectiveClearanceRate = Math.max(0.2, baselineRetailClearance - weatherDropImpact);
+  // Surplus = stok x (1 - serapan efektif). Tanpa hujan 18 persen stok tersisa; dengan penurunan 48 persen serapan 0,47 sehingga surplus sekitar 53 persen.
   return Math.round(initialStockKg * Math.max(0.1, 1 - effectiveClearanceRate));
+// Tiap kios dinilai terpisah, lalu hasilnya dijumlahkan menjadi total pasar dan per tier.
 }
 
 // Memprediksi kuantitatif surplus pasar agregat komposit (validasi target empiris 1.240 kg) pada 14:30 WIB (PSR-19).

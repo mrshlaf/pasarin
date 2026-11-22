@@ -93,13 +93,16 @@ export function haversineDistanceKm(
   const radLat2 = toRadians(lat2);
 
   // Formula Haversine: a = sin²(Δlat/2) + cos(lat1) * cos(lat2) * sin²(Δlon/2)
+  // a = sin^2(dLat/2) + cos(lat1) x cos(lat2) x sin^2(dLon/2): kuadrat setengah jarak sudut, dengan lonjakan garis bujur diperkecil oleh cos(lintang) karena bujur menyempit ke arah kutub.
   const a =
     Math.sin(dLat / 2.0) * Math.sin(dLat / 2.0) +
     Math.cos(radLat1) * Math.cos(radLat2) * Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
 
   // Sudut sentral c = 2 * atan2(√a, √(1−a))
+  // c = 2 x atan2(akar a, akar (1 - a)) adalah sudut pusat bumi antara dua titik, dalam radian.
   const c = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
 
+  // Jarak = jari-jari bumi x sudut pusat. Contoh: sudut 0,000314 rad x 6.371 km = sekitar 2 km.
   const distance = EARTH_RADIUS_KM * c;
   return Number(distance.toFixed(3));
 }
@@ -162,19 +165,23 @@ export function findMatchesForOffer(
 
     // 5. Pembobotan Sub-Skor Ternormalisasi (0.0 s/d 1.0)
     // Skor Jarak: Makin dekat ke pasar, skor makin mendekati 1.0
+    // Skor jarak = 1 - jarak/radius maksimal. Contoh: radius 5 km, mitra 1,25 km: 1 - 0,25 = 0,75; mitra di batas 5 km: 0; makin dekat makin mendekati 1.
     const distanceScore = Math.max(0.0, 1.0 - distanceKm / maxRadiusKm);
 
     // Skor Kapasitas: Rasio sisa kuota terhadap total kapasitas harian
+    // Skor kapasitas = sisa kuota / kuota harian. Contoh: kuota 80 kg terpakai 15 kg: 65/80 = 0,81.
     const capacityScore =
       buyer.dailyCapacityKg > 0 ? remainingCapacityKg / buyer.dailyCapacityKg : 0.0;
 
     // Skor Reputasi: Ternormalisasi ke skala 0.0 - 1.0
+    // Reputasi 0-100 diubah ke skala 0-1 dan dibatasi agar tidak melewati batas.
     const reputationScore = Math.min(1.0, Math.max(0.0, buyer.reputationScore / 100.0));
 
     // Bonus Preferensi Komoditas: Tambahan 0.05 jika komoditas termasuk daftar favorit pembeli
     const isPreferred =
       buyer.preferredCommodities.includes(offer.commodityId) ||
       buyer.preferredCommodities.includes("semua_organik");
+    // Bonus 0,05 bila komoditas ada di daftar favorit mitra (atau mitra menerima semua jenis organik).
     const commodityPreferenceBonus = isPreferred ? 0.05 : 0.0;
 
     // 6. Hitung Skor Komposit Terbobot
@@ -191,6 +198,7 @@ export function findMatchesForOffer(
       : 0.0;
 
     // Estimasi Waktu Angkut Kurir (asumsi kecepatan padat perkotaan Jakarta 15 km/jam + 5 menit muat)
+    // Waktu angkut = 4 menit per km (kira-kira 15 km/jam di lalu lintas Jakarta) + 5 menit muat. Contoh: 2,2 km = 9 + 5 = 14 menit.
     const estimatedTransitMinutes = Math.round(distanceKm * 4.0 + 5.0);
 
     matchScores.push({

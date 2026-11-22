@@ -195,12 +195,15 @@ export function evaluateChlorophyllLoss(input: {
   // Belum ada model citra: tanpa rasio numerik, rasio diturunkan deterministik dari panjang base64 sebagai placeholder
   if (ratio === undefined && input.imageBase64) {
     const rawLen = input.imageBase64.length;
+    // Placeholder deterministik: rasio = 1 - (panjang base64 mod 50)/100, dibatasi 0,1 sampai 1,0. Hanya agar hasil konsisten sampai model citra sungguhan dipasang; bukan pembacaan warna nyata.
     ratio = Math.max(0.1, Math.min(1.0, 1.0 - (rawLen % 50) / 100));
   }
 
   // Rasio default 0,88 (daun masih hijau); skor visual adalah kebalikan rasio klorofil sehingga skala tier sama dengan decayScore.
   const effectiveRatio = Math.max(0.0, Math.min(1.0, ratio ?? 0.88));
+  // Kehilangan klorofil (persen) = (1 - rasio) x 100. Contoh: rasio 0,88 berarti 12 persen klorofil hilang.
   const chlorophyllLossPercent = Number(((1.0 - effectiveRatio) * 100).toFixed(1));
+  // Skor visual = 1 - rasio, sehingga dipakai dengan ambang yang sama seperti skor peluruhan (0,35, 0,65, 0,85).
   const visualDecayScore = Number((1.0 - effectiveRatio).toFixed(4));
 
   const { condition, recommendedTier } = classifyProduceCondition(visualDecayScore);

@@ -75,13 +75,18 @@ const SUFFIX_OWNER: Array<[string, string]> = [["ku", "saya"], ["mu", "anda"], [
 
 // Jarak Damerau-Levenshtein (optimal string alignment) dengan batas atas untuk efisiensi.
 function editDistance(a: string, b: string, limit: number) {
+  // Jika selisih panjang sudah melebihi batas, jaraknya pasti melebihi batas; hitung dihentikan lebih awal.
   if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  // Tabel dinamis: rows[i][j] = jumlah suntingan minimal untuk mengubah i huruf pertama kata a menjadi j huruf pertama kata b. Baris dan kolom nol berisi jarak dari string kosong (0, 1, 2, ...).
   const rows = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
   for (let j = 1; j <= b.length; j++) rows[0][j] = j;
   for (let i = 1; i <= a.length; i++) {
     for (let j = 1; j <= b.length; j++) {
+      // Biaya 0 bila huruf sama, 1 bila beda (penggantian).
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      // Ambil yang termurah dari tiga suntingan: hapus huruf (atas + 1), sisip huruf (kiri + 1), atau ganti huruf (diagonal + biaya).
       rows[i][j] = Math.min(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + cost);
+      // Tukar dua huruf bersebelahan dihitung satu suntingan (Damerau), misalnya bayma menjadi bayam, bukan dua.
       if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) rows[i][j] = Math.min(rows[i][j], rows[i - 2][j - 2] + 1);
     }
   }
@@ -118,10 +123,12 @@ const RESOLVABLE = new Set([...KNOWN, ...COMMODITY_WORDS]);
 // Mengoreksi satu kata ke kata kunci terdekat bila salah ketiknya ringan; null jika tidak yakin.
 function correctWord(word: string) {
   if (word.length < 4 || /\d/.test(word)) return null;
+  // Toleransi salah ketik: kata pendek (4-7 huruf) boleh 1 suntingan, kata panjang (8+) boleh 2.
   const limit = word.length >= 8 ? 2 : 1;
   let best: string | null = null;
   let bestDistance = limit + 1;
   let tie = false;
+  // Cari kata target dengan jarak terkecil; bila dua target sama dekat (seri), tidak dikoreksi agar tidak salah tebak.
   for (const target of TARGETS) {
     const distance = editDistance(word, target, limit);
     if (distance < bestDistance) {
@@ -139,6 +146,7 @@ function correctWord(word: string) {
 function resolveWord(word: string): string[] {
   if (SLANG[word]) return [SLANG[word]];
   if (RESOLVABLE.has(word)) return [word];
+  // Akhiran kepemilikan: sayurku menjadi sayur saya, sayurmu menjadi sayur anda, -nya hanya dilepas. Kata dasar minimal 4 huruf agar kata pendek tidak terpotong.
   for (const [suffix, owner] of SUFFIX_OWNER) {
     const stem = word.slice(0, -suffix.length);
     if (!word.endsWith(suffix) || stem.length < 4) continue;
@@ -154,11 +162,13 @@ function resolveWord(word: string): string[] {
 export function normalizeQuestion(question: string) {
   const words = question.toLowerCase()
     .replace(/[’']/g, "")
+    // /kg ditulis menjadi per kg supaya dikenali sebagai satuan harga.
     .replace(/\/\s*kg(?![a-z])/g, " per kg ")
     .replace(/[^a-z0-9+\s-]/g, " ")
     .split(/\s+/)
     .filter(Boolean);
   // Kata ulang ala chat ("murah2", "sayur2an") disederhanakan ke kata dasarnya.
+  // Contoh: murah2 menjadi murah, sayur2an menjadi sayur. Kata dasar minimal 3 huruf.
   const base = (word: string) => word.replace(/^([a-z]{3,})2(?:an)?$/, "$1");
   return words.flatMap((word) => word.includes("+") ? [word] : resolveWord(base(word))).join(" ").replace(/\s+/g, " ").trim();
 }
