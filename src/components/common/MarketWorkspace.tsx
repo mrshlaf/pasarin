@@ -12,6 +12,7 @@ import type { RescueOffer } from "@/types/market";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 
+/** Warna status yang tersedia untuk pill dan metrik. */
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 const toneStyles: Record<Tone, string> = {
@@ -61,6 +62,7 @@ export function MarketSection({ title, description, action, variant = "card", ch
   );
 }
 
+/** Satu kartu metrik: label, nilai, dan keterangan opsional. */
 export interface MarketMetric {
   label: string;
   value: ReactNode;
@@ -233,10 +235,12 @@ export function LotFacts({ items }: { items: { label: string; value: string }[] 
   );
 }
 
+/** Nama lokal komoditas untuk tampilan; id dikembalikan bila tidak dikenal. */
 export function commodityName(id: string) {
   return COMMODITIES.find((item) => item.id === id)?.localName ?? id;
 }
 
+/** Data kios dari direktori, atau undefined bila id tidak dikenal. */
 export function kioskInfo(vendorId: string) {
   return KIOSKS.find((item) => item.id === vendorId);
 }

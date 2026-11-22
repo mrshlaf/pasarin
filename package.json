@@ -15,7 +15,8 @@
     "test:unit": "tsx scripts/run_unit_tests.ts",
     "test:matchmaking": "tsx scripts/test_matchmaking_engine.ts",
     "seed:scenarios": "tsx scripts/run_seed_scenarios.ts",
-    "bot:poll": "tsx scripts/run_telegram_polling.ts"
+    "bot:poll": "tsx scripts/run_telegram_polling.ts",
+    "bot:setup": "tsx scripts/setup_telegram_bot.ts"
   },
   "dependencies": {
     "@google/genai": "^2.27.0",

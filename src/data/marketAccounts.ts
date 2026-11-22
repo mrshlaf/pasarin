@@ -33,6 +33,7 @@ const vendorAccounts: MarketAccount[] = KIOSKS.map((kiosk, index) => {
   };
 });
 
+/** Akun pembeli untuk satu tier, dengan username berurutan (warteg1, sosial1, maggot1, ...). */
 const buyerAccounts = (tier: "tier_1" | "tier_2" | "tier_3", prefix: string, role: AppRole) =>
   CIRCULAR_BUYERS.filter((buyer) => buyer.tier === tier).map((buyer, index) => {
     const username = `${prefix}${index + 1}`;

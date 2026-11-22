@@ -6,11 +6,13 @@
 
 export type DistributionMode = "sale" | "donation";
 
+/** Hasil timbang pedagang: berat sisa fisik dan pilihan jual/donasi untuk lot dapur sosial. */
 export interface StockConfirmation {
   confirmedKg: number;
   mode?: DistributionMode;
 }
 
+/** Satu lot pasokan kios. verifiedAt terisi setelah pedagang menimbang sisa fisik. */
 export interface StockItem {
   id: string;
   vendorId: string;
@@ -24,6 +26,10 @@ export interface StockItem {
   verifiedAt?: string;
 }
 
+/**
+ * Penawaran penyelamatan untuk satu lot. status melacak alur penawaran, paymentStatus melacak dana:
+ * unpaid -> held_in_escrow -> released_to_vendor, atau not_required untuk lot gratis yang sudah diklaim.
+ */
 export interface RescueOffer {
   id: string;
   stockId: string;
@@ -119,6 +125,7 @@ export function completedDonationLots(offers: RescueOffer[], vendorId: string) {
     .map((offer) => offer.stockId)).size;
 }
 
+/** Catatan dana escrow per pesanan berbayar: ditahan saat dibayar, cair saat serah terima. */
 export interface EscrowTransaction {
   id: string;
   offerId: string;

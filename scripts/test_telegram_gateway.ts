@@ -133,6 +133,18 @@ async function run() {
       assert.ok(sent.at(-1)?.text.includes(session!.user.name), "Pesan menu wajib mencantumkan nama pengguna");
     }
 
+    // 3b. Pertanyaan biasa (tanpa "/") dijawab asisten sesuai akun aktif, termasuk aturan privasinya
+    assert.equal((await telegram(200, "berapa keuntunganku")).actionTaken, "assistant_answered", "Pertanyaan bebas pedagang wajib dijawab asisten");
+    assert.match(sent.at(-1)!.text, /Saldo dompet/, "Jawaban pendapatan wajib memakai saldo dompet akun sendiri");
+    assert.equal((await telegram(204, "sayur apa yg paling murah")).actionTaken, "assistant_answered", "Pertanyaan bebas warteg wajib dijawab asisten");
+    assert.match(sent.at(-1)!.text, /Termurah|Belum ada penawaran/, "Jawaban harga wajib berasal dari katalog akun");
+    await telegram(204, "berapa pendapatan kios A-05");
+    assert.match(sent.at(-1)!.text, /bersifat pribadi/, "Data pendapatan kios lain wajib ditolak di Telegram");
+    // Pengguna yang belum masuk mendapat jawaban publik beserta tombol masuk
+    assert.equal((await telegram(400, "apa itu pasarin")).actionTaken, "accounts", "Pertanyaan pengguna belum masuk wajib disertai menu masuk");
+    assert.match(sent.at(-1)!.text, /menyalurkan sisa sayur/, "Pengguna belum masuk wajib mendapat penjelasan publik");
+    assert.ok(sent.at(-1)!.reply_markup?.inline_keyboard.flat().some((button) => "web_app" in button), "Jawaban publik wajib menyertakan tombol masuk");
+
     // 4. Uji Isolasi Kios & Pencegahan Akses Lintas Chat / Grup
     // Memvalidasi bahwa kios yang berbeda memiliki vendorId yang unik dan terisolasi
     assert.notEqual((await telegramChatSessions(200)).active?.user.vendorId, (await telegramChatSessions(201)).active?.user.vendorId, "ID vendor antar pedagang wajib berbeda");

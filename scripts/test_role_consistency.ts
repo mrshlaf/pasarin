@@ -28,6 +28,7 @@ const SUGGESTIONS: Record<string, string[]> = {
   admin1: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
 };
 
+/** Mengambil semua angka dari jawaban untuk dibandingkan dengan angka dashboard. */
 const numbers = (text: string) => (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((value) => Number(value.replace(",", ".")));
 
 /** Invarian buku besar yang harus berlaku untuk state server lengkap. */
@@ -57,6 +58,7 @@ function assertLedgerInvariants(state: ServerState, label: string) {
   assert.equal(state.vendorWalletIdr, releasedTotal, `${label}: saldo pedagang harus sama dengan total dana cair`);
 }
 
+/** Membandingkan jawaban asisten dengan rumus dashboard di setiap tahap alur jual-bayar-antar. */
 async function run() {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;

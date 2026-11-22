@@ -57,7 +57,9 @@ type Actor = Pick<AuthUser, "id" | "name" | "role" | "vendorId">;
 
 const table = "pasarin_simulation_state";
 const stateKey = "market";
+/** Lokasi berkas state lokal; bisa diganti dengan PASARIN_STATE_FILE untuk data uji terpisah. */
 const stateFile = () => process.env.PASARIN_STATE_FILE ?? path.join(os.tmpdir(), "pasarin_market_state_v2.json");
+/** Produksi dan mode Supabase menyimpan state di database; selain itu di berkas lokal. */
 const storesStateInDatabase = () => databaseConfigured() || process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
 
 /**

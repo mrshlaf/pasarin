@@ -50,6 +50,7 @@ const API_BASE = `https://api.telegram.org/bot${token}`;
 let offset = 0;
 let running = true;
 
+/** Memanggil satu metode Telegram Bot API dengan token dari .env.local. */
 async function apiCall(method: string, body?: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/${method}`, {
     method: "POST",
@@ -59,6 +60,7 @@ async function apiCall(method: string, body?: Record<string, unknown>) {
   return res.json();
 }
 
+/** Mengambil pembaruan lewat getUpdates (tanpa webhook) dan memprosesnya dengan handler bot yang sama dengan produksi. */
 async function startPolling() {
   console.log("\nPASARIN Real-Time Telegram Bot Polling Gateway");
   console.log("Menghubungkan ke Telegram Bot API...");

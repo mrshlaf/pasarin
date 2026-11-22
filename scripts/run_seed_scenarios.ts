@@ -314,6 +314,7 @@ const scenarioTransactions: EscrowTransaction[] = [
   },
 ];
 
+/** Menulis seed pasar plus 7 skenario uji ke berkas lokal, lalu menyinkronkannya ke Supabase bila kredensial tersedia. */
 async function seedTestingScenarios() {
   console.log("\nInisialisasi dan Verifikasi Skenario Pengujian PASARIN\n");
 

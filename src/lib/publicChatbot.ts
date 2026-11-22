@@ -35,8 +35,13 @@ const RECIPIENTS = "Penerima dibagi menurut estimasi mutu sayur: Warteg & UMKM u
 const ACCOUNT = "Akun PASARIN dipakai oleh mitra: pedagang kios, Warteg & UMKM, dapur sosial, sentra maggot, kurir, dan pengelola pasar. " +
   "Jika sudah punya akun, pilih Masuk untuk membuka dashboard sesuai peran Anda. Pendaftaran mitra baru belum tersedia lewat halaman ini.";
 
+/** Contoh pertanyaan sebagai daftar berpoin. */
 const examples = (count: number) => PUBLIC_EXAMPLES.slice(0, count).map((item) => `• ${item}`).join("\n");
 
+/**
+ * Menjawab pertanyaan pengunjung landing page. Data akun tidak pernah dibaca; topik pribadi selalu ditolak.
+ * Pertanyaan bebas diteruskan ke Gemini hanya dengan data etalase dan ringkasan publik.
+ */
 export async function answerPublicQuestion(question: string, forceHeuristic = false) {
   const text = normalizeQuestion(question);
   const commodity = findCommodity(text);

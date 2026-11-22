@@ -132,6 +132,7 @@ function correctWord(word: string) {
   return best && bestDistance <= limit && !tie ? best : null;
 }
 
+/** Menormalkan satu kata: singkatan, akhiran -ku/-mu/-nya, lalu koreksi salah ketik. */
 function resolveWord(word: string): string[] {
   if (SLANG[word]) return [SLANG[word]];
   if (RESOLVABLE.has(word)) return [word];
@@ -161,6 +162,7 @@ export function normalizeQuestion(question: string) {
   return words.flatMap((word) => word.includes("+") ? [word] : resolveWord(base(word))).join(" ").replace(/\s+/g, " ").trim();
 }
 
+/** Pola kata utuh untuk satu alias komoditas. */
 const aliasPattern = (alias: string) => new RegExp(`(?<![a-z])${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`, "g");
 
 /** Mencari komoditas yang disebut dalam teks ternormalisasi, mendahulukan frasa terpanjang. */

@@ -13,6 +13,8 @@ import {
 } from "@/lib/telegramWorkspace";
 import { currentTelegramAccount, endTelegramSession, selectTelegramSession, telegramChatSessions } from "@/lib/telegramSessions";
 import { getEnv } from "@/lib/env";
+import { answerPublicQuestion } from "@/lib/publicChatbot";
+import { allowRequest } from "@/lib/rateLimit";
 
 /**
  * Membangun menu pemilihan akun privat dan tombol peluncur Mini App berbasis HTTPS.
@@ -94,6 +96,12 @@ export async function POST(req: NextRequest) {
       if (active) await endTelegramSession(chatId, active.key);
       active = undefined;
       reply = accountMenu(req, await telegramChatSessions(chatId), "Anda keluar dari akun aktif.");
+    } else if (!active && !data && !command.startsWith("/")) {
+      // Belum masuk: pertanyaan biasa dijawab dari etalase publik, disertai tombol masuk.
+      const answer = allowRequest("telegram-public:" + chatId, 12, 5 * 60 * 1000)
+        ? (await answerPublicQuestion(text.slice(0, 500))).summary
+        : "Terlalu banyak pertanyaan dalam waktu singkat. Coba lagi beberapa menit lagi.";
+      reply = accountMenu(req, sessions, answer.slice(0, 3500) + "\n\nMasuk dengan akun Pasarin untuk melihat stok, pesanan, dan saldo Anda.");
     } else if (data === "accounts" || ["/akun", "/login", "/masuk"].includes(command) || !active) {
       reply = accountMenu(req, sessions, active
         ? active.user.name + " · " + telegramRoleName[active.user.role] + "\nPilih akun atau masuk dengan akun lain."

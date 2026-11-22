@@ -86,7 +86,7 @@ Proyek diselesaikan melalui 3 Sprint terpadu dengan siklus pengujian mingguan pa
   * **`PSR-40`:** Frontend Supabase Role Authentication & Login System (`/login` + Role Isolation).
 * **Sprint 3 (Target Final Release: Senin, 09 November 2026):**
   * Circular 3-Tier Matchmaking & Timer Prioritas 30 Menit Dapur Sosial (`PSR-22`, `PSR-23`).
-  * Live Bot Telegram Gateway `@pasarin_bot` & tombol penawaran 1-ketuk pedagang (`PSR-24`, `PSR-25`, `PSR-26`).
+  * Live Bot Telegram Gateway `@agent_pasarin_bot` & tombol penawaran 1-ketuk pedagang (`PSR-24`, `PSR-25`, `PSR-26`).
   * Alokasi armada logistik Viar/GranMax & Simulated QRIS Escrow (`PSR-27`, `PSR-37`).
   * Demonstrasi simulasi 24 jam metabolisme pasar & penyerahan laporan akademik final (`PSR-31`, `PSR-32`).
 
@@ -108,16 +108,14 @@ C:/Project/Pasarin/
 │   │   ├── layout.tsx          # Root layout aplikasi web
 │   │   └── page.tsx            # Halaman utama cockpit interaktif 7 dasbor peran
 │   ├── components/
-│   │   ├── common/             # Komponen kontrol (MarketClock, TelegramSimulator, Stepper, Logo)
+│   │   ├── common/             # Komponen bersama (MarketChatbot, MarketDialog, MarketWorkspace, Logo, Jam WIB, foto editorial)
 │   │   ├── layout/             # Bilah navigasi (AppHeader & AppSidebar isolasi peran)
-│   │   └── roles/              # 7 Dashboard peran pengguna mandiri:
+│   │   ├── market/             # PublicMarketDashboard (landing page publik)
+│   │   └── roles/              # Dashboard per peran:
 │   │       ├── VendorDashboard.tsx        (Lapak Pedagang Kios)
-│   │       ├── WartegDashboard.tsx        (Pembeli Warteg & Kuliner Mikro)
-│   │       ├── SocialKitchenDashboard.tsx (Dapur Sosial & Panti Asuhan)
-│   │       ├── MaggotDashboard.tsx        (Sentra Biokonversi BSF & TPS 3R)
+│   │       ├── BuyerDashboard.tsx         (Warteg & UMKM, Dapur Sosial, Sentra Maggot)
 │   │       ├── LogisticsDashboard.tsx     (Kurir / Dispatcher Armada)
-│   │       ├── ManagerDashboard.tsx       (Pengelola Pasar Jaya & Rekap DLH)
-│   │       └── AdminDashboard.tsx         (Administrator Teknis & Audit Trail)
+│   │       └── OversightDashboard.tsx     (Pengelola Pasar & Administrator)
 │   ├── data/                   # Basis data statis pasar:
 │   │   ├── kiosks.ts           (Direktori 30 Kios Kramat Jati Blok A, B, C)
 │   │   └── commodities.ts      (30 Profil Biologis Sayur & Koefisien Respirasi Q10)
@@ -193,7 +191,8 @@ npm run build
 - Set `CRON_SECRET` untuk sapuan 14.30 WIB. Sapuan memakai model surplus berbasis stok awal dan cuaca untuk membuat usulan. Katalog pembeli baru menerima jumlah yang disetujui pedagang setelah timbang.
 - Set `OPENWEATHER_API_KEY` untuk cuaca aktual. Jika data cuaca tidak tersedia, skor tetap dihitung dari usia stok dan profil cuaca estimasi yang diberi label. Dashboard memperbarui data sekitar setiap 15 detik.
 - Set `GEMINI_API_KEY` untuk penalaran ReAct Autonomous Orchestrator. Default model `gemini-3.5-flash-lite` dapat diganti lewat `GEMINI_MODEL`. Jika Gemini tidak tersedia, aplikasi menyajikan ringkasan dari engine heuristik deterministik pasar.
-- Set `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_WEBHOOK_SECRET`, lalu daftarkan webhook HTTPS deployment di `/api/telegram/webhook` dengan secret yang sama. Buka chat privat bot, kirim `/start`, lalu pilih **Masuk dengan akun Pasarin**. Formulir di dalam Telegram memakai username dan kata sandi website. Telegram menyimpan hingga delapan sesi akun terpisah per chat selama delapan jam. Gunakan `/akun` untuk memilih akun aktif, `/menu` untuk melihat tugas, dan `/keluar` atau `/logout` untuk menutup sesi akun aktif. Sesi web tetap terpisah.
+- Set `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_WEBHOOK_SECRET`, lalu daftarkan webhook HTTPS deployment di `/api/telegram/webhook` dengan secret yang sama. Buka chat privat bot, kirim `/start`, lalu pilih **Masuk dengan akun Pasarin**. Formulir di dalam Telegram memakai username dan kata sandi website. Telegram menyimpan hingga delapan sesi akun terpisah per chat selama delapan jam. Gunakan `/akun` untuk memilih akun aktif, `/menu` untuk melihat tugas, dan `/keluar` atau `/logout` untuk menutup sesi akun aktif. Sesi web tetap terpisah. Jalankan `npm run bot:setup` sekali untuk mendaftarkan daftar perintah dan deskripsi bot.
+- Pesan biasa tanpa `/` dijawab asisten yang sama dengan chatbot dashboard, memakai data akun aktif dan aturan privasinya. Sebelum masuk, pesan biasa dijawab dari etalase publik disertai tombol masuk.
 - Pedagang dapat mencatat pasokan lewat `/pasok`, melihat skor susut, dan menerbitkan penawaran dengan `/terbitkan ID KG_SISA` atau `/setujui ID KG_SISA`. Masukkan satu hasil timbang sisa di luar pesanan yang sudah dicadangkan. Tambahkan `jual` atau `donasi` untuk lot dapur sosial. Pembeli memilih lot dari katalog dan memasukkan jumlah lewat `/klaim ID KG`. Kurir melihat antrean dan riwayat serta mengonfirmasi serah terima. Pengelola dan admin dapat membaca ringkasan, penawaran, pembayaran, laporan kepatuhan DLH, dan telemetri cuaca. Admin dapat menjalankan evaluasi stok.
 
 ### Alur operasional

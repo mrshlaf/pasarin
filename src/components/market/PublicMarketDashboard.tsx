@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Dashboard publik landing page: ringkasan pasokan per tujuan, komoditas tersedia, dan estimasi armada.
+ * Hanya memakai /api/market/overview yang tidak memuat data akun.
+ */
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Send, Truck, UtensilsCrossed } from "lucide-react";
@@ -22,6 +27,7 @@ const lanes = [
 const clock = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
 const number = new Intl.NumberFormat("id-ID");
 
+/** Memuat ringkasan publik, dengan status memuat, kosong, dan gagal. */
 export function PublicMarketDashboard() {
   const { isAuthenticated } = useAuth();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);

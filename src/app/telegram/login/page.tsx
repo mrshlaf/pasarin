@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Halaman masuk Telegram Mini App.
+ * Kata sandi dikirim lewat HTTPS ke /api/telegram/login bersama initData Telegram, bukan diketik di obrolan.
+ */
+
 import Script from "next/script";
 import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Send } from "lucide-react";
@@ -9,6 +14,7 @@ interface TelegramWindow extends Window {
   Telegram?: { WebApp?: { initData: string; ready: () => void; close: () => void } };
 }
 
+/** Formulir masuk yang dibuka dari tombol "Masuk dengan akun Pasarin" di bot. */
 export default function TelegramLogin() {
   const [initData, setInitData] = useState("");
   const [loaded, setLoaded] = useState(false);

@@ -1,3 +1,9 @@
+/**
+ * Uji API Asisten Dashboard.
+ * Memeriksa otorisasi, validasi input, cakupan data per peran, mode tanpa kunci model, kegagalan model,
+ * jalur pertanyaan bebas ke model, dan bahwa pertanyaan tidak pernah mengubah state pasar.
+ */
+
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,6 +13,7 @@ import { APP_ROLES, type AppRole } from "../src/data/accounts";
 import type { ServerState } from "../src/lib/serverSimulationState";
 import type { RescueOffer } from "../src/types/market";
 
+/** Menyiapkan state uji terpisah dan akun tiruan per peran, lalu menjalankan seluruh pemeriksaan. */
 async function run() {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;

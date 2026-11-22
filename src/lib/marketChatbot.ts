@@ -1,9 +1,15 @@
+/**
+ * Asisten PASARIN untuk dashboard setiap peran.
+ * Pertanyaan dinormalkan (bahasa santai, salah ketik), dicek batas privasinya, lalu dijawab langsung dari data
+ * akun yang sudah disaring server. Pertanyaan bebas yang tidak dikenali diteruskan ke Gemini dengan data yang sama.
+ */
+
 import { GoogleGenAI } from "@google/genai";
-import type { AppRole, AuthUser } from "@/data/accounts";
+import type { AppRole } from "@/data/accounts";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 import { findCommodity, normalizeQuestion, withoutCommodities } from "@/lib/chatbotLanguage";
-import { checkPrivacy } from "@/lib/chatbotPrivacy";
+import { type ChatUser, checkPrivacy } from "@/lib/chatbotPrivacy";
 import { getEnv } from "@/lib/env";
 import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import { getMarketOperations } from "@/lib/marketOperations";
@@ -13,6 +19,7 @@ import { distributionTierForDecay, isDonation, isReadyForDelivery, roundKg, type
 type Snapshot = Awaited<ReturnType<typeof readMarketSnapshot>>;
 type Operations = Awaited<ReturnType<typeof getMarketOperations>>;
 type Tier = RescueOffer["targetTier"];
+/** Penawaran sebagaimana terlihat oleh akun (termasuk penanda isMine). */
 export type Offer = Snapshot["offers"][number];
 
 /** Komoditas dan kios yang ditanyakan, untuk menyaring etalase. */
@@ -20,7 +27,7 @@ export type CatalogScope = Pick<View, "commodityId" | "commodityName" | "kioskId
 
 /** Data yang sudah disaring sesuai hak akses dan komoditas yang ditanyakan. */
 interface View {
-  user: AuthUser;
+  user: ChatUser;
   snapshot: Snapshot;
   operations: Operations | null;
   commodityId?: string;
@@ -35,7 +42,14 @@ interface View {
   oversight: boolean;
 }
 
-export async function answerDashboardQuestion(user: AuthUser, question: string, forceHeuristic = false) {
+/**
+ * Menjawab satu pertanyaan dashboard untuk akun yang sedang masuk.
+ * Jawaban data dan penolakan privasi tidak diparafrasekan model; hanya pertanyaan bebas dan beberapa ringkasan yang memakai Gemini.
+ *
+ * @param forceHeuristic - true untuk melewati model (dipakai tes dan mode tanpa kunci).
+ * @returns summary, source ("data_pasar" atau "gemini"), dan metrik yang dipakai.
+ */
+export async function answerDashboardQuestion(user: ChatUser, question: string, forceHeuristic = false) {
   const snapshot = await readMarketSnapshot(user);
   const oversight = user.role === "manager" || user.role === "admin";
   const text = normalizeQuestion(question);
@@ -415,25 +429,35 @@ const EXAMPLES: Record<AppRole, string[]> = {
   admin: ["Ringkas operasional pasar", "Apa yang perlu dievaluasi?", "Berapa dana yang sudah cair?", "Komoditas apa yang paling berisiko?", "Berapa pangan yang sudah tersalurkan?"],
 };
 
+/** Format rupiah dengan titik ribuan, misalnya Rp16.000. */
 const rupiah = (value: number) => `Rp${Math.round(value).toLocaleString("id-ID")}`;
 const netProfitUnavailable = "PASARIN belum mencatat modal dan biaya usaha, sehingga keuntungan bersih belum bisa dihitung.";
+/** Nama lokal komoditas; id dikembalikan apa adanya bila tidak dikenal. */
 export const commodityName = (id: string) => COMMODITIES.find((item) => item.id === id)?.localName ?? id;
+/** Label kios yang sama dengan dashboard: "Kios A-12 (Nama Kios)". */
 export const kioskLabel = (id: string) => {
   const kiosk = KIOSKS.find((item) => item.id === id);
   return kiosk ? `Kios ${kiosk.stallNumber} (${kiosk.name})` : id;
 };
+/** Berat dibulatkan dua desimal dengan satuan kg. */
 export const kg = (value: number) => `${roundKg(value)} kg`;
+/** Skor mutu dengan koma desimal, misalnya 0,74. */
 const score = (value: number) => value.toFixed(2).replace(".", ",");
+/** Jumlah berat penawaran dalam kg. */
 const sumKg = (items: Array<{ quantityKg: number }>) => roundKg(items.reduce((total, item) => total + item.quantityKg, 0));
+/** Memotong daftar panjang dan menambahkan baris "dan N lainnya" agar balasan tetap ringkas. */
 const limit = (lines: string[], max = 6) => lines.length > max ? [...lines.slice(0, max), `…dan ${lines.length - max} lainnya di dashboard.`] : lines;
+/** Frasa komoditas untuk kalimat jawaban, kosong bila pertanyaan tidak menyebut komoditas. */
 const subjectOf = (view: { commodityName?: string }) => view.commodityName ? ` ${view.commodityName}` : "";
 
+/** Sisa simpan sebelum busuk; skor 0,85 ke atas dianggap sudah melewati batas konsumsi. */
 function shelfLife(hours: number, decayScore: number) {
   if (decayScore >= 0.85 || !(hours > 0)) return "sudah melewati batas konsumsi";
   if (hours < 1) return `sisa simpan sekitar ${Math.max(1, Math.round(hours * 60))} menit`;
   return `sisa simpan sekitar ${Math.floor(hours)} jam`;
 }
 
+/** Status pesanan dalam bahasa pengguna, mengikuti status pesanan dan status pembayaran. */
 function orderState(offer: Offer) {
   if (offer.status === "settled") return offer.paymentStatus === "released_to_vendor" ? "selesai, dana sudah cair ke pedagang" : "selesai diserahterimakan";
   if (offer.paymentStatus === "unpaid") return "menunggu pembayaran";
@@ -441,26 +465,34 @@ function orderState(offer: Offer) {
   return "gratis, menunggu diantar kurir";
 }
 
+/** Harga per kg beserta diskonnya, atau "gratis"/"gratis (donasi)" untuk lot Rp0. */
 function offerPrice(offer: Offer) {
   if (offer.salvagePricePerKg > 0) return `${rupiah(offer.salvagePricePerKg)}/kg (diskon ${Math.round(offer.discountPercentage)}% dari ${rupiah(offer.originalPricePerKg)}/kg)`;
   return isDonation(offer) ? "gratis (donasi)" : "gratis";
 }
 
+/** Jawaban "kamu bisa apa": daftar contoh pertanyaan sesuai peran. */
 function capabilitiesAnswer(role: AppRole) {
   return `Saya Asisten PASARIN untuk ruang kerja ${ROLE_LABELS[role]}. Saya membaca data akun Anda untuk menjawab pertanyaan seperti:\n` +
     `${EXAMPLES[role].map((item) => `• ${item}`).join("\n")}\n` +
     "Asisten hanya membaca data; klaim, pembayaran, penimbangan, dan serah terima tetap dilakukan di dashboard.";
 }
 
+/** Balasan saat pertanyaan tidak dikenali dan model tidak tersedia. */
 function fallbackAnswer(role: AppRole) {
   return `Saya belum memahami pertanyaan itu. Coba salah satu pertanyaan ini:\n${EXAMPLES[role].slice(0, 4).map((item) => `• ${item}`).join("\n")}`;
 }
 
+/** Ringkasan hal yang perlu ditindaklanjuti pengelola, dari metrik operasional pasar. */
 function evaluationAnswer(ops: Operations) {
   return `${ops.pending} penawaran menunggu timbang atau konfirmasi pedagang, ${ops.atRisk} lot berisiko menurut model, ${ops.unpaid} pesanan menunggu pembayaran, dan ${ops.ready} pesanan siap diantar.` +
     (ops.workstreams.length ? ` Alur yang perlu ditangani: ${ops.workstreams.join(", ")}.` : " Tidak ada alur yang perlu ditangani saat ini.");
 }
 
+/**
+ * Pendapatan atau pengeluaran sesuai peran. Saldo pedagang sama dengan kartu "Saldo dompet" (dana yang sudah cair);
+ * laba bersih tidak dihitung karena modal tidak dicatat.
+ */
 function earningsAnswer(role: AppRole, snapshot: Snapshot) {
   const buyer = role === "warteg" || role === "social_kitchen";
   const orders = buyer ? snapshot.offers.filter((item) => item.isMine && (item.status === "claimed" || item.status === "settled")) : [];
@@ -491,6 +523,7 @@ function earningsAnswer(role: AppRole, snapshot: Snapshot) {
   return "Data pendapatan kurir belum tercatat di PASARIN. Anda bisa memeriksa antrean dan riwayat pengantaran.";
 }
 
+/** Menjelaskan kapan dana cair (setelah serah terima) beserta jumlah yang masih ditahan di escrow. */
 function payoutAnswer(view: View) {
   const { user, snapshot } = view;
   const heldItems = snapshot.transactions.filter((item) => item.status === "held_in_escrow" &&
@@ -509,6 +542,7 @@ const ROUTES = {
   tier_3: "Sentra Maggot (gratis, khusus biokonversi)",
 } as const;
 
+/** Berat yang sudah dipesan tetapi belum diserahterimakan, per lot. */
 function reservedByStock(offers: Offer[]) {
   const reserved = new Map<string, number>();
   for (const offer of offers) {
@@ -517,6 +551,10 @@ function reservedByStock(offers: Offer[]) {
   return reserved;
 }
 
+/**
+ * Tujuan penyaluran stok pedagang menurut estimasi mutu (Warteg, Dapur Sosial, atau Maggot).
+ * Berat yang sudah dipesan tidak dihitung, dan lot yang belum ditimbang ditandai terpisah.
+ */
 function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commodityLabel?: string) {
   const reservedKg = reservedByStock(snapshot.offers);
   const listedStocks = new Set(snapshot.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));
@@ -575,6 +613,7 @@ function estimatedPricePerKg(stock: StockItem, snapshot: Snapshot) {
   return { tier, price: Math.max(floor, health.estimatedSalvagePrice) };
 }
 
+/** Harga lot milik pedagang: harga penawaran aktif, atau perkiraan harga jika lot diterbitkan sekarang. */
 function vendorPriceAnswer(view: View) {
   const { snapshot } = view;
   const reserved = reservedByStock(snapshot.offers);
@@ -594,6 +633,7 @@ function vendorPriceAnswer(view: View) {
   return `Harga lot${subjectOf(view)} di kios Anda (yang paling cepat rusak lebih dulu):\n${limit(lines).join("\n")}\nPerkiraan harga berasal dari estimasi mutu dan bisa berubah saat ditimbang; Tier 1 tidak turun di bawah harga minimum komoditas.`;
 }
 
+/** Daftar penawaran terurut harga, dipakai bersama oleh katalog pembeli, pengelola, dan etalase publik. */
 function listOffers(view: CatalogScope, source: Offer[], order: "cheap" | "expensive", where: string, footer: string, showDestination: boolean) {
   const list = [...source].sort((a, b) => order === "cheap"
     ? a.salvagePricePerKg - b.salvagePricePerKg || b.quantityKg - a.quantityKg
@@ -619,6 +659,7 @@ export function publicCatalogAnswer(view: CatalogScope, catalog: Offer[], order:
     "Ini info etalase publik; klaim dan pembelian dilakukan oleh akun pembeli sesuai tujuannya.", true);
 }
 
+/** Jawaban untuk pertanyaan yang hanya menyebut nama sayur ("bayam", "cek kangkung dong"). */
 async function commodityOverview(view: View) {
   const role = view.user.role;
   if (role === "vendor") {
@@ -631,6 +672,7 @@ async function commodityOverview(view: View) {
   return courierQueueAnswer(view, false);
 }
 
+/** Dana cair dan dana tertahan satu kios; hanya dipanggil untuk pengelola dan admin. */
 function kioskFinanceAnswer(view: View, kioskId: string) {
   const { snapshot } = view;
   const kioskOffers = snapshot.offers.filter((offer) => offer.vendorId === kioskId);
@@ -642,6 +684,7 @@ function kioskFinanceAnswer(view: View, kioskId: string) {
   return `${kioskLabel(kioskId)}: dana sudah cair ${rupiah(total("released"))} dan ${rupiah(total("held_in_escrow"))} masih ditahan di escrow, dari ${orders} pesanan; ${active} penawaran aktif. ${netProfitUnavailable}`;
 }
 
+/** Meminta pengguna memperjelas pertanyaan yang terlalu umum, dengan contoh sesuai peran. */
 function clarifyAnswer(role: AppRole) {
   return `Pertanyaannya masih terlalu umum. Maksud Anda yang mana?\n${EXAMPLES[role].slice(0, 4).map((item) => `• ${item}`).join("\n")}\nAnda juga bisa menyebut nama sayur, misalnya "bayam", untuk melihat stok dan harganya.`;
 }
@@ -660,6 +703,7 @@ export const VAGUE = new Set([
 /** Kata pengisi yang boleh menyertai nama sayur ("cek bayam dong", "bayam gimana"). */
 export const FILLERS = new Set(["tentang", "kabar", "kondisi", "update", "terbaru", "punya", "masih", "tersedia", "sisa", "kalau", "harini"]);
 
+/** Pesanan atas stok pedagang (atau seluruh pasar untuk pengelola) beserta pembeli dan statusnya. */
 function vendorOrdersAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.status === "claimed" || offer.status === "settled")
     .sort((a, b) => Number(a.status === "settled") - Number(b.status === "settled"));
@@ -670,6 +714,7 @@ function vendorOrdersAnswer(view: View) {
   return `Ada ${orders.length} pesanan${subjectOf(view)} ${owner} (${kg(sumKg(orders))}, nilai ${rupiah(value)}):\n${limit(lines).join("\n")}`;
 }
 
+/** Pesanan milik pembeli yang sedang masuk, dengan pengingat bayar bila masih tertunda. */
 function buyerOrdersAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.isMine && (offer.status === "claimed" || offer.status === "settled"))
     .sort((a, b) => Number(a.status === "settled") - Number(b.status === "settled"));
@@ -681,6 +726,7 @@ function buyerOrdersAnswer(view: View) {
     "Perkiraan jam tiba belum tercatat; status berubah menjadi selesai setelah kurir mengonfirmasi serah terima.";
 }
 
+/** Antrean kurir: rute kios ke penerima, total muatan, dan rekomendasi kendaraan. Tanpa nilai uang. */
 function courierQueueAnswer(view: View, asksAddress: boolean) {
   const queue = view.offers.filter(isReadyForDelivery);
   if (!queue.length) return `Belum ada pesanan${subjectOf(view)} siap diantar saat ini. Pesanan masuk antrean setelah dibayar, atau setelah lot gratis diklaim.`;
@@ -691,6 +737,7 @@ function courierQueueAnswer(view: View, asksAddress: boolean) {
     (asksAddress ? "\nTitik jemput ada di kios Pasar Induk Kramat Jati yang tertera; alamat penerima belum tercatat di PASARIN." : "");
 }
 
+/** Penghematan pembeli dibanding harga acuan grosir. */
 function savingsAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.isMine && (offer.status === "claimed" || offer.status === "settled"));
   if (!orders.length) return "Belum ada pesanan, jadi belum ada penghematan yang tercatat.";
@@ -699,6 +746,7 @@ function savingsAnswer(view: View) {
   return `Dari ${orders.length} pesanan (${kg(sumKg(orders))}), nilainya ${rupiah(paid)} dibanding ${rupiah(reference)} pada harga acuan grosir. Penghematan sekitar ${rupiah(reference - paid)}.`;
 }
 
+/** Lot paling cepat rusak (atau paling segar) menurut skor mutu, untuk didahulukan. */
 function freshnessAnswer(view: View, freshest: boolean) {
   const { snapshot } = view;
   const offered = new Set(view.active.map((offer) => offer.stockId));
@@ -717,6 +765,7 @@ function freshnessAnswer(view: View, freshest: boolean) {
   return `${heading}\n${limit(lines, 5).join("\n")}\nSkor berasal dari model peluruhan, bukan pemeriksaan fisik.`;
 }
 
+/** Pangan yang sudah diserahterimakan per tujuan; porsi dapur sosial memakai estimasi 4 porsi per kg seperti dashboard. */
 function impactAnswer(view: View) {
   const settled = view.offers.filter((offer) => offer.status === "settled" && (!view.buyer || offer.isMine));
   const owner = view.user.role === "vendor" ? "dari kios Anda" : view.buyer ? "milik Anda" : "di pasar";
@@ -772,6 +821,7 @@ function kioskSummaryAnswer(view: View) {
   }).join("\n");
 }
 
+/** Peringkat kios menurut berat stok berisiko (skor 0,35 ke atas). */
 function kioskRankingAnswer(view: View) {
   const { snapshot } = view;
   const groups = new Map<string, { lots: number; risky: number; riskyKg: number }>();
@@ -791,6 +841,7 @@ function kioskRankingAnswer(view: View) {
   return `Kios dengan stok${subjectOf(view)} berisiko terbanyak (menurut berat):\n${limit(lines, 5).join("\n")}\nRisiko adalah estimasi peluruhan dan termasuk lot yang belum ditimbang.`;
 }
 
+/** Peringkat komoditas menurut berat stok berisiko. */
 function commodityRankingAnswer(view: View) {
   const { snapshot } = view;
   const groups = new Map<string, { lots: number; risky: number; riskyKg: number; kg: number }>();
@@ -811,6 +862,7 @@ function commodityRankingAnswer(view: View) {
   return `Komoditas dengan stok berisiko terbanyak:\n${limit(lines, 5).join("\n")}\nRisiko adalah estimasi peluruhan dan termasuk lot yang belum ditimbang.`;
 }
 
+/** Menjelaskan kenapa penawaran atau pesanan belum tampil, sesuai aturan tiap peran. */
 function visibilityAnswer(view: View) {
   const { user } = view;
   if (user.role === "vendor") {
@@ -833,6 +885,7 @@ function visibilityAnswer(view: View) {
     (ops ? ` Saat ini ${ops.pending} penawaran menunggu timbang atau konfirmasi dan ${ops.unpaid} pesanan menunggu pembayaran.` : "");
 }
 
+/** Panduan keamanan konsumsi berdasarkan tujuan lot, plus tips penyimpanan komoditas bila disebut. */
 function safetyAnswer(view: View) {
   const commodity = view.commodityName ? COMMODITIES.find((item) => item.localName === view.commodityName) : undefined;
   return "Skor mutu adalah estimasi model peluruhan, bukan hasil pemeriksaan fisik, jadi cek kondisi barang sebelum diolah. " +
@@ -841,6 +894,7 @@ function safetyAnswer(view: View) {
     (commodity ? ` Tips penyimpanan ${commodity.localName}: ${commodity.storageAdvice}` : "");
 }
 
+/** Daftar tindakan yang sebaiknya dilakukan sekarang, dihitung dari data akun. */
 function actionAnswer(view: View) {
   const { user, snapshot } = view;
   if (view.operations) return evaluationAnswer(view.operations);

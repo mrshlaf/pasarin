@@ -6,10 +6,17 @@
  */
 
 import type { AuthUser } from "@/data/accounts";
+
+/**
+ * Identitas minimal yang dibutuhkan asisten. Sesi Telegram tidak selalu membawa email,
+ * jadi email opsional; tanpa email, penyebutan username sendiri dianggap pihak lain (lebih ketat).
+ */
+export type ChatUser = Pick<AuthUser, "id" | "role" | "name" | "vendorId"> & { email?: string };
 import { KIOSKS } from "@/data/kiosks";
 import { MARKET_ACCOUNTS } from "@/data/marketAccounts";
 
 const TITLES = /^(?:h\.|hj\.|haji|pak|bu|ibu|mbak|cak|bang|kang|mang)\s+/;
+/** Meloloskan karakter khusus regex dari nama kios atau akun. */
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const KIOSK_PATTERNS = KIOSKS.map((kiosk) => {
@@ -59,6 +66,7 @@ export function publicPrivacyRefusal(text: string) {
   return null;
 }
 
+/** Hasil pemeriksaan privasi: boleh dijawab, ditolak, atau ringkasan keuangan kios untuk pengelola. */
 export type PrivacyCheck =
   | { kind: "allow"; otherKioskIds: string[]; accountNames: string[] }
   | { kind: "refuse"; message: string }
@@ -69,7 +77,7 @@ export type PrivacyCheck =
  * @param raw - Pertanyaan asli (huruf kecil) untuk mengenali nama kios dan akun.
  * @param text - Pertanyaan ternormalisasi untuk mengenali topik.
  */
-export function checkPrivacy(user: AuthUser, raw: string, text: string): PrivacyCheck {
+export function checkPrivacy(user: ChatUser, raw: string, text: string): PrivacyCheck {
   const oversight = user.role === "manager" || user.role === "admin";
   const mentionedKiosks = KIOSK_PATTERNS.filter((item) => item.pattern.test(raw)).map((item) => item.id);
   const otherKioskIds = mentionedKiosks.filter((id) => id !== user.vendorId);

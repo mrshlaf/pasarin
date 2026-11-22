@@ -1,3 +1,5 @@
+-- Tabel jejak audit dan state simulasi pasar (baris 'market' dengan revisi untuk penulisan compare-and-swap).
+
 create table if not exists public.system_audit_trail (
   event_id text primary key,
   subsystem text not null,

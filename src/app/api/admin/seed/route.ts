@@ -19,6 +19,7 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({ reset: z.boolean().optional() }).optional();
 
+/** Rahasia seed khusus, atau rahasia sesi sebagai cadangan. */
 function seedSecret(req: NextRequest) {
   return req.headers.get("x-pasarin-seed-secret") ??
     req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];

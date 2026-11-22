@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Komponen Asisten PASARIN: tombol "Tanya asisten" dan dialog percakapan.
+ * Dipakai di dashboard (data akun) dan di landing page (etalase publik) dengan endpoint berbeda.
+ */
+
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MessageCircle, Send, X } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -23,6 +28,7 @@ const suggestions: Record<AppRole, string[]> = {
 /** Saran untuk pengunjung landing page yang belum masuk. */
 const publicSuggestions = ["Sayur apa yang tersedia hari ini?", "Bayam paling murah di kios mana?", "Bagaimana cara kerja PASARIN?"];
 
+/** Asisten dashboard untuk akun yang sedang masuk; tidak tampil saat belum login. */
 export function MarketChatbot() {
   const { user } = useAuth();
   // A different account gets a new conversation, including after switching role.
@@ -47,6 +53,10 @@ interface WorkspaceProps {
   authenticated: boolean;
 }
 
+/**
+ * Dialog percakapan satu pertanyaan per kirim, dengan batas 1.000 karakter, batas waktu 25 detik, dan tombol coba lagi.
+ * Permintaan dashboard memakai token sesi; landing page memakai fetch biasa tanpa kredensial.
+ */
 function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoint, authenticated }: WorkspaceProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");

@@ -18,6 +18,7 @@ import {
   executeDecomposedManagerialQuery,
 } from "../src/lib/toolCallingRegistry";
 
+/** Mengambil isi data hasil pemanggilan alat dari respons registry. */
 function toolData(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
 }

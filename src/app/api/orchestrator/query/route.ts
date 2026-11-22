@@ -1,3 +1,8 @@
+/**
+ * Rute API Asisten Dashboard.
+ * POST menjawab pertanyaan akun yang sedang masuk; GET memberi metrik operasional untuk pengelola dan admin.
+ */
+
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireApiRole } from "@/lib/apiAuth";
@@ -8,6 +13,7 @@ import { APP_ROLES } from "@/data/accounts";
 
 const query = z.object({ query: z.string().trim().min(1).max(1000), forceHeuristic: z.boolean().optional() });
 
+/** Metrik operasional pasar, hanya untuk pengelola dan admin. */
 export async function GET(req: NextRequest) {
   const auth = await requireApiRole(req, ["manager", "admin"]);
   if (auth.response) return auth.response;
@@ -18,6 +24,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/** Menjawab satu pertanyaan dari akun yang sedang masuk; 401 tanpa sesi, 422 untuk input tidak valid. */
 export async function POST(req: NextRequest) {
   const auth = await requireApiRole(req, APP_ROLES);
   if (auth.response) return auth.response;
@@ -30,6 +37,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
+/** Pemeriksaan ketersediaan rute tanpa isi. */
 export async function HEAD() {
   return new Response(null, { status: 200 });
 }

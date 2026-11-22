@@ -1,3 +1,5 @@
+/** Konfigurasi Next.js PASARIN. */
+
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {

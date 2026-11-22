@@ -22,6 +22,8 @@ import { calculateRainFootfallAttenuation } from "@/lib/pasarinCore";
 import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import { run24HourMarketMetabolismTrial } from "@/lib/marketMetabolismSimulator";
 import { generateBankIndonesiaQrisPayload } from "@/lib/qrisEscrowGateway";
+import { answerDashboardQuestion } from "@/lib/marketChatbot";
+import { allowRequest } from "@/lib/rateLimit";
 
 /**
  * Representasi aktor pengguna Telegram terotentikasi (PSR-38).
@@ -161,6 +163,28 @@ function workspaceMenu(user: TelegramActor) {
   }
 }
 
+/** Contoh pertanyaan bebas per peran, ditampilkan di menu agar pengguna tahu bot bisa ditanya langsung. */
+const QUESTION_EXAMPLE: Record<TelegramActor["role"], string> = {
+  vendor: "sayur saya bisa dijual ke mana?", warteg: "sayur apa yang paling murah?", social_kitchen: "ada donasi apa?",
+  maggot: "biomassa apa yang tersedia?", logistics: "ke mana saja tujuan antar?", manager: "kios mana yang paling berisiko?",
+  admin: "apa yang perlu dievaluasi?",
+};
+
+/**
+ * Menjawab pertanyaan bebas di Telegram memakai data akun yang sedang aktif.
+ * Dibatasi 30 pertanyaan per 5 menit per chat agar kuota model tidak habis.
+ */
+async function answerTelegramQuestion(text: string, chatId: number | string, user: TelegramActor) {
+  const menu: Keyboard = [[{ text: "Buka menu", callback_data: "menu:menu" }]];
+  if (!allowRequest("telegram:" + chatId, 30, 5 * 60 * 1000)) {
+    return telegramReply("assistant_rate_limited", "Terlalu banyak pertanyaan dalam waktu singkat. Coba lagi beberapa menit lagi.", menu);
+  }
+  const result = await answerDashboardQuestion(user, text.slice(0, 1000));
+  // Telegram menolak pesan di atas 4096 karakter.
+  return telegramReply("assistant_answered",
+    result.summary.slice(0, 3900) + (result.source === "gemini" ? "\n\n(Jawaban AI dari data akun Anda)" : ""), menu);
+}
+
 /**
  * Memproses perintah teks masuk dari obrolan Telegram ke operasi transaksi pasar yang bersangkutan.
  *
@@ -174,9 +198,12 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
   const [rawCommand, ...args] = text.trim().split(/\s+/);
   const command = rawCommand.toLowerCase().split("@")[0];
   if (!user) return telegramReply(command === "/start" ? "welcome_new_user" : "auth_required", "Masuk dengan akun Pasarin untuk membuka ruang kerja.");
+  // Pesan tanpa "/" adalah pertanyaan biasa; dijawab asisten yang sama dengan chatbot dashboard.
+  if (!command.startsWith("/")) return answerTelegramQuestion(text, chatId, user);
   const account = user.name + " · " + telegramRoleName[user.role];
-  if (["/start", "/menu", "/help"].includes(command)) {
-    return telegramReply("welcome_existing_user", account + "\nPilih tugas di bawah.", workspaceMenu(user));
+  if (["/start", "/menu", "/help", "/bantuan"].includes(command)) {
+    return telegramReply("welcome_existing_user", account + "\nPilih tugas di bawah, atau ketik pertanyaan biasa, misalnya \"" +
+      QUESTION_EXAMPLE[user.role] + "\"", workspaceMenu(user));
   }
   const vendor = user.role === "vendor" ? user.vendorId : undefined;
   const supervisor = user.role === "manager" || user.role === "admin";

@@ -22,6 +22,7 @@ import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "../src/data/marketAcco
 import { KIOSKS } from "../src/data/kiosks";
 
 type Expect = { kind: "data"; re: RegExp } | { kind: "clarify" } | { kind: "refuse" } | { kind: "open" } | { kind: "any" };
+/** Penanda harapan: D(pola) = jawaban data yang cocok pola; C = klarifikasi; R = penolakan; O = model; A = bebas tapi aman. */
 const D = (re: RegExp): Expect => ({ kind: "data", re });
 const C: Expect = { kind: "clarify" };
 const R: Expect = { kind: "refuse" };
@@ -157,6 +158,7 @@ const QUESTIONS: Record<string, Array<[string, Expect]>> = {
   ],
 };
 
+/** Menjalankan semua pertanyaan dua kali: tanpa model (isi jawaban) dan dengan model tiruan (rute serta data yang dikirim). */
 async function run() {
   console.log(Object.entries(QUESTIONS).map(([username, cases]) => `${username}=${cases.length}`).join(" "));
   for (const [username, cases] of Object.entries(QUESTIONS)) assert.equal(cases.length, 50, `${username} harus punya 50 pertanyaan`);
