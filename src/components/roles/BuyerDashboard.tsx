@@ -94,6 +94,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   // Total nilai pesanan dalam rupiah.
   const spend = orders.reduce((sum, offer) => sum + offer.totalAmountIdr, 0);
   // Dampak per peran: porsi (4 per kg) untuk dapur sosial, larva (1 per 5 kg) untuk maggot, dan nilai rupiah untuk Warteg.
+  // Angka 4 porsi per kg dan 1 kg larva per 5 kg biomassa adalah asumsi awal. Rasio larva 20 persen berada di batas atas studi BSF (sekitar 18,5 persen untuk campuran sisa dapur, PMC8779397), dan sayur saja cenderung lebih rendah.
   const impact = role === "social_kitchen"
     ? Math.round(orderedKg * 4)
     : role === "maggot"

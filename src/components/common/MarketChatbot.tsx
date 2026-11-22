@@ -11,9 +11,9 @@ import { ROLE_LABELS } from "@/components/layout/AppSidebar";
 import type { AppRole } from "@/data/accounts";
 
 // Satu gelembung percakapan; `source` hanya ada pada jawaban asisten untuk menandai asal jawabannya.
-type Message = { id: number; sender: "user" | "assistant"; text: string; source?: string };
+type Message = { id: number; sender: "user" | "assistant"; text: string; source?: string; suggestions?: string[] };
 // Bentuk respons kedua endpoint asisten; jawaban dianggap gagal bila `data.summary` kosong.
-type Answer = { success?: boolean; error?: string; data?: { summary?: string; source?: string } };
+type Answer = { success?: boolean; error?: string; data?: { summary?: string; source?: string; suggestions?: string[] } };
 
 // Contoh pertanyaan per peran, disesuaikan dengan data yang boleh dilihat peran tersebut.
 const suggestions: Record<AppRole, string[]> = {
@@ -22,8 +22,8 @@ const suggestions: Record<AppRole, string[]> = {
   social_kitchen: ["Apa donasi yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana prioritas dapur sosial?"],
   maggot: ["Apa biomassa yang tersedia?", "Bagaimana status pesanan saya?", "Bahan apa yang boleh diklaim?"],
   logistics: ["Apa yang siap diantar?", "Bagaimana kendaraan dipilih?", "Bagaimana konfirmasi serah terima?"],
-  manager: ["Ringkas operasional pasar", "Berapa stok yang berisiko?", "Apa yang siap diantar?"],
-  admin: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
+  manager: ["Ringkas operasional pasar", "Laporan apa saja yang tersedia?", "Berapa stok yang berisiko?"],
+  admin: ["Ringkas operasional pasar", "Laporan apa saja yang tersedia?", "Apa yang perlu dievaluasi?"],
 };
 
 // Saran untuk pengunjung landing page yang belum masuk.
@@ -92,6 +92,9 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
     if (area) area.scrollTop = area.scrollHeight;
   }, [messages, loading, error, open]);
 
+  // Pesan asisten terakhir; saran pertanyaan lanjutan hanya ditampilkan di bawahnya.
+  const lastAssistantId = [...messages].reverse().find((message) => message.sender === "assistant")?.id;
+
   // Menutup dialog dan mengembalikan fokus keyboard ke tombol "Tanya asisten".
   function close() {
     setOpen(false);
@@ -126,7 +129,7 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
       if (!response.ok || !result.success || !result.data?.summary) {
         throw new Error(result.error || "Jawaban belum tersedia. Silakan coba lagi.");
       }
-      const answer = { text: result.data.summary, source: result.data.source };
+      const answer = { text: result.data.summary, source: result.data.source, suggestions: result.data.suggestions };
       setMessages((previous) => [...previous, {
         id: ++nextId.current, sender: "assistant", ...answer,
       }]);
@@ -186,6 +189,16 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
                     {message.text}
                   </div>
                   {message.source && <p className="mt-1.5 text-xs text-ink-muted">{message.source === "gemini" ? `Jawaban AI berdasarkan ${authenticated ? "data ruang kerja" : "etalase publik"}` : "Ringkasan data dan panduan PASARIN"}</p>}
+                  {/* Saran pertanyaan lanjutan: hanya di jawaban terakhir dan saat tidak sedang memuat. */}
+                  {message.id === lastAssistantId && !loading && message.suggestions && message.suggestions.length > 0 && (
+                    <div className="mt-3 grid gap-2" aria-label="Pertanyaan lanjutan">
+                      <p className="text-xs font-semibold text-ink-muted">Pertanyaan lanjutan</p>
+                      {message.suggestions.map((text) => <button key={text} type="button" onClick={() => void send(text)}
+                        className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3 py-2 text-left text-[13px] font-medium text-ink hover:border-brand">
+                        <span>{text}</span><ArrowRight size={14} className="shrink-0 text-brand" aria-hidden />
+                      </button>)}
+                    </div>
+                  )}
                 </div>)}
               </div>
             )}

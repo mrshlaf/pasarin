@@ -398,6 +398,7 @@ export function confirmDeliveryServer(offerId: string) {
     offer.status = "settled";
     offer.deliveredOn = new Date().toISOString();
     if (offer.targetTier === "tier_3") state.biomassProcessedKg += offer.quantityKg;
+    // 4 porsi per kg adalah asumsi awal untuk dapur sosial, belum diverifikasi ke standar porsi.
     if (offer.targetTier === "tier_2") state.socialMealsServed += offer.quantityKg * 4;
     // Stok fisik lot berkurang sebesar berat yang diserahterimakan.
     const stock = state.stocks.find((item) => item.id === offer.stockId);

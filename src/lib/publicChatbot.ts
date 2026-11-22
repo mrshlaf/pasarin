@@ -128,8 +128,10 @@ export async function answerPublicQuestion(question: string, forceHeuristic = fa
   }
 
   // Model hanya dipanggil untuk pertanyaan terbuka dan bila kunci tersedia; selain itu jawaban data langsung dipakai.
+  // Saran pertanyaan lanjutan: contoh publik selain pertanyaan yang baru diajukan.
+  const suggestions = PUBLIC_EXAMPLES.filter((example) => normalizeQuestion(example) !== text).slice(0, 3);
   const key = getEnv().GEMINI_API_KEY;
-  if (!openQuestion || !key || forceHeuristic) return { summary: answer, source: "data_pasar" };
+  if (!openQuestion || !key || forceHeuristic) return { summary: answer, source: "data_pasar", suggestions };
   const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
   try {
     const [overview, catalog] = await Promise.all([readPublicMarketOverview(), readPublicCatalog()]);
@@ -161,9 +163,9 @@ export async function answerPublicQuestion(question: string, forceHeuristic = fa
       },
     });
     const reply = plainText(response.text ?? "");
-    if (reply) return { summary: reply, source: "gemini", model };
+    if (reply) return { summary: reply, source: "gemini", model, suggestions };
   } catch {
-    return { summary: answer, source: "data_pasar" };
+    return { summary: answer, source: "data_pasar", suggestions };
   }
-  return { summary: answer, source: "data_pasar" };
+  return { summary: answer, source: "data_pasar", suggestions };
 }

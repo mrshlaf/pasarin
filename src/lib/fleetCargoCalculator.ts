@@ -39,6 +39,8 @@ export interface VehicleSpec {
 }
 
 // Parameter spesifikasi baku armada logistik resmi Pasar Induk Kramat Jati (PSR-27).
+// Kapasitas muat mengikuti perkiraan spesifikasi umum tiap jenis kendaraan (GranMax pikap sekitar 1 ton, Isuzu Elf engkel 3-4 ton).
+// Efisiensi BBM dan harga BBM per liter adalah asumsi awal yang belum diperbarui ke harga berjalan; pengemudi dan plat nomor adalah data demo.
 export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
   // Armada ringan untuk lorong sempit.
   viar_trike: {

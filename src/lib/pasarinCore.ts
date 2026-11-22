@@ -282,6 +282,7 @@ export function evaluateArrheniusDecay(
   // Skor = (paparan x kecepatan relatif)^1,15 x 0,82. Paparan x kecepatan adalah lama pajang setara pada kondisi acuan.
   // Pada paparan 1 dan kecepatan 1 skornya 0,82 (belum 0,85); eksponen 1,15 membuat peluruhan makin cepat menjelang akhir.
   // Contoh: batas 16 jam, pajang 8 jam pada kondisi acuan: 0,5^1,15 x 0,82 = 0,37. Pada suhu lebih panas dengan kecepatan 1,5: (0,75)^1,15 x 0,82 = 0,59.
+  // Konstanta 0,82 dan eksponen 1,15 adalah kalibrasi buatan agar skor pada batas jam tidak langsung mencapai 0,85, bukan hasil pengukuran. Skor adalah indeks relatif.
   const rawScore = Math.pow(normalizedExposure * speed, 1.15) * 0.82;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
 
@@ -410,6 +411,7 @@ export function calculateRainFootfallAttenuation(
   const isMuddy = rainfallMm > 5.0 || (isRaining && rainfallMm > 1.0);
 
   // Penurunan bertingkat: gerimis 15%, hujan sedang 28%, lalu naik linear hingga 48% di 10 mm dan dibatasi 80%.
+  // Besar penurunan 15, 28, 48, dan maksimal 80 persen adalah asumsi awal; belum diukur di Pasar Induk Kramat Jati.
   let footfallDropPercentage = 0.0;
 
   if (rainfallMm <= 0.0 && !isRaining) {
@@ -593,6 +595,7 @@ export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
 // Mengintegrasikan laju penjualan normal 82% dengan koefisien penurunan serapan akibat lorong becek saat hujan.
 export function predictRetailSurplusKg(initialStockKg: number, footfallDropPercentage: number) {
   // Normalnya 82% stok laku eceran; hujan memangkas serapan, tetapi serapan minimal 20% dan surplus minimal 10% stok.
+  // Angka serapan 82 persen dan pengaruh hujan 0,72 adalah asumsi awal yang belum dikalibrasi dengan data penjualan nyata.
   const baselineRetailClearance = 0.82;
   // Hujan menurunkan serapan: dampak = penurunan pengunjung/100 x 0,72. Contoh: penurunan 48 persen mengurangi serapan 0,35.
   const weatherDropImpact = (footfallDropPercentage / 100) * 0.72;

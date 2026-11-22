@@ -142,7 +142,9 @@ async function answerTelegramQuestion(text: string, chatId: number | string, use
   const result = await answerDashboardQuestion(user, text.slice(0, 1000));
   // Telegram menolak pesan di atas 4096 karakter.
   return telegramReply("assistant_answered",
-    result.summary.slice(0, 3900) + (result.source === "gemini" ? "\n\n(Jawaban AI dari data akun Anda)" : ""), menu);
+    result.summary.slice(0, 3900) + (result.source === "gemini" ? "\n\n(Jawaban AI dari data akun Anda)" : "") +
+      // Saran pertanyaan lanjutan sebagai daftar teks; tombol tidak dipakai karena batas 64 byte pada callback Telegram.
+      (result.suggestions.length ? "\n\nCoba tanya juga:\n" + result.suggestions.map((item) => "• " + item).join("\n") : ""), menu);
 }
 
 // Memproses perintah teks masuk dari obrolan Telegram ke operasi transaksi pasar yang bersangkutan.
@@ -464,6 +466,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
         return total + Math.max(0, normalPrice - offer.totalAmountIdr);
       }, 0);
       const impact = user.role === "social_kitchen"
+        // Asumsi awal: 4 porsi per kg bahan, dan 1 kg larva per 5 kg biomassa (batas atas studi BSF); keduanya belum dikalibrasi.
         ? "Perkiraan " + Math.round(orderedKg * 4) + " porsi makanan bergizi"
         : user.role === "maggot"
           ? "Perkiraan " + weight.format(orderedKg / 5) + " kg larva protein tinggi"

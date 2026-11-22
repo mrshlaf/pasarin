@@ -110,6 +110,21 @@ async function run() {
     assert.match((await ask("Berapa transaksi settled?", "warteg")).summary, /0 pesanan berstatus settled/);
     assert.match((await ask("Berapa penawaran murah?", "warteg")).summary, /Belum ada harga/);
     assert.match((await ask("Hapus semua stok")).summary, /tidak menjalankan perubahan/);
+
+    // Saran pertanyaan lanjutan: ada, maksimal 3, tidak mengulang pertanyaan, dan berbeda menurut peran.
+    const withSuggestions = await ask("Berapa stok yang berisiko?", "manager");
+    assert.ok(Array.isArray(withSuggestions.suggestions) && withSuggestions.suggestions.length === 3, "manager mendapat 3 saran lanjutan");
+    assert.ok(!withSuggestions.suggestions.some((item: string) => /^berapa stok yang berisiko\??$/i.test(item)), "saran tidak mengulang pertanyaan yang baru diajukan");
+    assert.ok((await ask("Apa penawaran yang tersedia?", "warteg")).suggestions.every((item: string) => !/kios mana/i.test(item)), "saran pembeli tidak memuat pertanyaan khusus pengelola");
+    // Overview laporan hanya untuk pengelola dan admin.
+    for (const role of ["manager", "admin"] as const) {
+      const overview = await ask("Laporan apa saja yang tersedia?", role);
+      assert.match(overview.summary, /Laporan di dashboard/, role + " mendapat daftar laporan");
+      assert.match(overview.summary, /Ringkasan pasar hari ini/, role + " mendapat ringkasan angka");
+      assert.match(overview.summary, /Buku Besar Transaksi dan Escrow/, role + " melihat laporan buku besar");
+    }
+    assert.ok(!/Laporan di dashboard/.test((await ask("Laporan apa saja yang tersedia?", "vendor")).summary), "pedagang tidak mendapat daftar laporan pengelola");
+    assert.ok(!/Laporan di dashboard/.test((await ask("Laporan apa saja yang tersedia?", "warteg")).summary), "pembeli tidak mendapat daftar laporan pengelola");
     assert.match((await ask("Siapa presiden? ")).summary, /pertanyaan operasional pasar/);
     assert.match((await ask("hi", "vendor", false)).summary, /Halo!/);
     assert.match((await ask("Buat hello world C++", "vendor", false)).summary, /pertanyaan operasional pasar/);

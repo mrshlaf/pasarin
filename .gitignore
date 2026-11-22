@@ -95,3 +95,6 @@ next-env.d.ts
 /public/brand/text_pasarin*.png
 /public/brand/PASARIN.png
 /supabase/migrations/20260923000001_pasarin_schema.sql
+
+# Berkas sementara alat uji browser.
+.playwright-mcp/

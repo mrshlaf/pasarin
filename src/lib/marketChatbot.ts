@@ -151,6 +151,11 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     // Hanya menyebut nama komoditas: tampilkan ringkasan komoditas itu.
     useModel = false;
     answer = await commodityOverview(view);
+  } else if (oversight && (/\b(?:overview|keseluruhan|menyeluruh|semua laporan)\b/.test(text) ||
+    (/\blaporan\b/.test(text) && /\b(?:apa saja|apa aja|tersedia|ada apa|jenis)\b/.test(text)))) {
+    // Pengelola dan admin menanyakan gambaran atau daftar laporan: ringkasan angka dan daftar laporan.
+    useModel = false;
+    answer = overviewAnswer(view);
   } else if ((user.role === "vendor" || user.role === "logistics") && marketWhere) {
     // Pedagang dan kurir yang menanyakan kios lain dijawab dari etalase publik.
     useModel = false;
@@ -397,8 +402,10 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
   }
 
   // Model hanya dipanggil bila kunci ada, tidak dipaksa heuristik, dan jawaban memang butuh model: pertanyaan terbuka, atau jawaban pasti yang ingin dirapikan.
+  // Saran pertanyaan lanjutan ikut di setiap jawaban agar pengguna tahu apa lagi yang bisa ditanyakan.
+  const suggestions = followUpQuestions(user.role, text);
   const key = getEnv().GEMINI_API_KEY;
-  if (!key || forceHeuristic || (!useModel && !openQuestion)) return { summary: answer, source: "data_pasar", metrics };
+  if (!key || forceHeuristic || (!useModel && !openQuestion)) return { summary: answer, source: "data_pasar", metrics, suggestions };
   const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
   // Galat model apa pun jatuh ke jawaban berbasis data; pengguna tidak melihat kegagalan.
   try {
@@ -435,11 +442,11 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
       });
     // Markdown dari model dibersihkan sebelum tampil di chat.
     const text = plainText(response.text ?? "");
-    if (text) return { summary: text, source: "gemini", model, metrics };
+    if (text) return { summary: text, source: "gemini", model, metrics, suggestions };
   } catch {
-    return { summary: answer, source: "data_pasar", metrics };
+    return { summary: answer, source: "data_pasar", metrics, suggestions };
   }
-  return { summary: answer, source: "data_pasar", metrics };
+  return { summary: answer, source: "data_pasar", metrics, suggestions };
 }
 
 // Chat menampilkan teks biasa, jadi format Markdown dari model diubah menjadi teks yang rapi.
@@ -481,6 +488,52 @@ export const DESTINATION: Record<Tier, string> = { tier_1: "Warteg & UMKM", tier
 // Tier yang dibeli tiap peran pembeli.
 const BUYER_TIER: Partial<Record<AppRole, Tier>> = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" };
 
+// Topik pertanyaan (kata dalam pertanyaan) dan kata yang menandai contoh pertanyaan yang relevan untuk dilanjutkan.
+const FOLLOW_UP_TOPICS: Array<[RegExp, RegExp]> = [
+  [/risiko|layu|busuk|mutu|rusak|segar/, /risiko|busuk|layu|mutu|dievaluasi|timbang|aman/],
+  [/dana|cair|saldo|pendapatan|uang|bayar|pengeluaran|tagihan|laba/, /dana|cair|pendapatan|pengeluaran|bayar|harga|penjualan/],
+  [/pesanan|antar|kirim|status|tiba|muatan|kurir/, /pesanan|diantar|antar|status|siap|muatan|tujuan/],
+  [/harga|murah|mahal|diskon|katalog|penawaran|donasi/, /harga|murah|penawaran|donasi|diskon|penghematan|tersedia/],
+  [/stok|pasokan|lot|timbang|komoditas/, /stok|timbang|lot|komoditas|biomassa|donasi|kios/],
+  [/dampak|porsi|selamat|salur|sampah/, /tersalurkan|dampak|porsi|donasi|diterima/],
+];
+
+// Saran pertanyaan lanjutan sesudah satu jawaban: contoh untuk peran ini yang paling dekat topiknya,
+// tanpa mengulang pertanyaan yang baru diajukan. Hanya pertanyaan yang memang bisa dijawab asisten yang disarankan.
+export function followUpQuestions(role: AppRole, normalizedQuestion: string, count = 3) {
+  const candidates = EXAMPLES[role].filter((example) => normalizeQuestion(example) !== normalizedQuestion);
+  const topic = FOLLOW_UP_TOPICS.find(([asked]) => asked.test(normalizedQuestion));
+  if (!topic) return candidates.slice(0, count);
+  const related = candidates.filter((example) => topic[1].test(example.toLowerCase()));
+  const others = candidates.filter((example) => !topic[1].test(example.toLowerCase()));
+  return [...related, ...others].slice(0, count);
+}
+
+// Ringkasan menyeluruh untuk pengelola dan admin: angka operasional hari ini, dana, dan daftar laporan yang tersedia.
+function overviewAnswer(view: View) {
+  const ops = view.operations;
+  const { snapshot } = view;
+  const sumByStatus = (status: "released" | "held_in_escrow") => snapshot.transactions
+    .reduce((total, item) => total + (item.status === status ? item.amountIdr : 0), 0);
+  const lines = [
+    ops
+      ? `Ringkasan pasar hari ini: ${ops.arrivalsToday} lot pasokan masuk, ${ops.deliveriesToday} pengantaran selesai, ${ops.activeOffers} penawaran aktif, ${ops.pending} menunggu timbang atau konfirmasi, ${ops.unpaid} pesanan belum dibayar, ${ops.ready} siap diantar, dan ${ops.atRisk} lot berisiko menurut model.`
+      : "Ringkasan operasional belum tersedia.",
+    `Dana sudah cair ${rupiah(sumByStatus("released"))}; ${rupiah(sumByStatus("held_in_escrow"))} masih ditahan di escrow sampai serah terima.`,
+    "",
+    "Laporan di dashboard:",
+    "• Pantauan Penawaran Pasar: semua penawaran dari kios, urut dari yang butuh tindakan.",
+    "• Buku Besar Transaksi dan Escrow: status dana per transaksi (ditahan, dicairkan, dikembalikan).",
+    "• Laporan simulasi 24 jam: uji skenario model, bukan data langsung pasar.",
+    "• Evaluasi stok sekarang (khusus admin): memindai stok dan membuat usulan penawaran.",
+    "• Bot Telegram: /status, /penawaran, /transaksi, /dlh, /armada, dan /pratinjau.",
+    "",
+    "Yang bisa Anda tanyakan ke saya:",
+    ...EXAMPLES[view.user.role].slice(0, 7).map((item) => `• ${item}`),
+  ];
+  return lines.join("\n");
+}
+
 // Contoh pertanyaan per peran untuk jawaban "bisa apa" dan fallback. Tiga contoh pertama tampil di fallback.
 const EXAMPLES: Record<AppRole, string[]> = {
   vendor: ["Sayur saya bisa dijual ke mana?", "Berapa pendapatan saya?", "Apa yang perlu ditimbang?", "Lot mana yang paling cepat busuk?", "Berapa harga jual bayam saya?", "Siapa yang membeli stok saya?"],
@@ -488,8 +541,8 @@ const EXAMPLES: Record<AppRole, string[]> = {
   social_kitchen: ["Apa donasi yang tersedia?", "Bagaimana status pesanan saya?", "Berapa pengeluaran saya?", "Sayur apa yang paling murah?", "Kapan pesanan saya diantar?", "Apakah sayurnya aman dimasak?"],
   maggot: ["Apa biomassa yang tersedia?", "Bagaimana status pesanan saya?", "Bahan apa yang boleh diklaim?", "Kapan pesanan saya diantar?", "Berapa kg biomassa yang sudah saya terima?"],
   logistics: ["Apa yang siap diantar?", "Bagaimana kendaraan dipilih?", "Bagaimana konfirmasi serah terima?", "Ke mana saja tujuan pengantaran?", "Berapa total muatan hari ini?"],
-  manager: ["Ringkas operasional pasar", "Berapa stok yang berisiko?", "Berapa dana yang sudah cair?", "Kios mana yang paling banyak stok berisiko?", "Berapa pangan yang sudah tersalurkan?"],
-  admin: ["Ringkas operasional pasar", "Apa yang perlu dievaluasi?", "Berapa dana yang sudah cair?", "Komoditas apa yang paling berisiko?", "Berapa pangan yang sudah tersalurkan?"],
+  manager: ["Ringkas operasional pasar", "Laporan apa saja yang tersedia?", "Berapa stok yang berisiko?", "Berapa dana yang sudah cair?", "Kios mana yang paling banyak stok berisiko?", "Berapa pangan yang sudah tersalurkan?", "Siapa pembeli yang belum bayar?", "Kios mana yang penjualannya terbesar?", "Kios mana yang paling banyak donasi?"],
+  admin: ["Ringkas operasional pasar", "Laporan apa saja yang tersedia?", "Apa yang perlu dievaluasi?", "Berapa dana yang sudah cair?", "Komoditas apa yang paling berisiko?", "Berapa pangan yang sudah tersalurkan?", "Siapa pembeli yang belum bayar?", "Kios mana yang penjualannya terbesar?", "Pembeli mana yang paling banyak membeli?"],
 };
 
 // Format rupiah dengan titik ribuan, misalnya Rp16.000.

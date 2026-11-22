@@ -1,6 +1,14 @@
 // Master Katalog Komoditas Hortikultura Pasar Induk Kramat Jati (PSR-14).
 // Memuat parameter biologis kinetika respirasi (Q10, laju respirasi dasar),
 // batas waktu pajang layu (ringan, sedang, afkir), serta harga acuan dasar dan price floor pedagang.
+// STATUS PARAMETER (audit 22 Nov 2026): angka jam layu, Q10, dan sensitivitas kelembapan di bawah ini adalah asumsi awal.
+// Belum ada rujukan tercatat dan belum dikalibrasi di lapangan, jadi skor peluruhan adalah indeks perkiraan, bukan hasil pengukuran.
+// Yang didukung literatur hanya pola umum: sayur daun lebih cepat rusak daripada umbi, dan suhu lebih tinggi mempercepat peluruhan
+// (Q10 umum 1,5-2,0 pada 20-30 C, lihat Bartz & Brecht, Respiration and Gas Exchange, Univ. of Florida).
+// Catatan yang perlu dicek: satu studi menemukan bayam bertahan sekitar 6 hari di suhu ruang (Polije, 2021), jauh dari 14 jam di sini,
+// dan kangkung gunung sekitar 2 hari di suhu ruang (CIGR 2019) dibanding 16 jam di sini. Titik akhir tiap studi bisa berbeda (layak jual vs masih terlihat).
+// Jam layu berlaku pada kondisi acuan 32,5 C dan kelembapan 75 persen; suhu dan kelembapan lain menyesuaikan lewat relativeDecaySpeed.
+// decayLayuRinganHour dan decayLayuSedangHour hanya dokumentasi: rumus dasbor hanya memakai decayTidakLayakHour dan skor 0,35 serta 0,65 tercapai kira-kira di sekitar jam itu.
 export interface Commodity {
   // Kunci unik komoditas (huruf kecil, garis bawah); dipakai oleh stok, penawaran, dan chatbot.
   id: string;
