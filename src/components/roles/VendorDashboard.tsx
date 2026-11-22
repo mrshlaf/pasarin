@@ -22,25 +22,36 @@ export function VendorDashboard() {
   const { user } = useAuth();
   const { stockItems, stockHealth, estimatedUnsoldKg, weather, offers, transactions, vendorWalletBalanceIdr, busy,
     addStockItem, createInstantSurplusOffer, approveOfferByVendor, rejectOfferByVendor } = useMarketSimulation();
+  // Formulir pasokan masuk: komoditas terpilih dan berat awal dalam kg (teks agar bisa diketik bebas).
   const [commodity, setCommodity] = useState(COMMODITIES[0].id);
   const [weight, setWeight] = useState("");
+  // Kios yang dipantau oleh peninjau (admin/pengelola); pedagang tidak memakainya.
   const [previewKiosk, setPreviewKiosk] = useState("");
+  // Lot yang sedang ditimbang di dialog, beserta usulan penawaran terkait bila ada.
   const [selection, setSelection] = useState<{ stockId: string; proposalId?: string } | null>(null);
+  // Isian dialog konfirmasi: sisa fisik hasil timbang, pilihan jual/donasi, dan pesan galat.
   const [confirmedKg, setConfirmedKg] = useState("");
   const [mode, setMode] = useState<DistributionMode | "">("");
   const [confirmationError, setConfirmationError] = useState("");
+  // Pencarian dan filter daftar inventaris.
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
+  // Hasil pencatatan pasokan terakhir untuk ditampilkan di bawah formulir.
   const [arrivalFeedback, setArrivalFeedback] = useState<{ success: boolean; message: string } | null>(null);
   // Hanya pedagang yang tertaut ke kios yang bisa mengubah stok; admin dan pengelola melihat pratinjau saja.
   const canManage = user?.role === "vendor" && Boolean(user.vendorId);
   // Pedagang dikunci ke kiosnya sendiri; peninjau memilih kios lewat filter, string kosong berarti semua kios.
   const selectedKiosk = user?.role === "vendor" ? user.vendorId : previewKiosk;
+  // Profil kios terpilih; kosong bila peninjau melihat semua kios.
   const kiosk = selectedKiosk ? kioskInfo(selectedKiosk) : undefined;
+  // Stok dan penawaran dibatasi ke kios terpilih.
   const inventory = stockItems.filter((item) => !selectedKiosk || item.vendorId === selectedKiosk);
   const kioskOffers = offers.filter((offer) => !selectedKiosk || offer.vendorId === selectedKiosk);
+  // Penawaran yang masih berjalan (belum selesai atau ditolak).
   const currentOffers = kioskOffers.filter((offer) => offer.status !== "settled" && offer.status !== "rejected");
+  // Berat yang sudah dipesan pembeli tetapi belum diserahterimakan.
   const reserved = currentOffers.filter((offer) => offer.status === "claimed").reduce((sum, offer) => sum + offer.quantityKg, 0);
+  // Lot yang sudah ditimbang; penawaran hanya dihitung terbit bila lotnya sudah ditimbang.
   const verifiedStockIds = new Set(inventory.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
   const activeCount = currentOffers.filter((offer) => offer.status === "active" && verifiedStockIds.has(offer.stockId)).length;
   // Lot yang masih bersisa di atas, lalu skor susut tertinggi dulu agar yang paling mendesak terlihat pertama.
@@ -55,14 +66,18 @@ export function VendorDashboard() {
   // Perkiraan sisa dari model; bila belum ada, pakai kuota usulan yang masih menunggu persetujuan.
   const selectedEstimate = selectedStock ? estimatedUnsoldKg[selectedStock.id] ??
     (selectedProposal && selectedProposal.status === "pending_vendor" ? selectedProposal.quantityKg : undefined) : undefined;
+  // Skor susut menentukan tier tujuan di dialog (tier 2 membuka pilihan jual atau donasi).
   const selectedHealth = selectedStock ? stockHealth[selectedStock.id] : undefined;
   const selectedTier = distributionTierForDecay(selectedHealth?.decayScore ?? 0);
   // Sisa fisik tidak boleh melebihi stok awal dikurangi berat yang sudah dipesan atau diserahterimakan lewat PASARIN.
   const maxConfirmedKg = selectedStock ? Math.max(0, roundKg(selectedStock.initialKg - kioskOffers
     .filter((offer) => offer.stockId === selectedStock.id && (offer.status === "claimed" || offer.status === "settled"))
     .reduce((sum, offer) => sum + offer.quantityKg, 0))) : 0;
+  // Lot donasi yang selesai menambah poin reputasi kios.
   const donationLots = kiosk ? completedDonationLots(kioskOffers, kiosk.id) : 0;
+  // Lot yang masih bersisa tetapi belum ditimbang pedagang.
   const needsWeighing = inventory.filter((item) => item.remainingKg > 0 && !item.verifiedAt);
+  // Hasil pencarian teks gabungan komoditas, kode lot, dan kios, lalu filter status.
   const inventoryMatches = sortedInventory.filter((item) => {
     const matchesQuery = `${commodityName(item.commodityId)} ${item.lotNumber} ${kioskLabel(item.vendorId)}`
       .toLocaleLowerCase("id-ID").includes(inventoryQuery.trim().toLocaleLowerCase("id-ID"));
@@ -105,6 +120,7 @@ export function VendorDashboard() {
 
   return (
     <div className="grid min-w-0 gap-6">
+      {/* Kartu pembuka: ajakan menimbang, info kios, dan tombol lot berikutnya. */}
       <section className="market-panel grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h2 className="font-serif text-2xl leading-tight tracking-tight sm:text-3xl">{needsWeighing.length > 0 ? "Sisa dagangan menunggu timbangan" : "Pantau stok, siapkan penawaran"}</h2>
@@ -135,6 +151,7 @@ export function VendorDashboard() {
         </div>
       </section>
 
+      {/* Ringkasan angka: sisa fisik, dalam pesanan, penawaran terbit, saldo dompet. */}
       <MarketMetrics items={[
         { label: "Sisa fisik terkonfirmasi", value: kg(inventory.reduce((sum, item) => sum + (item.verifiedAt ? item.remainingKg : 0), 0)) },
         { label: "Dalam pesanan", value: kg(reserved) },
@@ -143,6 +160,7 @@ export function VendorDashboard() {
       ]} />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
+        {/* Daftar stok dan mutu lot; peninjau mendapat filter kios. */}
         <MarketSection
           variant="plain"
           title="Stok & mutu lot"
@@ -175,10 +193,13 @@ export function VendorDashboard() {
             <ul className="grid gap-3">
               {inventoryMatches.map((item) => {
                 const health = stockHealth[item.id];
+                // Penawaran aktif atau menunggu persetujuan yang tertaut ke lot ini.
                 const linked = sortedOffers.find((offer) => offer.stockId === item.id && (offer.status === "active" || offer.status === "pending_vendor"));
+                // Berat lot yang sudah dipesan pembeli.
                 const reservedKg = roundKg(currentOffers
                   .filter((offer) => offer.stockId === item.id && offer.status === "claimed")
                   .reduce((sum, offer) => sum + offer.quantityKg, 0));
+                // Sisa yang masih bisa dijual setelah dikurangi pesanan.
                 const remainingForSale = roundKg(item.remainingKg - reservedKg);
                 // Penawaran aktif yang tier-nya sudah tidak cocok dengan skor susut terbaru ditandai "Mutu berubah".
                 const changed = linked?.status === "active" && health && linked.targetTier !== distributionTierForDecay(health.decayScore);
@@ -203,6 +224,7 @@ export function VendorDashboard() {
                           ]),
                           ...(linked?.status === "active" && item.verifiedAt ? [{ label: "Kuota penawaran", value: kg(linked.quantityKg) }] : []),
                         ]} />
+                        {/* Meteran susut dan sisa simpan; disembunyikan untuk lot yang sudah habis. */}
                         {health && item.remainingKg > 0 && (
                           <div className="mt-3 rounded-xl border border-line bg-canvas/80 px-3 py-3">
                             <DecayMeter score={health.decayScore} />
@@ -253,6 +275,7 @@ export function VendorDashboard() {
         </MarketSection>
 
         <div className="grid min-w-0 gap-4 xl:sticky xl:top-20 xl:self-start">
+          {/* Formulir pasokan baru; hanya pedagang bertaut kios yang bisa mengisinya. */}
           {canManage && (
             <MarketSection title="Catat Pasokan Masuk" description="Ada sayuran baru tiba di kios? Yuk catat berat awalnya di sini! Sisa fisik nantinya bisa ditimbang saat siap diselamatkan.">
               <form onSubmit={recordArrival} className="grid gap-4" aria-busy={busy}>
@@ -276,6 +299,7 @@ export function VendorDashboard() {
             </MarketSection>
           )}
 
+          {/* Panel samping: cuaca los dan ringkasan kios. */}
           <aside className="rounded-2xl bg-brand-deep p-5 text-cream">
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-1.5 text-[13px] text-sage"><CloudSun size={14} aria-hidden /> Cuaca los</p>
@@ -295,6 +319,7 @@ export function VendorDashboard() {
             )}
           </aside>
 
+          {/* Akun pedagang yang belum terhubung ke kios hanya melihat pesan ini. */}
           {user?.role === "vendor" && !user.vendorId && (
             <p role="status" className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning-soft p-3 text-[13px] leading-5 text-warning">
               <AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0" />
@@ -304,6 +329,7 @@ export function VendorDashboard() {
         </div>
       </div>
 
+      {/* Usulan penawaran dari sistem dan penawaran yang sudah terbit. */}
       <MarketSection title="Penawaran & Persetujuan Kios" description="Yuk tinjau usulan penyelamatan stokmu! Cukup konfirmasi hasil timbang fisik untuk menerbitkannya ke katalog pembeli."
         action={<div className="flex items-center gap-3 text-[13px] font-semibold tabular-nums">
           <span className="text-ink-muted">{activeCount} aktif</span>
@@ -343,6 +369,7 @@ export function VendorDashboard() {
         )}
       </MarketSection>
 
+      {/* Riwayat pembayaran dan pencairan escrow ke dompet. */}
       <MarketSection title="Pembayaran & pencairan" description="Dana escrow dicairkan ke dompet setelah serah terima selesai. Donasi dan biomassa gratis tidak memerlukan pembayaran.">
         {transactions.length === 0 ? (
           <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi pembayaran dan pelepasan dana escrow akan tercatat di sini." />
@@ -367,6 +394,7 @@ export function VendorDashboard() {
         )}
       </MarketSection>
 
+      {/* Dialog konfirmasi sisa fisik; tidak bisa ditutup saat permintaan berjalan. */}
       {selectedStock && <MarketDialog title="Konfirmasi sisa fisik" onClose={() => { if (!busy) setSelection(null); }}>
         <form className="grid gap-4" onSubmit={confirmStock} aria-busy={busy}>
           <p className="text-sm leading-6 text-ink-muted">{commodityName(selectedStock.commodityId)} · {selectedStock.lotNumber}</p>
@@ -411,6 +439,7 @@ export function VendorDashboard() {
             </div>
             <p className="mt-1.5 text-xs leading-5 text-ink-muted">Timbang sisa fisik bulat (1, 2, 3, dst.) di luar pesanan PASARIN. Maksimal {kg(maxConfirmedKg)}. Masukkan 0 jika sudah habis.</p>
           </div>
+          {/* Pilihan jual atau donasi hanya muncul untuk jalur dapur sosial (tier 2). */}
           {selectedTier === "tier_2" && (
             <fieldset className="grid gap-2">
               <legend className="mb-1 text-sm font-semibold">Cara penyaluran ke dapur sosial</legend>

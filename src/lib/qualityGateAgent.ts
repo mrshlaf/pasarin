@@ -33,6 +33,7 @@ export async function verifyHumanGradeIntegrity(
   options: { recordIncident?: boolean } = {},
 ): Promise<QualityGateEvaluationResult> {
   const {
+    // Parameter permintaan; nilai bawaan dipakai untuk data yang tidak dikirim: vendor tak dikenal, 32,5 C, kelembapan 75%.
     commodityId,
     hoursOnDisplay,
     requestedTier,
@@ -44,10 +45,12 @@ export async function verifyHumanGradeIntegrity(
   } = params;
 
   // Evaluasi inspeksi visual klorofil daun jika data citra atau rasio klorofil disertakan (MobileNetV3)
+  // Pemeriksaan visual klorofil hanya dijalankan bila ada gambar atau rasio klorofil.
   const visualVerification =
     imageBase64 || chlorophyllRatio !== undefined
       ? evaluateChlorophyllLoss({ imageBase64, chlorophyllRatio, commodityId })
       : undefined;
+  // ID dicocokkan tanpa membedakan huruf besar kecil dan spasi.
   const normalizedId = commodityId.trim().toLowerCase();
   const commodity = COMMODITIES.find((c) => c.id.toLowerCase() === normalizedId);
 
@@ -68,6 +71,7 @@ export async function verifyHumanGradeIntegrity(
   }
 
   // Evaluasi skor peluruhan biologis menggunakan mikroklimat los pasar
+  // Skor peluruhan dari kinetika biologis dengan suhu dan kelembapan los.
   const { decayScore } = calculateDecayScore(
     commodity,
     temperatureC,
@@ -76,9 +80,11 @@ export async function verifyHumanGradeIntegrity(
   );
 
   const { condition, recommendedTier } = classifyProduceCondition(decayScore);
+  // Layak konsumsi manusia bila skor di bawah 0,85.
   const isHumanConsumable = decayScore < HUMAN_CONSUMABLE_DECAY_THRESHOLD;
 
   // Uji Invarian 1: Larangan mutlak pengalihan pangan manusia ke pakan larva maggot
+  // Pelanggaran terjadi bila pangan layak manusia diajukan ke Tier 3 (pakan maggot).
   const isDivertingToFeed = requestedTier === "tier_3";
   const isMoralHazardViolation = isHumanConsumable && isDivertingToFeed;
 
@@ -89,6 +95,7 @@ export async function verifyHumanGradeIntegrity(
       `dan terverifikasi masih layak konsumsi manusia (${condition}). ` +
       `Pengalihan ke pakan ternak maggot (Tier 3) dilarang mutlak oleh Invarian 1 PRD §5.1.`;
 
+    // Komoditas diarahkan ke tier yang sesuai dengan mutunya.
     const correctiveAction =
       `Komoditas dialihkan secara otomatis ke antrean ${recommendedTier === "tier_1" ? "Tier 1 (Warteg & UMKM)" : "Tier 2 (Dapur Sosial & Panti Asuhan)"}.`;
 
@@ -121,6 +128,7 @@ export async function verifyHumanGradeIntegrity(
       violationReason,
       correctiveAction,
       socialReservationWindowMinutes: recommendedTier === "tier_2" ? SOCIAL_RESERVATION_WINDOW_MINUTES : 0,
+      // Penalti reputasi 5 poin hanya bila insiden benar-benar dicatat.
       reputationPenaltyApplied: auditRecord ? 5 : 0,
       visualVerification,
       auditEventId: auditRecord?.eventId,
@@ -129,6 +137,7 @@ export async function verifyHumanGradeIntegrity(
   }
 
   // Alokasi Tier 2 mendapat jendela reservasi eksklusif panti asuhan selama 30 menit
+  // Hanya Tier 2 yang mendapat jendela reservasi 30 menit.
   const socialReservationWindowMinutes = requestedTier === "tier_2" ? SOCIAL_RESERVATION_WINDOW_MINUTES : 0;
 
   return {
@@ -156,6 +165,7 @@ export function evaluateProduceQuality(
   message: string;
 } {
   const isHumanConsumable = decayScore < HUMAN_CONSUMABLE_DECAY_THRESHOLD;
+  // Diblokir hanya bila layak makan dan diajukan ke Tier 3.
   const isBlocked = isHumanConsumable && requestedTier === "tier_3";
 
   if (isBlocked) {
@@ -202,6 +212,7 @@ export function evaluateChlorophyllLoss(input: {
     estimatedCondition: condition,
     recommendedTier,
     isHumanConsumable,
+    // Nilai tetap karena belum ada model citra sungguhan.
     visualConfidence: 0.92,
     gateStatus: isHumanConsumable ? "passed" : "blocked",
   };

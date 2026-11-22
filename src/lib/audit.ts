@@ -29,9 +29,11 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
   eventId: string;
   storage: "supabase" | "in_memory";
 }> {
+  // ID unik peristiwa: waktu dalam milidetik ditambah akhiran acak agar tidak bentrok.
   const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   const occurredAt = new Date().toISOString();
 
+  // Bentuk rekaman yang disimpan; durasi juga disalin ke payload agar terbaca saat payload ditampilkan sendiri.
   const record: SystemAuditTrailRecord = {
     event_id: eventId,
     subsystem: params.subsystem,
@@ -52,10 +54,12 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
 
   // Persistensikan ke tabel basis data Supabase jika kredensial aktif telah terkonfigurasi
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  // Supabase dianggap aktif hanya bila URL dan kunci service role tersedia.
   const isSupabaseLive = Boolean(supabaseUrl && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
   if (isSupabaseLive) {
     try {
+      // Insert memakai service role karena tabel audit tidak dapat ditulis oleh klien biasa.
       const { error } = await getServiceRoleClient().from("system_audit_trail").insert([
         {
           event_id: record.event_id,
@@ -67,6 +71,7 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
         },
       ]);
 
+      // Berhasil tersimpan di database; selain itu jatuh ke penyimpanan memori di bawah.
       if (!error) {
         return { success: true, eventId, storage: "supabase" };
       }
@@ -76,6 +81,7 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
     }
   }
 
+  // Kegagalan database tidak menggagalkan pemanggil; peristiwa tetap tercatat di buffer memori.
   return { success: true, eventId, storage: "in_memory" };
 }
 

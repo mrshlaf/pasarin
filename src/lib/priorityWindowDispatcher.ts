@@ -13,12 +13,17 @@ export const SOCIAL_RESERVATION_WINDOW_MINUTES = 30;
 export interface PriorityWindowEvaluationResult {
   offerId: string;
   targetTier: "tier_1" | "tier_2" | "tier_3";
+  // True selama 30 menit pertama sejak Tier 2 terbit.
   isWindowActive: boolean;
   // Menit sejak penawaran diterbitkan, dibulatkan ke bawah.
   elapsedMinutes: number;
+  // Sisa menit eksklusif untuk Dapur Sosial; 0 setelah jendela habis.
   remainingMinutes: number;
+  // Dapur sosial selalu boleh klaim.
   canSocialKitchenClaim: boolean;
+  // Sentra maggot hanya boleh klaim setelah jendela berakhir.
   canMaggotClaim: boolean;
+  // Keputusan: eksklusif sosial, terbuka untuk semua, atau layak diturunkan ke Tier 3.
   actionDecision: "exclusive_social" | "open_all" | "eligible_tier3_downgrade";
   statusMessage: string;
 }
@@ -32,6 +37,7 @@ export function evaluateTier2PriorityWindow(
   currentClock: Date = new Date(),
   windowDurationMinutes: number = SOCIAL_RESERVATION_WINDOW_MINUTES
 ): PriorityWindowEvaluationResult {
+  // Jendela prioritas hanya berlaku untuk penawaran Tier 2.
   const isTier2 = offer.targetTier === "tier_2";
 
   // Jika bukan penawaran Tier 2, jendela prioritas tidak berlaku
@@ -60,6 +66,7 @@ export function evaluateTier2PriorityWindow(
     elapsedMinutes = Math.max(0, windowDurationMinutes - offer.expiresInMinutes);
   }
 
+  // Dibatasi minimal 0 agar tidak negatif setelah jendela lewat.
   const remainingMinutes = Math.max(0, windowDurationMinutes - elapsedMinutes);
   const isWindowActive = remainingMinutes > 0;
 
@@ -118,8 +125,10 @@ export function processPriorityWindowDowngrades(
   offers: RescueOffer[],
   currentClock: Date = new Date()
 ): { updatedOffers: RescueOffer[]; downgradedCount: number } {
+  // Jumlah penawaran yang diturunkan, untuk laporan sapuan.
   let downgradedCount = 0;
 
+  // Hanya penawaran Tier 2 yang masih aktif yang diperiksa; lainnya dikembalikan apa adanya.
   const updatedOffers = offers.map((offer) => {
     if (offer.targetTier === "tier_2" && offer.status === "active") {
       const evaluation = evaluateTier2PriorityWindow(offer, currentClock);

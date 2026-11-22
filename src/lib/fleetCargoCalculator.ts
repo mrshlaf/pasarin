@@ -16,19 +16,27 @@ export type VehicleClass = "viar_trike" | "granmax_pickup" | "isuzu_truck";
 // Spesifikasi teknis dan operasional armada pengangkut logistik (PSR-27).
 export interface VehicleSpec {
   type: VehicleClass;
+  // Nama armada untuk tampilan.
   displayName: string;
+  // Muatan maksimal satu unit, kg.
   maxCapacityKg: number;
+  // Konsumsi BBM, km per liter.
   fuelEfficiencyKmPerLiter: number;
+  // Jenis BBM yang dipakai.
   fuelType: string;
   // Harga BBM rupiah per liter.
   fuelPricePerLiterIdr: number;
+  // Keterangan jenis muatan dan medan yang cocok.
   suitability: string;
+  // Pengemudi bawaan untuk armada ini (data demo).
   defaultDriver: string;
+  // Plat nomor (data demo).
   licensePlate: string;
 }
 
 // Parameter spesifikasi baku armada logistik resmi Pasar Induk Kramat Jati (PSR-27).
 export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
+  // Armada ringan untuk lorong sempit.
   viar_trike: {
     type: "viar_trike",
     displayName: "Motor Viar Roda Tiga",
@@ -40,6 +48,7 @@ export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
     defaultDriver: "Pak Joko Santoso",
     licensePlate: "B 4521 TXX",
   },
+  // Armada menengah untuk multi-stop.
   granmax_pickup: {
     type: "granmax_pickup",
     displayName: "Daihatsu GranMax Pikap Bak",
@@ -51,6 +60,7 @@ export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
     defaultDriver: "Pak Hendra Wijaya",
     licensePlate: "B 9812 SAA",
   },
+  // Armada massal untuk limbah organik ke biokonversi.
   isuzu_truck: {
     type: "isuzu_truck",
     displayName: "Truk Engkel Isuzu Elf",
@@ -68,27 +78,36 @@ export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
 export interface FleetAllocationResult {
   vehicleType: VehicleClass;
   vehicleSpec: VehicleSpec;
+  // Jumlah unit yang dibutuhkan agar semua muatan terangkut.
   unitsRequired: number;
+  // Total muatan setelah dinormalisasi, kg.
   totalPayloadKg: number;
   // Persentase kapasitas terpakai (0-100) dari total kapasitas seluruh unit.
   capacityUtilizationPct: number;
+  // Jenis penerima; mixed bila muatan untuk beberapa jenis sekaligus.
   targetCategory: "warteg" | "social_kitchen" | "maggot" | "mixed";
+  // Pengemudi yang disarankan menurut armada terpilih.
   recommendedDriver: string;
+  // Kalimat penjelasan penugasan untuk ditampilkan ke kurir.
   dispatchDescription: string;
 }
 
 // Titik henti penjemputan komoditas di los kios pasar (PSR-27).
 export interface CargoStop {
+  // Kode los kios, misalnya A-01.
   kioskStall: string;
   kioskName: string;
+  // Blok pasar: A basah, B bumbu, C kering.
   block: "A" | "B" | "C";
   commodityName: string;
   weightKg: number;
+  // Pesanan terkait, bila titik henti ini berasal dari pesanan.
   orderId?: string;
 }
 
 // Manifes perjalanan pengiriman barang terstruktur ke mitra sirkular (PSR-27).
 export interface DeliveryManifest {
+  // Nomor manifes unik per perjalanan.
   manifestId: string;
   allocatedVehicle: VehicleSpec;
   unitsCount: number;
@@ -97,11 +116,15 @@ export interface DeliveryManifest {
   totalWeightKg: number;
   capacityUtilizationPct: number;
   destinationName: string;
+  // Jenis penerima di tujuan.
   destinationRole: "warteg" | "social_kitchen" | "maggot";
+  // Jarak tempuh total: keliling kios di pasar ditambah jarak ke tujuan.
   estimatedDistanceKm: number;
   estimatedDurationMinutes: number;
+  // Perkiraan BBM terpakai, liter.
   fuelConsumptionLiters: number;
   estimatedFuelCostIdr: number;
+  // Titik jemput terurut menurut blok lalu nomor los.
   orderedPickUpStops: CargoStop[];
   // Waktu pembuatan manifes (ISO 8601).
   createdAt: string;
@@ -118,6 +141,7 @@ export function calculateFleetAllocation(
   let vehicleType: VehicleClass;
   let unitsRequired = 1;
 
+  // Batas armada mengikuti aturan penugasan di atas: 300 kg dan 1.000 kg.
   if (normalizedWeight <= 300) {
     // 1. Muatan ringan (<= 300 kg) -> Viar Roda 3
     vehicleType = "viar_trike";
@@ -132,10 +156,12 @@ export function calculateFleetAllocation(
     unitsRequired = Math.ceil(normalizedWeight / 4000);
   }
 
+  // Kapasitas total semua unit dipakai untuk menghitung persentase keterisian.
   const spec = VEHICLE_SPECIFICATIONS[vehicleType];
   const totalCapacity = spec.maxCapacityKg * unitsRequired;
   const capacityUtilizationPct = Number(((normalizedWeight / totalCapacity) * 100).toFixed(1));
 
+  // Kalimat penugasan disusun menurut armada terpilih.
   let dispatchDescription = "";
   if (vehicleType === "viar_trike") {
     dispatchDescription = `${unitsRequired} unit Motor Viar Roda Tiga dialokasikan untuk muatan ringan ${normalizedWeight} kg. Ideal bermanuver di lorong sempit.`;
@@ -166,11 +192,13 @@ export function generateDeliveryManifest(
     distanceKm: number;
   }
 ): DeliveryManifest {
+  // Total berat dari semua titik jemput.
   const totalWeightKg = stops.reduce((acc, s) => acc + s.weightKg, 0);
   const allocation = calculateFleetAllocation(totalWeightKg, destination.role);
   const spec = allocation.vehicleSpec;
 
   // Urutkan rute penjemputan secara logis: Blok A (Basah) -> Blok B (Bumbu) -> Blok C (Kering)
+  // Urutan blok untuk rute jemput; blok tak dikenal ditaruh paling akhir.
   const blockPriority = { A: 1, B: 2, C: 3 };
   const orderedPickUpStops = [...stops].sort((a, b) => {
     const pA = blockPriority[a.block] || 4;
@@ -189,11 +217,13 @@ export function generateDeliveryManifest(
   const estimatedFuelCostIdr = Math.round(fuelConsumptionLiters * spec.fuelPricePerLiterIdr);
 
   // Estimasi durasi (menit): 5 menit per kios penjemputan + waktu perjalanan (kecepatan rata-rata 25 km/jam di Jakarta Timur)
+  // Durasi = waktu muat di tiap kios + waktu tempuh.
   const loadingTimeMinutes = stops.length * 5;
   const transitTimeMinutes = Math.round((totalDistanceKm / 25) * 60);
   const estimatedDurationMinutes = loadingTimeMinutes + transitTimeMinutes;
 
   return {
+    // ID dari enam digit terakhir waktu; cukup untuk tampilan, bukan kunci unik global.
     manifestId: `MNF-${Date.now().toString().slice(-6)}`,
     allocatedVehicle: spec,
     unitsCount: allocation.unitsRequired,

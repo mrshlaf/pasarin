@@ -14,6 +14,7 @@ import { serverAuthEnabled, readSessionUser } from "@/lib/serverAuth";
 // Mencegah serangan analisis waktu (timing-attack) pada validasi token rahasia webhook atau cron.
 export function matchesSecret(value: string | null | undefined, secret: string | undefined) {
   if (!value || !secret) return false;
+  // Panjang dibandingkan lebih dulu karena timingSafeEqual melempar galat bila panjang berbeda.
   const a = Buffer.from(value);
   const b = Buffer.from(secret);
   return a.length === b.length && timingSafeEqual(a, b);
@@ -27,12 +28,14 @@ export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[
   if (serverAuthEnabled()) {
     const serverUser = readSessionUser(req);
     if (serverUser) {
+      // Sesi valid tetapi peran tidak diizinkan: 403.
       if (roles && !roles.includes(serverUser.role)) {
         return { response: errorResponse("Akun ini tidak memiliki akses untuk tindakan tersebut.", 403) } as const;
       }
       return { user: serverUser } as const;
     }
   }
+  // Token Bearer dari header Authorization; kosong berarti tidak ada token.
   const token = req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   // Tanpa Bearer, hanya sesi uji lokal bertanda tangan yang diterima (readLocalTestUser menolaknya di luar mode uji).
   if (!token) {
@@ -44,6 +47,7 @@ export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[
     return { user } as const;
   }
   try {
+    // Token diverifikasi ke Supabase Auth, bukan hanya dibaca isinya.
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data.user) return { response: errorResponse("Sesi tidak valid.", 401) } as const;
     const user = accountProfile(data.user);
@@ -51,6 +55,7 @@ export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[
       return { response: errorResponse("Akun ini tidak memiliki akses untuk tindakan tersebut.", 403) } as const;
     }
     return { user } as const;
+  // Supabase tidak terjangkau: 503 agar klien tahu ini bukan masalah kredensial.
   } catch {
     return { response: errorResponse("Layanan autentikasi sedang tidak tersedia.", 503) } as const;
   }

@@ -46,6 +46,7 @@ function sign(payload: string) {
 
 // Membuat token sesi bertanda tangan kriptografis HMAC-SHA256 untuk disimpan dalam HttpOnly cookie.
 export function createSessionToken(user: AuthUser) {
+  // Muatan sesi berisi profil akun dan waktu kedaluwarsa (detik epoch), lalu dikodekan base64url.
   const payload = Buffer.from(JSON.stringify({
     ...user,
     exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS,
@@ -55,14 +56,18 @@ export function createSessionToken(user: AuthUser) {
 
 // Memvalidasi integritas tanda tangan dan masa berlaku token sesi server sebelum mempercayai data muatan.
 function verifySessionToken(token: string): AuthUser | null {
+  // Format token: muatan.tanda_tangan.
   const [payload, signature] = token.split(".");
   if (!payload || !signature) return null;
   try {
+    // Tanda tangan dihitung ulang dan dibandingkan timing-safe agar tidak bocor lewat selisih waktu.
     const expected = Buffer.from(sign(payload));
     const provided = Buffer.from(signature);
     if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) return null;
     const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as Partial<AuthUser> & { exp?: number };
+    // Token kedaluwarsa ditolak.
     if (!data.exp || data.exp < Math.floor(Date.now() / 1000)) return null;
+    // Semua field wajib dicek tipenya karena muatan berasal dari cookie.
     if (typeof data.id !== "string" || typeof data.email !== "string" || typeof data.name !== "string" ||
       typeof data.organization !== "string" || !isAppRole(data.role)) return null;
     return {
@@ -88,15 +93,19 @@ export function readSessionUser(req: NextRequest) {
 interface AccountRow {
   id: string;
   email: string;
+  // Metadata yang hanya bisa ditulis server: peran dan ID kios.
   raw_app_meta_data: Record<string, unknown> | null;
+  // Metadata tampilan: nama dan organisasi.
   raw_user_meta_data: Record<string, unknown> | null;
 }
 
 // Mengonversi baris akun pengguna tabel `auth.users` PostgreSQL menjadi objek profil AuthUser.
 function profileFromRow(row: AccountRow): AuthUser | null {
+  // Peran dan ID kios disimpan di app_metadata yang hanya bisa diubah server; nama dan organisasi di user_metadata.
   const app = row.raw_app_meta_data ?? {};
   const meta = row.raw_user_meta_data ?? {};
   const role = app.pasarin_role;
+  // Akun tanpa peran PASARIN yang valid tidak dianggap pengguna aplikasi.
   if (!isAppRole(role)) return null;
   const vendorId = app.pasarin_vendor_id;
   return {
@@ -111,6 +120,7 @@ function profileFromRow(row: AccountRow): AuthUser | null {
 
 // Mengautentikasi pengguna langsung ke tabel `auth.users` Supabase PostgreSQL menggunakan ekstensi pgcrypto.
 export async function authenticateAccount(username: string, password: string): Promise<AuthUser | null> {
+  // Kata sandi dicocokkan di database dengan pgcrypto; akun terhapus atau diblokir tidak lolos.
   const result = await getDatabasePool().query<AccountRow>(
     `select id, email, raw_app_meta_data, raw_user_meta_data
      from auth.users
@@ -140,12 +150,14 @@ export async function findActiveAccount(id: string): Promise<AuthUser | null> {
 // Menyemai (seed) atau menyinkronkan seluruh akun pasar ke dalam tabel auth.users Supabase.
 // Menginjeksi metadata peran aplikasi (app_metadata) dan enkripsi kata sandi via pgcrypto Blowfish.
 export async function seedAccounts() {
+  // Satu koneksi khusus dengan transaksi agar seed akun semua-atau-tidak-sama-sekali.
   const client = await getDatabasePool().connect();
   const actorIds: Record<string, string> = {};
   try {
     await client.query("begin");
     for (const account of MARKET_ACCOUNTS) {
       const email = accountEmail(account.username);
+      // Metadata peran yang dibaca profileFromRow saat login.
       const appMetadata = JSON.stringify({
         provider: "email",
         providers: ["email"],
@@ -154,6 +166,7 @@ export async function seedAccounts() {
         ...(account.vendorId ? { pasarin_vendor_id: account.vendorId } : {}),
       });
       const userMetadata = JSON.stringify({ name: account.name, organization: account.organization });
+      // Akun yang sudah ada diperbarui (kata sandi disetel ulang), yang belum ada dibuat baru.
       const existing = await client.query<{ id: string }>(
         "select id from auth.users where email = $1 and deleted_at is null limit 1",
         [email],
@@ -185,6 +198,7 @@ export async function seedAccounts() {
         );
         userId = inserted.rows[0].id;
       }
+      // Identitas email diperlukan Supabase Auth agar akun bisa login; upsert supaya aman dijalankan ulang.
       await client.query(
         `insert into auth.identities
            (provider_id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
@@ -195,11 +209,13 @@ export async function seedAccounts() {
            updated_at = now()`,
         [email, userId, JSON.stringify({ sub: userId, email, email_verified: true, phone_verified: false })],
       );
+      // Simpan ID akun per username untuk dipakai seed data pasar.
       actorIds[account.username] = userId;
     }
     await client.query("commit");
     return actorIds;
   } catch (error) {
+    // Batalkan seluruh transaksi bila ada akun yang gagal.
     await client.query("rollback");
     throw error;
   } finally {

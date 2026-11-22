@@ -8,6 +8,7 @@ import { ApiResponse } from "@/types/api";
 
 // Membungkus data muatan sukses ke dalam amplop standar ApiResponse<T>.
 export function successResponse<T>(data: T, status = 200): NextResponse<ApiResponse<T>> {
+  // Amplop sukses: success=true, data, dan waktu respons dalam ISO.
   const payload: ApiResponse<T> = {
     success: true,
     data,
@@ -22,6 +23,7 @@ export function errorResponse(
   status = 400,
   details?: unknown
 ): NextResponse<ApiResponse<null>> {
+  // Amplop galat: details hanya disertakan bila ada (misalnya hasil validasi Zod).
   const payload: ApiResponse<null> = {
     success: false,
     error,
@@ -43,8 +45,10 @@ export async function validateJsonBody<T>(
   req: Request,
   schema: ZodSchema<T>
 ): Promise<ValidationResult<T>> {
+  // Body dibaca dulu sebagai unknown karena belum tentu JSON valid.
   let rawBody: unknown;
   try {
+    // Body bukan JSON: balas 400, bukan lempar galat.
     rawBody = await req.json();
   } catch {
     return {
@@ -54,6 +58,7 @@ export async function validateJsonBody<T>(
     };
   }
 
+  // Validasi skema; kegagalan dibalas 422 dengan rincian per field.
   const parseResult = schema.safeParse(rawBody);
   if (!parseResult.success) {
     return {

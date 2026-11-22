@@ -6,7 +6,9 @@ import type { RescueOffer } from "@/types/market";
 
 // Memetakan status penawaran dan status pembayaran rekening escrow ke label deskriptif berbahasa Indonesia.
 export function orderStatus(offer: RescueOffer) {
+  // Urutan pengecekan mengikuti alur hidup pesanan: selesai, diklaim, menunggu vendor, lalu aktif atau ditolak.
   if (offer.status === "settled") return "Selesai";
+  // Setelah diklaim, statusnya bergantung pada pembayaran escrow.
   if (offer.status === "claimed") return offer.paymentStatus === "unpaid" ? "Menunggu pembayaran" : "Siap diantar";
   if (offer.status === "pending_vendor") return "Perlu persetujuan";
   return offer.status === "active" ? "Tersedia" : "Ditolak";

@@ -25,10 +25,14 @@ type MetabolismTrialResponse = {
 
 // Komponen antarmuka pengawas yang menampilkan inventaris langsung, buku besar transaksi, dan audit trail operasional.
 export function OversightDashboard() {
+  // Akun yang masuk; dipakai untuk membatasi tombol evaluasi stok hanya untuk admin.
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
+  // State dialog laporan simulasi 24 jam: galat, status buka, status memuat, dan hasil laporan.
   const [dlhError, setDlhError] = useState("");
+  // Hasil sapuan manual terakhir untuk ditampilkan di bawah tombol.
   const [sweepResult, setSweepResult] = useState<{ success: boolean; message: string } | null>(null);
+  // Daftar penawaran dipotong 12 baris sampai pengguna menekan Tampilkan semua.
   const [showAllOffers, setShowAllOffers] = useState(false);
   const [dlhModalOpen, setDlhModalOpen] = useState(false);
   const [dlhLoading, setDlhLoading] = useState(false);
@@ -40,6 +44,7 @@ export function OversightDashboard() {
     setDlhLoading(true);
     setDlhError("");
     setDlhReport(null);
+    // Panggilan ke API dibungkus agar galat jaringan tampil sebagai pesan, bukan layar kosong.
     try {
       const res = await apiFetch("/api/simulation/metabolism-trial");
       const json: MetabolismTrialResponse = await res.json();
@@ -60,20 +65,25 @@ export function OversightDashboard() {
     setSweepResult(await triggerCronSweepNow());
   }
 
+  // Pesanan lunas yang siap diantar kurir.
   const ready = offers.filter(isReadyForDelivery);
   // Lot berisiko: masih bersisa dan skor susutnya sudah keluar dari zona "Segar" (>= 0,35).
   const risk = stockItems.filter((item) => item.remainingKg > 0 && (stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
+  // Pesanan yang sudah selesai diserahterimakan.
   const settled = offers.filter((offer) => offer.status === "settled");
+  // Indeks stok per ID agar pencarian lot per penawaran tidak berulang.
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
   // Penawaran aktif dihitung hanya bila lotnya sudah ditimbang pedagang; sisanya tampil sebagai "Perlu timbang".
   const activeOffers = offers.filter((offer) => offer.status === "active" && stockById.get(offer.stockId)?.verifiedAt).length;
   // Urutkan dari yang butuh tindakan (perlu timbang) ke yang sudah final (selesai, ditolak).
   const offerRank = { pending_vendor: 0, active: 1, claimed: 2, settled: 3, rejected: 4 } as const;
   const sortedOffers = [...offers].sort((a, b) => offerRank[a.status] - offerRank[b.status]);
+  // Hanya 12 baris pertama kecuali pengguna membuka semuanya.
   const visibleOffers = showAllOffers ? sortedOffers : sortedOffers.slice(0, 12);
 
   return (
     <div className="grid min-w-0 gap-6">
+      {/* Kartu pembuka: judul, tombol tindakan, dan hasil sapuan manual. */}
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="min-w-0">
@@ -81,6 +91,7 @@ export function OversightDashboard() {
             <p className="mt-2 max-w-prose text-sm leading-6 text-ink-muted">Pantau penawaran yang perlu ditimbang, muatan siap antar, dan status pembayaran dari catatan pasar.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
+            {/* Evaluasi stok manual hanya untuk admin; manajer hanya memantau. */}
             {user?.role === "admin" && (
               <button className={marketButton + " justify-center"} type="button" disabled={busy} onClick={runStockEvaluation}>
                 <RefreshCw size={16} aria-hidden /> {busy ? "Memproses evaluasi…" : "Evaluasi stok sekarang"}
@@ -91,6 +102,7 @@ export function OversightDashboard() {
             </button>
           </div>
         </div>
+        {/* Pesan hasil sapuan: hijau bila berhasil, merah bila gagal. */}
         {sweepResult && (
           <p role={sweepResult.success ? "status" : "alert"} className={`mt-4 rounded-xl p-3 text-sm leading-6 ${sweepResult.success ? "bg-brand-soft text-brand-ink" : "bg-danger-soft text-danger"}`}>
             {sweepResult.message}
@@ -99,6 +111,7 @@ export function OversightDashboard() {
         <p className="mt-4 border-t border-line pt-4 text-xs leading-5 text-ink-muted">Laporan 24 jam menjalankan skenario model terpisah. Hasilnya bukan audit kepatuhan DLH atau bukti pengalihan limbah operasional hari ini.</p>
       </section>
 
+      {/* Empat angka ringkas: kios bersetok, lot berisiko, siap diantar, selesai. */}
       <MarketMetrics items={[
         { label: "Kios dengan stok tercatat", value: new Set(stockItems.map((item) => item.vendorId)).size },
         { label: "Lot berisiko menurut model", value: risk.length, tone: risk.length > 0 ? "warning" : "brand" },
@@ -108,6 +121,7 @@ export function OversightDashboard() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
+          {/* Daftar penawaran dari semua kios, urut dari yang butuh tindakan. */}
           <MarketSection title="Pantauan Penawaran Pasar"
             description="Yuk pantau aliran penawaran surplus dari kios pedagang menuju mitra warteg, dapur sosial, dan sentra maggot!"
             action={<span className="text-sm font-semibold tabular-nums text-ink-muted">{activeOffers} aktif · {stockItems.length} lot</span>}>
@@ -115,6 +129,7 @@ export function OversightDashboard() {
               <EmptyState icon={Boxes} title="Belum ada penawaran aktif" description="Penawaran baru dari kios pedagang akan segera muncul di sini." />
             ) : (
               <ul>{visibleOffers.map((offer) => {
+                // Penawaran perlu timbang bila menunggu vendor atau lotnya belum ditimbang.
                 const stock = stockById.get(offer.stockId);
                 const pending = offer.status === "pending_vendor" || (offer.status === "active" && !stock?.verifiedAt);
                 return (
@@ -133,6 +148,7 @@ export function OversightDashboard() {
                           value: kg(pending ? estimatedUnsoldKg[offer.stockId] ?? offer.quantityKg : offer.quantityKg) },
                         ...(!pending ? [{ label: "Nilai", value: isFreeMaggotOffer(offer) ? "Gratis" : isDonation(offer) ? "Donasi" : rupiah(offer.totalAmountIdr) }] : []),
                       ]} />
+                      {/* Estimasi mutu dan sisa simpan dari model peluruhan. */}
                       {stockHealth[offer.stockId] && (
                         <p className="mt-1.5 flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock size={12} aria-hidden className="text-brand shrink-0" />
@@ -157,6 +173,7 @@ export function OversightDashboard() {
         </div>
 
         <div className="col-start-1 row-start-2 min-w-0 xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:self-start">
+          {/* Buku besar pembayaran per transaksi. */}
           <MarketSection title="Buku Besar Transaksi & Escrow" description="Pantau status dana per transaksi, pengamanan dana di rekening penampung (escrow), hingga pencairan ke pedagang.">
             {transactions.length === 0 ? (
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
@@ -180,17 +197,21 @@ export function OversightDashboard() {
         </div>
       </div>
 
+      {/* Dialog hasil simulasi 24 jam; isinya uji model, bukan data pasar sungguhan. */}
       {dlhModalOpen && (
         <MarketDialog title="Hasil simulasi metabolisme 24 jam" onClose={() => setDlhModalOpen(false)}>
           <div className="grid gap-5" aria-busy={dlhLoading}>
             <p className="rounded-xl bg-canvas p-3 text-sm leading-6 text-ink-muted">Uji skenario model, bukan data langsung pasar atau sertifikasi kepatuhan DLH. Ambang 90% adalah pembanding yang digunakan simulator.</p>
+            {/* Indikator saat simulasi berjalan. */}
             {dlhLoading && <p role="status" className="py-5 text-center text-sm font-medium">Menjalankan skenario 24 jam dan menyusun hasil tiap fase…</p>}
+            {/* Pesan galat disertai tombol coba lagi. */}
             {dlhError && (
               <div className="rounded-xl border border-danger/30 bg-danger-soft p-4">
                 <p role="alert" className="text-sm leading-6 text-danger">{dlhError}</p>
                 <button type="button" className={marketSecondary + " mt-3"} onClick={openDlhReport}>Coba muat laporan lagi</button>
               </div>
             )}
+            {/* Laporan: angka pengalihan, ringkasan, pemeriksaan aturan, lalu catatan tiap fase. */}
             {dlhReport && (
               <>
                 <div className="rounded-xl border border-line bg-brand-soft p-4">
@@ -204,6 +225,7 @@ export function OversightDashboard() {
                   </div>
                 </div>
 
+                {/* Ringkasan angka skenario. */}
                 <dl className="grid gap-4 border-y border-line py-4 sm:grid-cols-2">
                   {[
                     { label: "Pasokan skenario", value: kg(dlhReport.totalMarketIntakeKg) },
@@ -219,6 +241,7 @@ export function OversightDashboard() {
                 </dl>
 
                 <section>
+                  {/* Hasil uji tiga aturan (invarian) dalam skenario beserta ringkasan escrow. */}
                   <h3 className="font-semibold">Pemeriksaan aturan dalam skenario</h3>
                   <ul className="mt-3 grid gap-3 text-sm">
                     {[
@@ -241,6 +264,7 @@ export function OversightDashboard() {
 
                 <section>
                   <div className="flex flex-wrap items-center justify-between gap-2">
+                    {/* Catatan tiap fase simulasi sepanjang 24 jam. */}
                     <h3 className="font-semibold">Catatan fase simulasi</h3>
                     <StatusPill label={dlhReport.allPhasesCompleted ? `${dlhReport.phasesCount} fase selesai` : "Fase belum lengkap"} tone={dlhReport.allPhasesCompleted ? "success" : "warning"} />
                   </div>

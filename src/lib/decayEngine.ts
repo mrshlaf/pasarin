@@ -12,14 +12,21 @@ import { DecayEvaluationResult, ProduceCondition, CircularRescueTier } from "@/t
 
 // Struktur data ringkas evaluasi peluruhan untuk kebutuhan rendering komponen antarmuka.
 export interface DecayEvaluation {
+  // ID komoditas dari katalog.
   commodityId: string;
+  // Suhu udara los pasar, derajat Celsius.
   temperatureC: number;
+  // Kelembapan relatif, persen.
   humidityPercent: number;
+  // Lama komoditas dipajang sejak masuk pasar, jam.
   hoursElapsed: number;
   // Skor peluruhan 0-1; batas fase di 0,35, 0,65, dan 0,85.
   decayScore: number;
+  // Kondisi mutu hasil klasifikasi skor (misalnya segar atau layu).
   condition: ProduceCondition;
+  // Tier penyaluran yang disarankan menurut skor.
   recommendedTier: CircularRescueTier;
+  // Nama tier siap tampil di antarmuka.
   tierLabel: string;
   // Jam tersisa sebelum skor mencapai 0,85 (tidak layak konsumsi).
   hoursRemaining: number;
@@ -36,6 +43,7 @@ export function calculateDecay(
   humidityPercent: number,
   hoursElapsed: number
 ): DecayEvaluation {
+  // Perhitungan sebenarnya ada di pasarinCore; fungsi ini hanya menyesuaikan bentuk keluarannya.
   const result: DecayEvaluationResult = evaluateProduceDecay(
     commodity,
     temperatureC,
@@ -53,6 +61,7 @@ export function calculateDecay(
     recommendedTier: result.recommendedTier,
     tierLabel: result.tierLabel,
     hoursRemaining: result.hoursRemaining,
+    // Core memakai persen (0-100); UI memakai pecahan (0-1).
     salvageDiscount: result.salvageDiscountPercent / 100,
     estimatedSalvagePrice: result.estimatedSalvagePriceIdr,
   };
@@ -68,9 +77,11 @@ export function calculateBatchDecay(
   humidityPercent: number,
   hoursElapsed: number
 ): Record<string, DecayEvaluation> {
+  // Seluruh komoditas dievaluasi sekali dengan kondisi lingkungan yang sama.
   const evaluations = getAllCommodityEvaluations(hoursElapsed, temperatureC, humidityPercent);
   const result: Record<string, DecayEvaluation> = {};
 
+  // Indeks per ID komoditas supaya komponen bisa mencari tanpa perulangan.
   for (const evalResult of evaluations) {
     result[evalResult.commodityId] = {
       commodityId: evalResult.commodityId,

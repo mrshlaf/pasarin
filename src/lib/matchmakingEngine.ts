@@ -26,15 +26,21 @@ export const MATCHMAKING_WEIGHTS = {
 
 // Struktur skor kecocokan dan rincian sub-skor per mitra pembeli sirkular (PSR-22).
 export interface BuyerMatchScore {
+  // ID mitra pembeli dari data CIRCULAR_BUYERS.
   buyerId: string;
   buyerName: string;
   tier: "tier_1" | "tier_2" | "tier_3";
+  // Jenis usaha mitra untuk tampilan, misalnya Warteg atau Dapur Umum.
   typeLabel: string;
+  // Jarak dari pasar ke mitra, km (garis lurus Haversine).
   distanceKm: number;
   // Sisa kuota serap harian mitra dalam kg (kapasitas harian dikurangi alokasi berjalan).
   remainingCapacityKg: number;
+  // False bila melanggar syarat keras: radius atau kapasitas.
   isEligible: boolean;
+  // Alasan tidak layak, ditampilkan ke pengelola.
   ineligibilityReason?: string;
+  // Rincian skor penyusun total, untuk transparansi peringkat.
   subScores: {
     distanceScore: number;     // 0.0 - 1.0
     capacityScore: number;     // 0.0 - 1.0
@@ -60,7 +66,9 @@ export interface MatchmakingResult {
   searchRadiusKm: number;
   totalCandidatesEvaluated: number;
   totalEligibleMatches: number;
+  // Semua kandidat, yang layak lebih dulu dan terurut skor.
   rankedMatches: BuyerMatchScore[];
+  // Mitra teratas; null bila tak ada yang layak.
   topRecommendedBuyer: CircularBuyer | null;
   matchmakingDurationMs: number;
   // Waktu eksekusi pencocokan (ISO 8601).
@@ -111,12 +119,15 @@ export function findMatchesForOffer(
     originCoordinates?: { latitude: number; longitude: number; name: string };
   }
 ): MatchmakingResult {
+  // Waktu mulai untuk mengukur durasi pencocokan.
   const startTime = performance.now();
 
+  // Opsi bersifat opsional; bawaannya radius, daftar mitra, dan titik pasar standar.
   const maxRadiusKm = options?.maxRadiusKm ?? MAX_MATCHMAKING_RADIUS_KM;
   const buyersPool = options?.customBuyers ?? CIRCULAR_BUYERS;
   const origin = options?.originCoordinates ?? MARKET_ANCHOR_COORDINATES;
 
+  // Hasil per mitra; mitra tidak layak tetap dicatat dengan alasannya.
   const matchScores: BuyerMatchScore[] = [];
 
   for (const buyer of buyersPool) {
@@ -137,6 +148,7 @@ export function findMatchesForOffer(
     const remainingCapacityKg = Math.max(0, buyer.dailyCapacityKg - buyer.currentAllocatedKg);
 
     // 4. Verifikasi Kelayakan (Hard Constraints)
+    // Syarat keras: radius diperiksa lebih dulu, baru kapasitas.
     let isEligible = true;
     let ineligibilityReason: string | undefined;
 
@@ -166,12 +178,14 @@ export function findMatchesForOffer(
     const commodityPreferenceBonus = isPreferred ? 0.05 : 0.0;
 
     // 6. Hitung Skor Komposit Terbobot
+    // Skor total = jarak 50% + kapasitas 30% + reputasi 20%, ditambah bonus preferensi.
     const compositeScore =
       MATCHMAKING_WEIGHTS.DISTANCE * distanceScore +
       MATCHMAKING_WEIGHTS.CAPACITY * capacityScore +
       MATCHMAKING_WEIGHTS.REPUTATION * reputationScore +
       commodityPreferenceBonus;
 
+    // Mitra tidak layak diberi skor 0 agar tidak pernah unggul.
     const totalMatchScore = isEligible
       ? Number(Math.min(1.0, compositeScore).toFixed(4))
       : 0.0;
@@ -200,6 +214,7 @@ export function findMatchesForOffer(
   }
 
   // 7. Pengurutan Prioritas: Mitra yang memenuhi syarat dengan skor tertinggi berada di puncak
+  // Yang layak di atas yang tidak layak; di dalam kelompok yang sama diurutkan skor tertinggi.
   matchScores.sort((a, b) => {
     if (a.isEligible && !b.isEligible) return -1;
     if (!a.isEligible && b.isEligible) return 1;
@@ -212,6 +227,7 @@ export function findMatchesForOffer(
     ? buyersPool.find((b) => b.id === topMatch.buyerId) ?? null
     : null;
 
+  // Durasi dalam milidetik, dibulatkan dua desimal.
   const endTime = performance.now();
   const matchmakingDurationMs = Number((endTime - startTime).toFixed(2));
 

@@ -20,9 +20,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Menghasilkan klien Supabase berkemampuan administratif (Service Role).
 // Digunakan secara eksklusif oleh cron sweeper dan background worker untuk melewati batasan RLS saat agregasi data.
 export function getServiceRoleClient() {
+  // Kunci service role hanya ada di server; tanpa kunci ini fungsi sengaja gagal.
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diatur.");
   return createClient(supabaseUrl, serviceKey, {
+    // Klien server tidak menyimpan sesi dan tidak me-refresh token.
     auth: {
       persistSession: false,
       autoRefreshToken: false,

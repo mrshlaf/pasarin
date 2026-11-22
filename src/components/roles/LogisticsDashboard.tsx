@@ -50,6 +50,7 @@ type DispatchPhase = "all" | "tier_1" | "tier_2" | "tier_3";
 // Tahap "all" tidak punya `thresholdKg` sehingga indikator ambang muatan disembunyikan.
 const DISPATCH_PHASES = [
   {
+    // Tab gabungan: seluruh antrean tanpa ambang muatan.
     id: "all" as const,
     label: "Semua Tahap",
     shortLabel: "Semua",
@@ -61,6 +62,7 @@ const DISPATCH_PHASES = [
     driver: "Tim Logistik Pasar",
   },
   {
+    // Tahap 1: Warteg, berangkat 15.30; kloter dianggap cukup bila muatan mencapai 200 kg.
     id: "tier_1" as const,
     label: "Tahap 1: Warteg",
     shortLabel: "Tahap 1: Warteg",
@@ -74,6 +76,7 @@ const DISPATCH_PHASES = [
     driver: "Pak Hendra Wijaya",
   },
   {
+    // Tahap 2: dapur sosial, berangkat 17.30; ambang 75 kg.
     id: "tier_2" as const,
     label: "Tahap 2: Dapur Sosial",
     shortLabel: "Tahap 2: Dapur Sosial",
@@ -87,6 +90,7 @@ const DISPATCH_PHASES = [
     driver: "Pak Joko Santoso",
   },
   {
+    // Tahap 3: sentra maggot, berangkat 19.00; ambang 150 kg.
     id: "tier_3" as const,
     label: "Tahap 3: Sentra Maggot",
     shortLabel: "Tahap 3: Maggot",
@@ -104,14 +108,17 @@ const DISPATCH_PHASES = [
 // Komponen dasbor operasional kurir pengantar.
 // Menampilkan antrean muatan berdasarkan tahapan sirkular dan memfasilitasi konfirmasi serah terima barang.
 export function LogisticsDashboard() {
+  // Akun yang masuk; hanya kurir yang boleh mengonfirmasi serah terima.
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, confirmDelivery, busy } = useMarketSimulation();
+  // Tab tahap yang aktif, lot yang sedang dikonfirmasi, dan pesan galat dialog.
   const [activePhase, setActivePhase] = useState<DispatchPhase>("all");
   const [selected, setSelected] = useState<RescueOffer | null>(null);
   const [error, setError] = useState("");
 
   // Antrean berisi pesanan terklaim yang dananya sudah di escrow atau tidak perlu dibayar.
   const queue = offers.filter(isReadyForDelivery);
+  // Pengantaran yang sudah diserahterimakan, untuk riwayat dan total muatan tahap.
   const completed = offers.filter((offer) => offer.status === "settled");
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
   const selectedStock = selected && stockById.get(selected.stockId);
@@ -126,9 +133,11 @@ export function LogisticsDashboard() {
     : completed.filter((offer) => offer.targetTier === activePhase);
 
   // Perhitungan muatan per tahapan
+  // Muatan antrean tahap aktif, total yang sudah selesai, dan total keduanya sebagai dasar pemilihan armada.
   const currentQueueKg = filteredQueue.reduce((sum, offer) => sum + offer.quantityKg, 0);
   const currentCompletedKg = filteredCompleted.reduce((sum, offer) => sum + offer.quantityKg, 0);
   const currentBatchTotalKg = currentQueueKg + currentCompletedKg;
+  // Nilai dana escrow yang masih menunggu serah terima.
   const currentHeldAmount = filteredQueue.reduce((sum, offer) => sum + offer.totalAmountIdr, 0);
 
   // Informasi konfigurasi fase aktif
@@ -136,6 +145,7 @@ export function LogisticsDashboard() {
   const PhaseIcon = currentPhaseConfig.icon;
 
   // Alokasi armada cerdas untuk tahapan aktif
+  // Kalkulator armada dipakai untuk tab Semua; minimal 1 kg agar tidak membagi nol.
   const fleet = calculateFleetAllocation(currentBatchTotalKg > 0 ? currentBatchTotalKg : (currentQueueKg > 0 ? currentQueueKg : 1));
   // Tahap 1 naik ke pikap bila muatan tahap melebihi 300 kg; tahap lain memakai kendaraan tetap, tab "all" mengikuti kalkulator.
   const assignedVehicle = activePhase === "tier_1"
@@ -146,6 +156,7 @@ export function LogisticsDashboard() {
         ? "Viar Roda Tiga TPS 3R (B 3319 BSF)"
         : `${fleet.vehicleSpec.displayName} (${fleet.vehicleSpec.licensePlate})`;
 
+  // Pengemudi mengikuti armada: pikap untuk muatan besar tahap 1, sisanya tetap per tahap.
   const assignedDriver = activePhase === "tier_1"
     ? (currentBatchTotalKg > 300 ? "Pak Hendra Wijaya" : "Pak Joko Santoso")
     : activePhase === "tier_2"
@@ -155,6 +166,7 @@ export function LogisticsDashboard() {
         : fleet.recommendedDriver;
 
   // Menentukan badge armada untuk setiap kartu order
+  // Label armada pada kartu pesanan menurut tier dan total muatan.
   function getOfferVehicleBadge(targetTier: "tier_1" | "tier_2" | "tier_3") {
     if (targetTier === "tier_3") return "Viar TPS 3R (B 3319 BSF)";
     if (targetTier === "tier_2") return "Motor Viar Roda 3 (B 4521 TXX)";
@@ -178,6 +190,7 @@ export function LogisticsDashboard() {
 
   return (
     <div className="grid min-w-0 gap-6">
+      {/* Kartu pembuka: tahap aktif, jendela waktu, armada, pengemudi, dan muatan. */}
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
@@ -208,6 +221,7 @@ export function LogisticsDashboard() {
             <dd className="mt-1 text-sm font-semibold tabular-nums">{kg(currentBatchTotalKg)} <span className="font-normal text-ink-muted">termasuk selesai</span></dd>
           </div>
         </dl>
+        {/* Indikator ambang muatan kloter; tidak ada untuk tab Semua. */}
         {activePhase !== "all" && "thresholdKg" in currentPhaseConfig && (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-canvas p-3 text-sm">
             <span className="flex items-center gap-2"><Clock size={16} aria-hidden /> Rencana berangkat {currentPhaseConfig.departureClock}</span>
@@ -257,6 +271,7 @@ export function LogisticsDashboard() {
       </nav>
 
       {/* Metrik Terfilter Sesuai Tahap */}
+      {/* Angka ringkas antrean, muatan, dan dana tertahan. */}
       <MarketMetrics
         items={[
           { label: "Siap diantar", value: filteredQueue.length },
@@ -349,6 +364,7 @@ export function LogisticsDashboard() {
                         )}
                       </div>
 
+                      {/* Mutu lot saat ini agar kurir tahu urgensi pengantaran. */}
                       {stockHealth[offer.stockId] && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock size={13} aria-hidden className="text-brand shrink-0" />
@@ -374,6 +390,7 @@ export function LogisticsDashboard() {
                     )}
                   </div>
 
+                  {/* Tombol serah terima hanya untuk kurir; peninjau hanya melihat antrean. */}
                   {user?.role === "logistics" && (
                     <button
                       type="button"
@@ -488,6 +505,7 @@ export function LogisticsDashboard() {
       </MarketSection>
 
       {/* Modal Dialog Konfirmasi Serah Terima */}
+      {/* Dialog konfirmasi serah terima; mencairkan dana escrow ke pedagang. */}
       {selected && (
         <MarketDialog title="Konfirmasi serah terima" onClose={() => setSelected(null)}>
           <div className="grid gap-1 border-y border-line py-3.5 text-sm">

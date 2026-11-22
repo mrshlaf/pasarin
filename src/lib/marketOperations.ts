@@ -21,23 +21,31 @@ function isToday(iso: string | undefined, today: string) {
 // Mengagregasi data pasokan fisik masuk, lot penawaran aktif, status pembayaran pesanan,
 // kesiapan penjemputan armada logistik, serta estimasi komoditas yang memasuki fase peluruhan kritis.
 export async function getMarketOperations() {
+  // State pasar dan cuaca dibaca paralel karena saling tidak bergantung.
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const today = jakartaDate.format(new Date());
+  // Hanya stok yang masih bersisa yang dihitung.
   const stock = state.stocks.filter((item) => item.remainingKg > 0);
+  // ID stok yang sudah ditimbang; stok belum ditimbang belum boleh dijual.
   const weighed = new Set(stock.filter((item) => item.verifiedAt).map((item) => item.id));
   // Penawaran aktif yang stoknya belum ditimbang tetap dihitung tertahan karena belum boleh dibeli.
   const pending = state.offers.filter((offer) => offer.status === "pending_vendor" || (offer.status === "active" && !weighed.has(offer.stockId))).length;
+  // Pesanan sudah diklaim pembeli tetapi belum dibayar.
   const unpaid = state.offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length;
+  // Pesanan yang sudah lunas dan siap diantar kurir.
   const ready = state.offers.filter(isReadyForDelivery).length;
   // Skor 0,35 adalah awal fase layu ringan, jadi stok di atasnya dianggap berisiko.
   const atRisk = stock.filter((item) => (evaluateMarketStock(item, weather)?.decayScore ?? 0) >= 0.35).length;
   return {
     date: today,
+    // Pasokan yang dicatat hari ini menurut tanggal WIB.
     arrivalsToday: state.stocks.filter((item) => isToday(item.createdAt, today)).length,
     deliveriesToday: state.offers.filter((offer) => isToday(offer.deliveredOn, today)).length,
+    // Total sisa stok terverifikasi (sudah ditimbang), dalam kg.
     inventoryKg: stock.reduce((total, item) => total + (item.verifiedAt ? item.remainingKg : 0), 0),
     activeOffers: state.offers.filter((offer) => offer.status === "active" && weighed.has(offer.stockId)).length,
     pending, unpaid, ready, atRisk,
+    // Daftar alur kerja yang perlu perhatian pengelola; kosong bila semuanya beres.
     workstreams: [
       ...(pending || atRisk ? ["Evaluasi stok dan penawaran"] : []),
       ...(unpaid ? ["Pembayaran pesanan"] : []),
@@ -53,12 +61,14 @@ export async function getMarketOperations() {
 // dengan mekanisme fail-safe fallback ke format sintesis heuristik deterministik jika API tidak tersedia.
 export async function answerMarketQuestion(question: string, forceHeuristic = false) {
   const metrics = await getMarketOperations();
+  // Ringkasan deterministik; dipakai langsung bila model tidak tersedia.
   const summary = [
     "Ringkasan " + metrics.date + " WIB.",
     metrics.arrivalsToday + " pasokan masuk dan " + metrics.deliveriesToday + " pengantaran selesai hari ini.",
     metrics.activeOffers + " penawaran tersedia, " + metrics.unpaid + " pesanan menunggu bayar, dan " + metrics.ready + " siap diantar.",
     metrics.workstreams.length + " alur perlu ditangani" + (metrics.workstreams.length ? " · " + metrics.workstreams.join(", ") : "") + ".",
   ].join(" ");
+  // Tanpa kunci Gemini atau saat diminta heuristik, jawaban memakai ringkasan data saja.
   const key = getEnv().GEMINI_API_KEY;
   if (!key || forceHeuristic) return { summary, source: "data_pasar", metrics };
 
@@ -66,14 +76,17 @@ export async function answerMarketQuestion(question: string, forceHeuristic = fa
     const ai = new GoogleGenAI({ apiKey: key });
     const result = await ai.models.generateContent({
       model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
+      // Model hanya menerima pertanyaan dan metrik, bukan data mentah pasar.
       contents: JSON.stringify({ question, metrics }),
       config: {
         systemInstruction: "Jawab singkat dalam bahasa Indonesia. Gunakan hanya fakta dan angka dari metrics. Jelaskan bahwa stok berisiko adalah hasil estimasi. Jika data tidak menjawab pertanyaan, sebutkan batasnya. Jangan mengusulkan atau mengeksekusi mutasi apa pun.",
+        // Jawaban dibatasi pendek; timeout 10 detik agar halaman tidak menggantung.
         maxOutputTokens: 450,
         abortSignal: AbortSignal.timeout(10000),
       },
     });
     if (result.text?.trim()) return { summary: result.text.trim(), source: "gemini", metrics };
+  // Galat model hanya dicatat namanya; jatuh ke ringkasan data.
   } catch (error) {
     console.warn("Gemini market summary unavailable:", error instanceof Error ? error.name : "unknown");
   }

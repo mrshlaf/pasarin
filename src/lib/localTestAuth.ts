@@ -23,17 +23,22 @@ declare global {
 // Memblokir penggunaan mode pengujian ini pada lingkungan produksi cloud untuk mencegah celah keamanan impersonasi peran.
 export function isLocalTestRequest(req: NextRequest) {
   // Mode uji hanya aktif saat development tanpa database nyata, lalu host, x-forwarded-for, dan origin harus loopback.
+  // Lapis pertama: bukan development, atau ada database nyata, berarti mode uji tidak boleh aktif.
   if (process.env.NODE_ENV !== "development" || databaseConfigured() || process.env.PASARIN_STATE_BACKEND === "supabase") return false;
+  // Lapis kedua: host permintaan harus loopback.
   const host = req.headers.get("host") ?? req.nextUrl.host;
   if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host)) return false;
+  // Lapis ketiga: bila lewat proxy, setiap alamat asal juga harus loopback.
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded && !forwarded.split(",").every((address) => /^(127\.0\.0\.1|::1|::ffff:127\.0\.0\.1)$/.test(address.trim()))) return false;
+  // Lapis keempat: origin, bila ada, harus sama dengan host sehingga situs lain tidak bisa memicu login uji.
   const origin = req.headers.get("origin");
   return !origin || origin === `${req.nextUrl.protocol}//${host}`;
 }
 
 // Mengambil profil identitas pengguna pengujian lokal dari master direktori akun pasar.
 export function localTestProfile(username: string): AuthUser | null {
+  // Profil diambil dari direktori akun; username tak dikenal ditolak.
   const account = MARKET_ACCOUNT_BY_USERNAME.get(username);
   if (!account) return null;
   return {
@@ -48,12 +53,14 @@ export function localTestProfile(username: string): AuthUser | null {
 
 // Menghasilkan atau menggunakan kunci rahasia efemeral bersama untuk menandatangani token sesi pengujian lokal.
 function signLocalTestSession(payload: string) {
+  // Kunci dibuat sekali per proses; sesi lama gugur saat server restart.
   globalThis.pasarinLocalTestSigningKey ??= randomBytes(32);
   return createHmac("sha256", globalThis.pasarinLocalTestSigningKey).update(payload).digest();
 }
 
 // Menerbitkan token sesi pengujian lokal bertanda tangan kriptografis yang tahan manipulasi peran (tamper-proof).
 export function makeLocalTestSession(username: string) {
+  // Format token: username.waktu_kedaluwarsa_ms.tanda_tangan.
   const payload = `${username}.${Date.now() + LOCAL_TEST_SESSION_SECONDS * 1000}`;
   return `${payload}.${signLocalTestSession(payload).toString("base64url")}`;
 }
@@ -61,11 +68,14 @@ export function makeLocalTestSession(username: string) {
 // Membaca dan memvalidasi token sesi pengujian lokal dari cookie permintaan HTTP masuk secara timing-safe.
 export function readLocalTestUser(req: NextRequest): AuthUser | null {
   if (!isLocalTestRequest(req)) return null;
+  // Cookie harus cocok persis dengan format token (43 karakter base64url untuk HMAC-SHA256).
   const cookie = req.cookies.get(LOCAL_TEST_COOKIE)?.value;
   const match = cookie?.match(/^([a-z0-9]+)\.(\d+)\.([A-Za-z0-9_-]{43})$/);
   if (!match) return null;
   const [, username, expires, mac] = match;
+  // Token kedaluwarsa ditolak.
   if (Number(expires) <= Date.now()) return null;
+  // Tanda tangan dihitung ulang dan dibandingkan timing-safe.
   const signature = Buffer.from(mac, "base64url");
   const expected = signLocalTestSession(`${username}.${expires}`);
   if (signature.length !== expected.length || !timingSafeEqual(signature, expected)) return null;

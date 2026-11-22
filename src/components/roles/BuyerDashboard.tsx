@@ -51,17 +51,21 @@ const framing = {
 
 // Komponen antarmuka dasbor pembeli yang membagikan katalog penawaran, riwayat pesanan, dan status pengantaran.
 export function BuyerDashboard({ role }: { role: BuyerRole }) {
+  // Akun yang masuk; menentukan apakah dasbor ini boleh dipakai memesan.
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, weather, busy, claimOfferByBuyer, payQrisForOffer } = useMarketSimulation();
   // Hanya pemilik peran yang bisa memesan; admin dan pengelola yang meninjau dashboard ini hanya melihat.
   const canBuy = user?.role === role;
   // Lot aktif di jalur peran ini; lot disembunyikan bila skor susut terbarunya sudah masuk tier lain.
   const listings = offers.filter((offer) => {
+    // Hanya lot aktif di jalur peran ini yang masuk katalog.
     if (offer.targetTier !== tier[role] || offer.status !== "active") return false;
     const health = stockHealth[offer.stockId];
     if (health) {
+      // Skor 0,85 ke atas bukan pangan manusia: disembunyikan dari Warteg dan dapur sosial, hanya untuk maggot.
       if (health.decayScore >= 0.85 && (role === "warteg" || role === "social_kitchen")) return false;
       if (health.decayScore < 0.85 && role === "maggot") return false;
+      // Lot yang mutunya sudah bergeser ke tier lain tidak ditampilkan lagi.
       if (distributionTierForDecay(health.decayScore) !== tier[role]) return false;
     }
     return true;
@@ -69,35 +73,48 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   // Pembeli hanya melihat pesanannya sendiri; peninjau melihat semua pesanan di jalur ini.
   const orders = offers.filter((offer) => offer.targetTier === tier[role] &&
     (!canBuy || offer.isMine) && (offer.status === "claimed" || offer.status === "settled"));
+  // Tagihan QRIS yang sedang dibuka.
   const [invoice, setInvoice] = useState<RescueOffer | null>(null);
   // `requestId` dibuat sekali per dialog sebagai kunci idempoten, jadi kirim ulang formulir tidak menggandakan klaim.
   const [selection, setSelection] = useState<{ offer: RescueOffer; requestId: string } | null>(null);
+  // Isian jumlah kg di dialog pemesanan dan pesan galatnya.
   const [requestedKg, setRequestedKg] = useState("");
   const [error, setError] = useState("");
+  // Katalog dipotong 8 lot sampai pengguna membukanya.
   const [showAllListings, setShowAllListings] = useState(false);
+  // Urutan katalog (terbaru, kesegaran, harga), filter jual/donasi, dan kata pencarian.
   const [sort, setSort] = useState("recent");
   const [modeFilter, setModeFilter] = useState("all");
   const [catalogQuery, setCatalogQuery] = useState("");
+  // Teks, ikon, dan rumus dampak khusus peran ini.
   const copy = framing[role];
   const RoleIcon = copy.icon;
+  // Total berat pesanan, dasar perhitungan dampak.
   const orderedKg = orders.reduce((sum, offer) => sum + offer.quantityKg, 0);
+  // Total nilai pesanan dalam rupiah.
   const spend = orders.reduce((sum, offer) => sum + offer.totalAmountIdr, 0);
+  // Dampak per peran: porsi (4 per kg) untuk dapur sosial, larva (1 per 5 kg) untuk maggot, dan nilai rupiah untuk Warteg.
   const impact = role === "social_kitchen"
     ? Math.round(orderedKg * 4)
     : role === "maggot"
       ? kg(orderedKg / 5)
       : rupiah(spend);
+  // Pesanan yang menunggu pembayaran; memunculkan banner pengingat.
   const unpaidOrders = orders.filter((offer) => offer.paymentStatus === "unpaid");
+  // Total kg yang tersedia di katalog.
   const availableKg = listings.reduce((sum, offer) => sum + offer.quantityKg, 0);
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
   const catalogSearch = catalogQuery.trim().toLocaleLowerCase("id-ID");
+  // Filter jenis (jual atau donasi) dan pencarian teks atas komoditas, kios, dan kode lot.
   const filteredListings = listings.filter((offer) =>
     (modeFilter === "all" || isDonation(offer) === (modeFilter === "donation")) &&
     `${commodityName(offer.commodityId)} ${kioskLabel(offer.vendorId)} ${stockById.get(offer.stockId)?.lotNumber ?? ""}`
       .toLocaleLowerCase("id-ID").includes(catalogSearch));
+  // Kesegaran: skor susut terendah dulu; harga: termurah dulu.
   const sortedListings = sort === "freshness"
     ? [...filteredListings].sort((a, b) => (stockHealth[a.stockId]?.decayScore ?? Infinity) - (stockHealth[b.stockId]?.decayScore ?? Infinity))
     : sort === "price" ? [...filteredListings].sort((a, b) => a.salvagePricePerKg - b.salvagePricePerKg) : filteredListings;
+  // Batas tampil awal 8 lot.
   const visibleListings = showAllListings ? sortedListings : sortedListings.slice(0, 8);
   // Ambil versi lot terbaru agar sisa kg di dialog ikut berubah bila pembeli lain mengklaim lebih dulu.
   const selectedOffer = selection ? listings.find((offer) => offer.id === selection.offer.id) ?? selection.offer : null;
@@ -127,6 +144,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
 
   return (
     <div className="grid min-w-0 gap-6">
+      {/* Kartu pembuka: judul peran, jumlah tersedia, dan angka dampak. */}
       <section className="market-panel grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,0.45fr)] lg:items-center">
         <div className="min-w-0">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-ink"><RoleIcon size={18} aria-hidden />{role === "warteg" ? "Tier 1 · Warteg & UMKM" : role === "social_kitchen" ? "Tier 2 · Dapur sosial" : "Tier 3 · Biokonversi BSF"}</div>
@@ -141,6 +159,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         </div>
       </section>
 
+      {/* Pengingat pembayaran bila ada pesanan belum dibayar. */}
       {unpaidOrders.length > 0 && <section className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-warning">{unpaidOrders.length} pesanan menunggu pembayaran</h2>
@@ -149,6 +168,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         {canBuy && <button type="button" className={marketButton} disabled={busy} onClick={() => { setError(""); setInvoice(unpaidOrders[0]); }}>Bayar pesanan berikutnya</button>}
       </section>}
 
+      {/* Angka ringkas pesanan dan ketersediaan. */}
       <MarketMetrics items={[
         { label: "Lot tersedia", value: listings.length },
         { label: "Pesanan berjalan", value: orders.filter((offer) => offer.status === "claimed").length },
@@ -267,6 +287,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         )}
       </MarketSection>
 
+      {/* Pesanan berjalan dan selesai beserta status pengantaran. */}
       <MarketSection title="Pesanan & pengantaran" description="Pantau pembayaran, antrean pengantaran, dan serah terima setiap lot.">
         {orders.length === 0 ? (
           <EmptyState icon={PackageCheck} title="Belum ada pesanan" description={role === "maggot" ? "Pilih lot biomassa dan jumlah yang dapat diterima fasilitas dari katalog." : "Pilih lot dan tentukan jumlah dari katalog untuk membuat pesanan."} />
@@ -292,6 +313,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         )}
       </MarketSection>
 
+      {/* Riwayat pembayaran escrow. */}
       <MarketSection title="Riwayat transaksi & pembayaran" description="Catatan pembayaran escrow dan pencairan pesanan.">
         {transactions.length === 0 ? (
           <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi pembayaran pesanan Anda akan tercatat di sini." />
@@ -316,6 +338,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         )}
       </MarketSection>
 
+      {/* Dialog pemesanan: pilih jumlah kg lalu reservasi. */}
       {selectedOffer && <MarketDialog title={isFreeMaggotOffer(selectedOffer) ? "Pilih jumlah biomassa gratis" : isDonation(selectedOffer) ? "Pilih jumlah donasi" : "Pilih jumlah pesanan"} onClose={() => { if (!busy) setSelection(null); }}>
         <form className="grid gap-4" onSubmit={reserve} aria-busy={busy}>
           <div>
@@ -370,6 +393,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         </form>
       </MarketDialog>}
 
+      {/* Dialog pembayaran QRIS simulasi. */}
       {invoice && <MarketDialog title="Pembayaran simulasi QRIS" onClose={() => { if (!busy) setInvoice(null); }}>
         <p className="break-words text-sm leading-5 text-ink-muted">{offerTitle(invoice)}, {kioskLabel(invoice.vendorId)}</p>
         <p className="mt-3 rounded-lg border border-line bg-canvas p-3 text-sm leading-6 text-ink-muted">Ini simulasi pembayaran, bukan pemindahan uang sungguhan. Dana pesanan dicatat di escrow hingga serah terima selesai.</p>

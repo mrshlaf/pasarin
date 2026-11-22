@@ -11,11 +11,17 @@ import { supabase, supabaseAuthConfigured } from "@/lib/supabase";
 // Tipe konteks autentikasi aplikasi PASARIN (PSR-2 / PSR-40).
 // Menyediakan status login, profil pengguna, dan metode mutasi sesi masuk/keluar.
 interface AuthContextType {
+  // Profil akun yang sedang masuk; null bila belum login.
   user: AuthUser | null;
+  // Pintasan untuk user !== null.
   isAuthenticated: boolean;
+  // True selama sumber sesi (Supabase, uji lokal, server) belum selesai dicek.
   isLoading: boolean;
+  // Masuk dengan username atau email; mengembalikan pesan galat siap tampil.
   signInWithPassword: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  // Keluar dari semua sumber sesi yang aktif.
   signOut: () => Promise<void>;
+  // Apakah akun boleh membuka dasbor peran tertentu.
   isRoleAccessible: (role: AppRole) => boolean;
 }
 
@@ -29,15 +35,20 @@ const localTestEnabled = process.env.NODE_ENV === "development" && !serverAuthEn
 // Penyedia konteks autentikasi aplikasi yang mengikat status login pengguna ke Supabase Auth,
 // sesi cookie server, atau sesi simulasi lokal pengujian.
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Akun dari Supabase Auth.
   const [account, setAccount] = useState<AuthUser | null>(null);
+  // Akun dari sesi uji lokal (hanya development).
   const [testUser, setTestUser] = useState<AuthUser | null>(null);
+  // Akun dari cookie sesi server.
   const [serverUser, setServerUser] = useState<AuthUser | null>(null);
+  // Penanda tiap sumber sesi sudah selesai dicek; sumber yang tidak aktif langsung dianggap siap.
   const [ready, setReady] = useState(false);
   const [testReady, setTestReady] = useState(!localTestEnabled);
   const [serverReady, setServerReady] = useState(!serverAuthEnabled);
   // Akun Supabase lebih diutamakan daripada akun uji lokal bila keduanya ada.
   const user = serverAuthEnabled ? serverUser : account ?? testUser;
 
+  // Mengikuti perubahan sesi Supabase (login, logout, refresh token).
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setAccount(session ? accountProfile(session.user) : null);
@@ -46,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Membaca sesi cookie server saat halaman dimuat.
   useEffect(() => {
     if (!serverAuthEnabled) return;
     const controller = new AbortController();
@@ -57,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
+  // Membaca sesi uji lokal saat halaman dimuat.
   useEffect(() => {
     if (!localTestEnabled) return;
     const controller = new AbortController();
@@ -71,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Mengotentikasi akun pengguna menggunakan username/email dan kata sandi.
   // Mendukung alur autentikasi server session cookie, simulasi lokal, dan Supabase Auth Cloud.
   async function signInWithPassword(identifier: string, password: string) {
+    // Mode sesi server: kredensial dikirim ke API dan server mengatur cookie.
     if (serverAuthEnabled) {
       const response = await fetch("/api/auth/session", {
         method: "POST",
@@ -110,9 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseAuthConfigured) {
       return { success: false, error: "Layanan masuk belum dikonfigurasi. Hubungi pengelola Pasarin." };
     }
+    // Jalur Supabase Auth; username dikonversi ke email login.
     const { data, error } = await supabase.auth.signInWithPassword({ email: resolveLoginEmail(identifier), password });
     if (error || !data.user) return { success: false, error: "Nama pengguna, email, atau kata sandi tidak cocok." };
     const profile = accountProfile(data.user);
+    // Akun ada tetapi belum punya peran PASARIN: sesi dilepas lagi.
     if (!profile) {
       await supabase.auth.signOut({ scope: "local" });
       return { success: false, error: "Hubungi pengelola untuk mendapatkan peran Pasarin." };
@@ -123,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Mengakhiri sesi aktif di peramban dan membersihkan token cookie yang bersangkutan.
   async function signOut() {
+    // Hapus cookie sesi server lebih dulu bila ada.
     if (serverUser) {
       const response = await fetch("/api/auth/session", { method: "DELETE" });
       if (!response.ok) throw new Error("Sesi belum bisa diakhiri.");
@@ -158,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // Hook kustom untuk mengakses status autentikasi, profil pengguna saat ini, dan fungsi autentikasi.
 export function useAuth() {
   const context = useContext(AuthContext);
+  // Pengaman: hook hanya valid di dalam AuthProvider.
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 }

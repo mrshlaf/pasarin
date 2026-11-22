@@ -6,6 +6,7 @@ import { z } from "zod";
 
 // Skema validasi Zod untuk seluruh variabel lingkungan yang dibutuhkan sistem PASARIN.
 export const envSchema = z.object({
+  // Kredensial Supabase memakai nilai bawaan lokal agar build tetap jalan tanpa env.
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
     .url("NEXT_PUBLIC_SUPABASE_URL must be a valid HTTPS URL")
@@ -14,6 +15,7 @@ export const envSchema = z.object({
     .string()
     .min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY cannot be empty")
     .default("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy"),
+  // Kunci service role hanya untuk server; opsional karena tidak semua lingkungan memilikinya.
   SUPABASE_SERVICE_ROLE_KEY: z
     .string()
     .min(1)
@@ -33,6 +35,7 @@ export const envSchema = z.object({
     .min(1)
     .optional(),
 
+  // Mode runtime Next.js.
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -51,6 +54,7 @@ export function getEnv(): Env {
     return cachedEnv;
   }
 
+  // Nilai mentah dari process.env; string kosong diubah jadi undefined agar dianggap tidak diisi.
   const rawEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -64,6 +68,7 @@ export function getEnv(): Env {
     NODE_ENV: process.env.NODE_ENV,
   };
 
+  // Validasi tanpa melempar galat supaya build tidak berhenti.
   const parsed = envSchema.safeParse(rawEnv);
 
   if (!parsed.success) {
@@ -79,6 +84,7 @@ export function getEnv(): Env {
     return cachedEnv;
   }
 
+  // Simpan hasil valid untuk pemanggilan berikutnya.
   cachedEnv = parsed.data;
   return cachedEnv;
 }

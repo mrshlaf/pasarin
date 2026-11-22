@@ -6,6 +6,7 @@
 // Menghitung offset waktu UTC+7 secara deterministik tanpa bergantung pada zona waktu mesin klien/server.
 export function getRealtimeWIBTimeString(): string {
   const now = new Date();
+  // WIB = UTC+7; dihitung dari jam UTC supaya hasilnya sama di server dan klien.
   const wibHours = (now.getUTCHours() + 7) % 24;
   const wibMinutes = now.getUTCMinutes();
   return `${String(wibHours).padStart(2, "0")}:${String(wibMinutes).padStart(2, "0")} WIB`;

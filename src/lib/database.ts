@@ -16,6 +16,7 @@ export function databaseConfigured() {
 // Membatasi maksimal 4 koneksi aktif untuk menghemat pool koneksi serverless Supabase.
 export function getDatabasePool() {
   const connectionString = process.env.SUPABASE_DB_URL;
+  // Gagal cepat dengan pesan jelas bila URL database belum diisi.
   if (!connectionString) throw new Error("SUPABASE_DB_URL belum diatur.");
   if (!pool) {
     // Postgres lokal biasanya tanpa SSL; host cloud memakai SSL tanpa verifikasi rantai sertifikat.
@@ -28,6 +29,7 @@ export function getDatabasePool() {
       application_name: "pasarin",
       ...(isLocal ? {} : { ssl: { rejectUnauthorized: false } }),
     });
+    // Galat pada koneksi idle hanya dicatat agar proses tidak mati.
     pool.on("error", (error) => console.error("Postgres pool error", error));
   }
   return pool;
