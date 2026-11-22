@@ -20,12 +20,16 @@ export interface DecayEvaluation {
   temperatureC: number;
   humidityPercent: number;
   hoursElapsed: number;
+  // Skor peluruhan 0-1; batas fase di 0,35, 0,65, dan 0,85.
   decayScore: number;
   condition: ProduceCondition;
   recommendedTier: CircularRescueTier;
   tierLabel: string;
+  // Jam tersisa sebelum skor mencapai 0,85 (tidak layak konsumsi).
   hoursRemaining: number;
+  // Diskon dalam pecahan 0-1, bukan persen.
   salvageDiscount: number;
+  // Harga tebus penyelamatan dalam rupiah per kg.
   estimatedSalvagePrice: number;
 }
 

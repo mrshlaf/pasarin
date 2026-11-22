@@ -13,7 +13,7 @@ import { APP_ROLES, type AppRole } from "../src/data/accounts";
 import type { ServerState } from "../src/lib/serverSimulationState";
 import type { RescueOffer } from "../src/types/market";
 
-/** Menyiapkan state uji terpisah dan akun tiruan per peran, lalu menjalankan seluruh pemeriksaan. */
+// Menyiapkan state uji terpisah dan akun tiruan per peran, lalu menjalankan seluruh pemeriksaan.
 async function run() {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;
@@ -28,7 +28,9 @@ async function run() {
   const { supabase } = await import("../src/lib/supabase");
   const originalGetUser = supabase.auth.getUser;
   let networkCalls = 0;
+  // Jaringan dimatikan dan dihitung: mode tanpa kunci dan jawaban deterministik tidak boleh memanggil fetch sama sekali.
   globalThis.fetch = async () => { networkCalls++; throw new Error("Network disabled in chatbot test"); };
+  // Token uji berupa nama peran; semua akun tiruan menunjuk kios "vendor-own" sehingga vendor hanya melihat data kios itu.
   supabase.auth.getUser = async (token) => {
     const role = APP_ROLES.find((item) => item === token);
     if (!role) return { data: { user: null }, error: new AuthApiError("Invalid test token", 401, "bad_jwt") };
@@ -39,12 +41,14 @@ async function run() {
     return { data: { user }, error: null };
   };
   const now = new Date().toISOString();
+  // Membuat pesanan 2 kg milik vendor-own yang sudah diklaim `buyer` dan dananya tertahan di escrow.
   const offer = (id: string, tier: RescueOffer["targetTier"], buyer: string): RescueOffer => ({
     id, stockId: "own-stock", vendorId: "vendor-own", commodityId: "bayam", targetTier: tier,
     quantityKg: 2, originalPricePerKg: 10000, salvagePricePerKg: 4000, discountPercentage: 60,
     totalAmountIdr: 8000, expiresInMinutes: 60, status: "claimed", paymentStatus: "held_in_escrow",
     claimedById: buyer, createdAt: now,
   });
+  // State uji; data vendor-private (SECRET, 9876, 999999, private-buyer) menjadi penanda kebocoran yang tidak boleh muncul.
   const fixture: ServerState = {
     stocks: [
       { id: "own-stock", vendorId: "vendor-own", commodityId: "bayam", initialKg: 12, remainingKg: 12, arrivalClock: "04:00", lotNumber: "OWN", createdAt: now, verifiedAt: now },
@@ -59,7 +63,9 @@ async function run() {
     ], vendorWalletIdr: 999999, biomassProcessedKg: 9876, socialMealsServed: 9876, lastUpdated: now,
   };
   writeFileSync(stateFile, JSON.stringify(fixture));
+  // Isi state sebelum pertanyaan; dibandingkan di akhir untuk membuktikan asisten tidak mengubah apa pun.
   const before = readFileSync(stateFile, "utf8");
+  // Membangun permintaan ke rute asisten; `raw` mengirim body apa adanya untuk menguji JSON rusak.
   const request = (body?: unknown, role?: AppRole, raw = false) => new NextRequest("http://localhost/api/orchestrator/query", {
     method: body === undefined ? "GET" : "POST",
     headers: { "Content-Type": "application/json", ...(role ? { Authorization: `Bearer ${role}` } : {}) },
@@ -89,6 +95,7 @@ async function run() {
         assert.equal(result.metrics.ready, role === "vendor" || role === "logistics" ? 3 : 1);
       }
     }
+    // Mengajukan pertanyaan sebagai peran tertentu dan mengembalikan `data` dari respons 200.
     const ask = async (query: string, role: AppRole = "vendor", forceHeuristic = true) => {
       const response = await POST(request({ query, forceHeuristic }, role));
       assert.equal(response.status, 200);
@@ -124,6 +131,7 @@ async function run() {
     assert.match((await ask("Bagaimana cuaca?")).summary, /estimasi/);
     await ask("Berapa stok bayam?", "vendor", false);
     assert.equal(networkCalls, 0, "Missing key and deterministic mode must not use the network");
+    // Kunci tiruan dipasang sementara fetch masih melempar galat: pertanyaan yang perlu model harus jatuh ke jawaban data tersaring.
     process.env.GEMINI_API_KEY = "chatbot-test-key-not-real";
     resetEnvCache();
     await ask("hi", "vendor", false);
@@ -151,6 +159,7 @@ async function run() {
     assert.match(failed.summary, /3 siap diantar/);
     assert.equal(failed.model, undefined);
     assert.ok(networkCalls > 0, "Configured model failure must fall back to scoped data");
+    // Model tiruan yang sukses; badan permintaan wajib memuat jawaban berbasis data dan aturan "pesanan, bukan kurir".
     globalThis.fetch = async (_input, init) => {
       const body = typeof init?.body === "string" ? init.body : "";
       assert.match(body, /groundedAnswer/);

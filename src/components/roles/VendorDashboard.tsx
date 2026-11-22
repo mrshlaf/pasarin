@@ -36,7 +36,9 @@ export function VendorDashboard() {
   const [inventoryQuery, setInventoryQuery] = useState("");
   const [inventoryFilter, setInventoryFilter] = useState("all");
   const [arrivalFeedback, setArrivalFeedback] = useState<{ success: boolean; message: string } | null>(null);
+  // Hanya pedagang yang tertaut ke kios yang bisa mengubah stok; admin dan pengelola melihat pratinjau saja.
   const canManage = user?.role === "vendor" && Boolean(user.vendorId);
+  // Pedagang dikunci ke kiosnya sendiri; peninjau memilih kios lewat filter, string kosong berarti semua kios.
   const selectedKiosk = user?.role === "vendor" ? user.vendorId : previewKiosk;
   const kiosk = selectedKiosk ? kioskInfo(selectedKiosk) : undefined;
   const inventory = stockItems.filter((item) => !selectedKiosk || item.vendorId === selectedKiosk);
@@ -45,17 +47,21 @@ export function VendorDashboard() {
   const reserved = currentOffers.filter((offer) => offer.status === "claimed").reduce((sum, offer) => sum + offer.quantityKg, 0);
   const verifiedStockIds = new Set(inventory.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
   const activeCount = currentOffers.filter((offer) => offer.status === "active" && verifiedStockIds.has(offer.stockId)).length;
+  // Lot yang masih bersisa di atas, lalu skor susut tertinggi dulu agar yang paling mendesak terlihat pertama.
   const sortedInventory = [...inventory].sort((a, b) =>
     Number(b.remainingKg > 0) - Number(a.remainingKg > 0) ||
     (stockHealth[b.id]?.decayScore ?? 0) - (stockHealth[a.id]?.decayScore ?? 0));
+  // Usulan yang menunggu persetujuan pedagang tampil paling atas, penawaran final paling bawah.
   const offerRank = { pending_vendor: 0, active: 1, claimed: 2, settled: 3, rejected: 4 } as const;
   const sortedOffers = [...kioskOffers].sort((a, b) => offerRank[a.status] - offerRank[b.status]);
   const selectedStock = selection && inventory.find((item) => item.id === selection.stockId);
   const selectedProposal = selection?.proposalId && kioskOffers.find((offer) => offer.id === selection.proposalId);
+  // Perkiraan sisa dari model; bila belum ada, pakai kuota usulan yang masih menunggu persetujuan.
   const selectedEstimate = selectedStock ? estimatedUnsoldKg[selectedStock.id] ??
     (selectedProposal && selectedProposal.status === "pending_vendor" ? selectedProposal.quantityKg : undefined) : undefined;
   const selectedHealth = selectedStock ? stockHealth[selectedStock.id] : undefined;
   const selectedTier = distributionTierForDecay(selectedHealth?.decayScore ?? 0);
+  // Sisa fisik tidak boleh melebihi stok awal dikurangi berat yang sudah dipesan atau diserahterimakan lewat PASARIN.
   const maxConfirmedKg = selectedStock ? Math.max(0, roundKg(selectedStock.initialKg - kioskOffers
     .filter((offer) => offer.stockId === selectedStock.id && (offer.status === "claimed" || offer.status === "settled"))
     .reduce((sum, offer) => sum + offer.quantityKg, 0))) : 0;
@@ -95,6 +101,7 @@ export function VendorDashboard() {
     event.preventDefault();
     if (!selection) return;
     setConfirmationError("");
+    // Pilihan jual atau donasi hanya berlaku untuk jalur dapur sosial (tier 2).
     const confirmation = {
       confirmedKg: Number(confirmedKg),
       mode: selectedTier === "tier_2" ? mode || undefined : undefined,
@@ -183,6 +190,7 @@ export function VendorDashboard() {
                   .filter((offer) => offer.stockId === item.id && offer.status === "claimed")
                   .reduce((sum, offer) => sum + offer.quantityKg, 0));
                 const remainingForSale = roundKg(item.remainingKg - reservedKg);
+                // Penawaran aktif yang tier-nya sudah tidak cocok dengan skor susut terbaru ditandai "Mutu berubah".
                 const changed = linked?.status === "active" && health && linked.targetTier !== distributionTierForDecay(health.decayScore);
                 return (
                   <li key={item.id} className={`rounded-2xl border border-line p-4 sm:p-5 ${item.remainingKg === 0 ? "bg-canvas/40" : "bg-surface"}`}>

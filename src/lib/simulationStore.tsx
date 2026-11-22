@@ -15,6 +15,7 @@ import type { readMarketSnapshot } from "@/lib/serverSimulationState";
 import type { ApiResponse } from "@/types/api";
 export type { AppRole, EscrowTransaction, RescueOffer, StockItem };
 
+// Snapshot pasar dari server menurut peran akun.
 type ServerState = Awaited<ReturnType<typeof readMarketSnapshot>>;
 
 /**
@@ -47,6 +48,7 @@ export interface SimulationContextType {
   triggerCronSweepNow: () => Promise<MarketActionResult>;
 }
 
+// Konteks state pasar; undefined bila dipakai di luar SimulationProvider.
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
 /**
@@ -67,6 +69,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const userId = user?.id;
   const [workspace, setWorkspace] = useState<{ userId?: string; role: AppRole }>({ role: "vendor" });
   const role = workspace.userId === userId ? workspace.role : user?.role ?? "vendor";
+  // Mengganti peran tampilan dashboard; server tetap menolak aksi di luar peran akun.
   const setRole = (next: AppRole) => setWorkspace({ userId, role: next });
   const [snapshot, setSnapshot] = useState<MarketSnapshot | null>(null);
   const [feedback, setFeedback] = useState<(MarketActionResult & { userId: string }) | null>(null);
@@ -195,14 +198,22 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     return result;
   }
 
+  // Menambah pasokan baru ke kios.
   const addStockItem = (item: Pick<StockItem, "commodityId" | "initialKg">) =>
     mutate({ action: "stock", commodityId: item.commodityId, quantityKg: item.initialKg });
+  // Menerbitkan penawaran dari stok yang sudah ditimbang.
   const createInstantSurplusOffer = (stockId: string, confirmation: StockConfirmation) => mutate({ action: "publish", stockId, confirmation });
+  // Menyetujui usulan penawaran sebagai pedagang.
   const approveOfferByVendor = (offerId: string, confirmation: StockConfirmation) => mutate({ action: "vendor_decision", offerId, approved: true, confirmation });
+  // Menolak atau menarik penawaran sebagai pedagang.
   const rejectOfferByVendor = (offerId: string) => mutate({ action: "vendor_decision", offerId, approved: false });
+  // Mengklaim penawaran; requestId mencegah klaim ganda saat permintaan diulang.
   const claimOfferByBuyer = (offerId: string, quantityKg: number, requestId: string) => mutate({ offerId, quantityKg, requestId }, "/api/offers/claim");
+  // Membayar penawaran lewat QRIS.
   const payQrisForOffer = (offerId: string) => mutate({ action: "payment", offerId });
+  // Mengonfirmasi barang sudah diterima.
   const confirmDelivery = (offerId: string) => mutate({ action: "delivery", offerId });
+  // Menjalankan sapuan sore secara manual.
   const triggerCronSweepNow = () => mutate({}, "/api/orchestrator/run");
   return (
     <SimulationContext.Provider

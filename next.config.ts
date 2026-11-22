@@ -1,7 +1,8 @@
-/** Konfigurasi Next.js PASARIN. */
+// Konfigurasi Next.js PASARIN.
 
 import type { NextConfig } from "next";
 
+// Konfigurasi Next.js aplikasi PASARIN.
 const nextConfig: NextConfig = {
   typescript: {
     // Pada Windows Node v24, spawn child process tsc menghasilkan spawn UNKNOWN karena proteksi shell CVE-2024-27980.

@@ -13,11 +13,14 @@ import {
   publishMarketOffers, confirmDeliveryServer,
 } from "@/lib/serverSimulationState";
 
+// ID lot atau stok dibatasi 100 karakter.
 const offerId = z.string().min(1).max(100);
+// Hasil timbang ulang pedagang; `mode` menentukan lot dijual atau didonasikan.
 const confirmation = z.strictObject({
   confirmedKg: z.number().nonnegative().max(10_000),
   mode: z.enum(["sale", "donation"]).optional(),
 });
+// Daftar aksi mutasi yang diterima POST, dibedakan oleh field `action`.
 const actions = z.discriminatedUnion("action", [
   z.object({ action: z.literal("stock"), commodityId: z.string().min(1).max(100), quantityKg: z.number().positive().max(10000) }),
   z.object({ action: z.literal("publish"), stockId: offerId, confirmation }),
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
   if (!validation.success) return validation.errorResponse;
   const { data } = validation;
   const { user } = auth;
+  // Respons 403 seragam ketika peran tidak cocok dengan aksi.
   const forbidden = () => errorResponse("Peran ini tidak dapat menjalankan tindakan tersebut.", 403);
 
   try {
@@ -65,6 +69,7 @@ export async function POST(req: NextRequest) {
       case "stock":
       case "publish":
       case "vendor_decision":
+        // Aksi stok hanya untuk pedagang, dan selalu memakai vendorId dari sesi, bukan dari body.
         if (user.role !== "vendor" || !user.vendorId) return forbidden();
         if (data.action === "stock") {
           result = await addVendorStockServer(data.commodityId, data.quantityKg, user.vendorId);
@@ -75,6 +80,7 @@ export async function POST(req: NextRequest) {
         }
         break;
       case "payment":
+        // Lot jalur maggot bebas biaya, jadi pembayaran hanya untuk warteg dan dapur sosial.
         if (user.role !== "warteg" && user.role !== "social_kitchen") return forbidden();
         result = await payOfferServer(data.offerId, user.id);
         break;

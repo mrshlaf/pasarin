@@ -1,9 +1,10 @@
-/** Konfigurasi ESLint: aturan Next.js (core web vitals dan TypeScript) dengan folder build diabaikan. */
+// Konfigurasi ESLint: aturan Next.js (core web vitals dan TypeScript) dengan folder build diabaikan.
 
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
+// Aturan lint: preset Next.js (core web vitals dan TypeScript) dengan pengabaian folder hasil build.
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,

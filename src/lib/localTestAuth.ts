@@ -21,6 +21,7 @@ export const LOCAL_TEST_COOKIE = "pasarin_local_test";
 export const LOCAL_TEST_SESSION_SECONDS = 8 * 60 * 60;
 
 declare global {
+  // Kunci HMAC acak per proses, disimpan di globalThis agar tidak berganti saat hot reload; sesi lama gugur saat server restart.
   var pasarinLocalTestSigningKey: Buffer | undefined;
 }
 
@@ -32,6 +33,7 @@ declare global {
  * @returns Boolean bernilai true hanya jika permintaan berasal dari host loopback pengembangan.
  */
 export function isLocalTestRequest(req: NextRequest) {
+  // Mode uji hanya aktif saat development tanpa database nyata, lalu host, x-forwarded-for, dan origin harus loopback.
   if (process.env.NODE_ENV !== "development" || databaseConfigured() || process.env.PASARIN_STATE_BACKEND === "supabase") return false;
   const host = req.headers.get("host") ?? req.nextUrl.host;
   if (!/^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host)) return false;

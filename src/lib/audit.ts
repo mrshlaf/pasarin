@@ -8,7 +8,8 @@ import { getServiceRoleClient } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
 
 /**
- * Buffer sirkular penyimpanan catatan audit di memori lokal saat database offline (PSR-4).
+ * Buffer sirkular catatan audit terbaru di memori lokal (PSR-4).
+ * Selalu diisi, termasuk saat insert Supabase berhasil, sehingga tetap tersedia ketika database offline.
  */
 const inMemoryAuditRingBuffer: SystemAuditTrailRecord[] = [];
 
@@ -24,6 +25,7 @@ interface RecordAuditParams {
   subsystem: string;
   action_type: string;
   payload: Record<string, unknown>;
+  // Durasi eksekusi dalam milidetik; dicatat 0 di payload bila tidak diisi.
   durationMs?: number;
 }
 

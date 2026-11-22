@@ -24,6 +24,7 @@ if (!rawConnectionString) {
   console.error("Isi SUPABASE_DB_URL dengan URL koneksi PostgreSQL target.");
   process.exit(1);
 }
+// Salinan bertipe string agar closure `run()` tidak perlu memeriksa undefined lagi.
 const connectionString: string = rawConnectionString;
 
 // Urutan berkas SQL migrasi skema dan seed data

@@ -38,6 +38,7 @@ export async function GET() {
  * @returns Respons JSON string payload QRIS dan status awal escrow 'unpaid'.
  */
 export async function POST(req: NextRequest) {
+  // Hanya pembeli (warteg) dan admin yang boleh membuat tagihan QRIS.
   const auth = await requireApiRole(req, ["warteg", "admin"]);
   if (auth.response) return auth.response;
   try {
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Referensi faktur dan identitas merchant memakai nilai demo bila klien tidak mengirimnya.
     const invoiceRef = body.invoiceRef || `INV-${Date.now().toString().slice(-6)}`;
     const qrisResult = generateBankIndonesiaQrisPayload(body.amountIdr, invoiceRef, {
       merchantId: body.merchantId || "ID1026348913PASARIN",
@@ -82,6 +84,7 @@ export async function POST(req: NextRequest) {
  * @returns Respons JSON status transisi mutasi escrow baru.
  */
 export async function PUT(req: NextRequest) {
+  // Pelunasan, pelepasan dana, dan refund mengubah status uang, jadi dibatasi untuk admin.
   const auth = await requireApiRole(req, ["admin"]);
   if (auth.response) return auth.response;
   try {
@@ -118,6 +121,7 @@ export async function PUT(req: NextRequest) {
       }, { status: settlement.settled ? 200 : 422 });
     }
 
+    // Transisi ditolak tetap dibalas 200 dengan ok: false; hanya settlement yang memakai 422.
     const currentStatus = body.currentStatus || "unpaid";
     const transition = transitionEscrowPaymentStatus(currentStatus, body.action);
 

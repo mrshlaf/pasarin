@@ -23,8 +23,11 @@ interface AuthContextType {
   isRoleAccessible: (role: AppRole) => boolean;
 }
 
+// Konteks autentikasi; undefined menandakan komponen dipakai di luar AuthProvider.
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Bila aktif, login memakai cookie sesi server dan Supabase Auth di klien diabaikan.
 const serverAuthEnabled = process.env.NEXT_PUBLIC_PASARIN_SERVER_AUTH === "1";
+// Akun uji lokal hanya tersedia di development dan tidak bercampur dengan sesi server.
 const localTestEnabled = process.env.NODE_ENV === "development" && !serverAuthEnabled;
 
 /**
@@ -38,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [testReady, setTestReady] = useState(!localTestEnabled);
   const [serverReady, setServerReady] = useState(!serverAuthEnabled);
+  // Akun Supabase lebih diutamakan daripada akun uji lokal bila keduanya ada.
   const user = serverAuthEnabled ? serverUser : account ?? testUser;
 
   useEffect(() => {
@@ -90,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setServerUser(result.user);
       return { success: true };
     }
+    // Username tanpa "@" dicoba ke akun uji lokal dulu; 404 berarti mode uji tidak aktif sehingga lanjut ke Supabase.
     if (localTestEnabled && !identifier.includes("@")) {
       const response = await fetch("/api/auth/local-test", {
         method: "POST",
@@ -98,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         const { user: profile } = await response.json();
+        // Sesi Supabase yang masih tersisa dilepas agar tidak menimpa akun uji; bila gagal, cookie uji ikut dihapus.
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           const { error } = await supabase.auth.signOut({ scope: "local" });
@@ -155,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading: !ready || !testReady || !serverReady,
       signInWithPassword,
       signOut,
+      // Admin dan manajer boleh membuka dasbor semua peran.
       isRoleAccessible: (role) => user?.role === role || user?.role === "admin" || user?.role === "manager",
     }}>
       {children}

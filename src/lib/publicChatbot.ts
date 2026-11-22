@@ -15,7 +15,7 @@ import {
 import { readPublicCatalog, readPublicMarketOverview } from "@/lib/serverSimulationState";
 import { isDonation, roundKg } from "@/types/market";
 
-/** Contoh pertanyaan untuk pengunjung; juga dipakai tombol saran di landing page. */
+// Contoh pertanyaan untuk pengunjung; juga dipakai tombol saran di landing page.
 export const PUBLIC_EXAMPLES = [
   "Sayur apa yang tersedia hari ini?",
   "Bayam paling murah di kios mana?",
@@ -24,18 +24,21 @@ export const PUBLIC_EXAMPLES = [
   "Siapa saja yang bisa menerima sayur?",
 ];
 
+// Penjelasan singkat tentang PASARIN untuk pengunjung.
 const ABOUT = "PASARIN menyalurkan sisa sayur dan buah dari kios Pasar Induk Kramat Jati sebelum terbuang. " +
   "Pedagang menimbang sisa stok, sistem memperkirakan mutunya, lalu menawarkannya ke penerima yang sesuai: Warteg & UMKM (jual diskon), " +
   "Dapur Sosial (jual murah atau donasi), dan Sentra Maggot (gratis untuk pakan biokonversi). Pembeli membayar lewat QRIS simulasi; " +
   "dana ditahan sampai kurir menyerahkan barang, lalu cair ke pedagang.";
 
+// Penjelasan pembagian penerima sisa sayur menurut mutu.
 const RECIPIENTS = "Penerima dibagi menurut estimasi mutu sayur: Warteg & UMKM untuk sayur segar sampai layu ringan dengan harga diskon, " +
   "Dapur Sosial dan panti untuk layu sedang (jual murah atau donasi Rp0), dan Sentra Maggot untuk bahan yang sudah tidak layak konsumsi (gratis, untuk pakan biokonversi).";
 
+// Penjelasan siapa yang memakai akun PASARIN dan cara masuk.
 const ACCOUNT = "Akun PASARIN dipakai oleh mitra: pedagang kios, Warteg & UMKM, dapur sosial, sentra maggot, kurir, dan pengelola pasar. " +
   "Jika sudah punya akun, pilih Masuk untuk membuka dashboard sesuai peran Anda. Pendaftaran mitra baru belum tersedia lewat halaman ini.";
 
-/** Contoh pertanyaan sebagai daftar berpoin. */
+// Contoh pertanyaan sebagai daftar berpoin.
 const examples = (count: number) => PUBLIC_EXAMPLES.slice(0, count).map((item) => `• ${item}`).join("\n");
 
 /**
@@ -112,6 +115,7 @@ export async function answerPublicQuestion(question: string, forceHeuristic = fa
   const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
   try {
     const [overview, catalog] = await Promise.all([readPublicMarketOverview(), readPublicCatalog()]);
+    // Penawaran dalam bentuk publik: tanpa data pembeli atau pembayaran.
     const offer = (item: Offer) => ({
       komoditas: commodityName(item.commodityId), kios: kioskLabel(item.vendorId), tujuan: DESTINATION[item.targetTier],
       beratKg: item.quantityKg, hargaPerKg: item.salvagePricePerKg, hargaAcuanPerKg: item.originalPricePerKg, donasi: isDonation(item),

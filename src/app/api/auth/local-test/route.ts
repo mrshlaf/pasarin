@@ -12,6 +12,7 @@ import {
   LOCAL_TEST_COOKIE, LOCAL_TEST_SESSION_SECONDS,
 } from "@/lib/localTestAuth";
 
+// Batas panjang mencegah body raksasa; username dinormalisasi agar login tidak peka huruf besar.
 const credentials = z.object({
   username: z.string().trim().toLowerCase().min(1).max(100),
   password: z.string().max(256),
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
   const { username, password } = input.data;
   const user = localTestProfile(username);
   if (!user) return new NextResponse(null, { status: 404 });
+  // Akun uji lokal memakai kata sandi yang sama dengan username; rute ini hanya hidup di localhost tanpa basis data.
   if (password !== username) return errorResponse("Nama pengguna atau kata sandi tidak cocok.", 401);
 
   const response = NextResponse.json({ user });

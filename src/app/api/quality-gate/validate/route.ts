@@ -12,10 +12,12 @@ import { requireApiRole } from "@/lib/apiAuth";
 import { verifyHumanGradeIntegrity } from "@/lib/qualityGateAgent";
 import { QualityGateRequestPayload, CircularRescueTier } from "@/types/api";
 
+// Evaluasi bergantung pada body atau kueri tiap permintaan dan dapat menulis audit, jadi selalu dinamis.
 export const dynamic = "force-dynamic";
 
 /**
  * Skema validasi Zod untuk payload permintaan verifikasi gerbang mutu.
+ * Foto base64 dibatasi sekitar 1,5 MB agar body permintaan tidak membebani server.
  */
 const qualityGatePayloadSchema = z.object({
   commodityId: z.string().min(1, "ID komoditas tidak boleh kosong"),
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       commodityId: validation.data.commodityId,
       hoursOnDisplay: validation.data.hoursOnDisplay,
       requestedTier: validation.data.requestedTier as CircularRescueTier,
+      // Pedagang selalu dievaluasi atas kiosnya sendiri; hanya admin yang boleh memilih vendorId.
       vendorId: auth.user.role === "vendor" ? auth.user.vendorId : validation.data.vendorId,
       temperatureC: validation.data.temperatureC,
       humidityPercent: validation.data.humidityPercent,
@@ -98,6 +101,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       chlorophyllRatio,
     });
     if (!input.success) return errorResponse("Parameter evaluasi mutu tidak valid.", 400);
+    // GET tanpa autentikasi hanya pratinjau, jadi insiden tidak dicatat agar tidak bisa dipakai menodai reputasi kios.
     const evaluationResult = await verifyHumanGradeIntegrity(input.data, { recordIncident: false });
 
     return successResponse(evaluationResult, 200);

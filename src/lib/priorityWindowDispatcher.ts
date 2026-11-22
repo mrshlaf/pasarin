@@ -20,6 +20,7 @@ export interface PriorityWindowEvaluationResult {
   offerId: string;
   targetTier: "tier_1" | "tier_2" | "tier_3";
   isWindowActive: boolean;
+  // Menit sejak penawaran diterbitkan, dibulatkan ke bawah.
   elapsedMinutes: number;
   remainingMinutes: number;
   canSocialKitchenClaim: boolean;
@@ -62,6 +63,7 @@ export function evaluateTier2PriorityWindow(
   }
 
   // Hitung selisih waktu dari createdAt atau fallback ke sisa durasi penawaran
+  // Tanpa createdAt dan expiresInMinutes, elapsed tetap 0 sehingga jendela dianggap baru dimulai.
   let elapsedMinutes = 0;
   if (offer.createdAt) {
     const createdTime = typeof offer.createdAt === "string" ? new Date(offer.createdAt).getTime() : offer.createdAt.getTime();
@@ -152,6 +154,7 @@ export function processPriorityWindowDowngrades(
         return {
           ...offer,
           targetTier: "tier_3" as const,
+          // Turun ke Tier 3 berarti harga pakan maggot, dibatasi maksimal Rp500/kg.
           salvagePricePerKg: Math.min(offer.salvagePricePerKg, 500),
           totalAmountIdr: Math.min(offer.salvagePricePerKg, 500) * offer.quantityKg,
         };

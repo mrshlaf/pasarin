@@ -104,6 +104,7 @@ export async function verifyHumanGradeIntegrity(
     const correctiveAction =
       `Komoditas dialihkan secara otomatis ke antrean ${recommendedTier === "tier_1" ? "Tier 1 (Warteg & UMKM)" : "Tier 2 (Dapur Sosial & Panti Asuhan)"}.`;
 
+    // recordIncident: false dipakai untuk pratinjau; insiden tidak dicatat dan penalti reputasi tidak dikenakan.
     const auditRecord = options.recordIncident === false ? undefined : await recordAuditLog({
       subsystem: "QUALITY_GATE",
       action_type: "MORAL_HAZARD_VIOLATION_BLOCKED",
@@ -193,6 +194,7 @@ export function evaluateProduceQuality(
 /**
  * Evaluasi degradasi klorofil visual sayuran daun berbasis MobileNetV3 visual classifier (PSR-21 / Agent 10).
  * Mengukur tingkat klorosis (menguningnya pigmen hijau daun) untuk mendeteksi pembusukan dini.
+ * Implementasi saat ini belum memanggil model visual; lihat catatan placeholder di dalam fungsi.
  *
  * @param input - Data masukan mencakup rasio klorofil terukur (0.00 - 1.00) atau representasi string base64 foto los.
  * @returns Hasil evaluasi visual mencakup persentase kehilangan klorofil, estimasi mutu, dan tier kelayakan.
@@ -204,12 +206,13 @@ export function evaluateChlorophyllLoss(input: {
 }): ChlorophyllLossEvaluationResult {
   let ratio = input.chlorophyllRatio;
 
-  // Ekstraksi rasio spektrum klorofil dari payload citra jika rasio numerik tidak disertakan
+  // Belum ada model citra: tanpa rasio numerik, rasio diturunkan deterministik dari panjang base64 sebagai placeholder
   if (ratio === undefined && input.imageBase64) {
     const rawLen = input.imageBase64.length;
     ratio = Math.max(0.1, Math.min(1.0, 1.0 - (rawLen % 50) / 100));
   }
 
+  // Rasio default 0,88 (daun masih hijau); skor visual adalah kebalikan rasio klorofil sehingga skala tier sama dengan decayScore.
   const effectiveRatio = Math.max(0.0, Math.min(1.0, ratio ?? 0.88));
   const chlorophyllLossPercent = Number(((1.0 - effectiveRatio) * 100).toFixed(1));
   const visualDecayScore = Number((1.0 - effectiveRatio).toFixed(4));
@@ -240,6 +243,7 @@ export const qualityGateAgent = {
   evaluateProduceQuality,
   HUMAN_CONSUMABLE_DECAY_THRESHOLD,
   SOCIAL_RESERVATION_WINDOW_MINUTES,
+  // Teks invarian PRD untuk ditampilkan atau dikutip orkestrator.
   INVARIANTS: {
     INVARIANT_1: "0% makanan layak konsumsi manusia dialihkan ke pakan maggot",
     INVARIANT_2: "Strict Price Ordering: P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg",

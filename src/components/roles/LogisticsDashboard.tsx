@@ -45,8 +45,13 @@ import {
   rupiah,
 } from "@/components/common/MarketWorkspace";
 
+// Filter tab manifes: semua tahap atau satu jalur distribusi.
 type DispatchPhase = "all" | "tier_1" | "tier_2" | "tier_3";
 
+/**
+ * Konfigurasi simulasi tiap tahap pengantaran: jendela waktu, jam berangkat, dan ambang muatan kloter.
+ * Tahap "all" tidak punya `thresholdKg` sehingga indikator ambang muatan disembunyikan.
+ */
 const DISPATCH_PHASES = [
   {
     id: "all" as const,
@@ -111,6 +116,7 @@ export function LogisticsDashboard() {
   const [selected, setSelected] = useState<RescueOffer | null>(null);
   const [error, setError] = useState("");
 
+  // Antrean berisi pesanan terklaim yang dananya sudah di escrow atau tidak perlu dibayar.
   const queue = offers.filter(isReadyForDelivery);
   const completed = offers.filter((offer) => offer.status === "settled");
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
@@ -137,6 +143,7 @@ export function LogisticsDashboard() {
 
   // Alokasi armada cerdas untuk tahapan aktif
   const fleet = calculateFleetAllocation(currentBatchTotalKg > 0 ? currentBatchTotalKg : (currentQueueKg > 0 ? currentQueueKg : 1));
+  // Tahap 1 naik ke pikap bila muatan tahap melebihi 300 kg; tahap lain memakai kendaraan tetap, tab "all" mengikuti kalkulator.
   const assignedVehicle = activePhase === "tier_1"
     ? (currentBatchTotalKg > 300 ? "Daihatsu GranMax Pikap Bak (B 9812 SAA)" : "Motor Viar Roda Tiga (B 4521 TXX)")
     : activePhase === "tier_2"
@@ -153,13 +160,14 @@ export function LogisticsDashboard() {
         ? "Bpk. Rahmat Hidayat"
         : fleet.recommendedDriver;
 
-  /** Menentukan badge armada untuk setiap kartu order */
+  // Menentukan badge armada untuk setiap kartu order
   function getOfferVehicleBadge(targetTier: "tier_1" | "tier_2" | "tier_3") {
     if (targetTier === "tier_3") return "Viar TPS 3R (B 3319 BSF)";
     if (targetTier === "tier_2") return "Motor Viar Roda 3 (B 4521 TXX)";
     return currentBatchTotalKg > 300 ? "GranMax Pikap Bak (B 9812 SAA)" : "Motor Viar Roda 3 (B 4521 TXX)";
   }
 
+  // Label tahap dan warna badge untuk baris riwayat pengantaran selesai.
   function getTierBadge(targetTier: "tier_1" | "tier_2" | "tier_3") {
     if (targetTier === "tier_1") return { label: "Tahap 1 · Warteg", style: "bg-tier-1-soft text-tier-1-ink" };
     if (targetTier === "tier_2") return { label: "Tahap 2 · Dapur Sosial", style: "bg-tier-2-soft text-tier-2-ink" };

@@ -12,6 +12,7 @@ import { isLocalTestRequest } from "@/lib/localTestAuth";
 import { dispatchTelegramMessage } from "@/lib/telegramBotGateway";
 import { allowTelegramLogin, authenticateTelegramAccount, startTelegramSession, telegramLoginChat } from "@/lib/telegramSessions";
 
+// initData Telegram dibatasi 8 KB; identifier boleh username atau email akun Pasarin.
 const credentials = z.object({
   initData: z.string().min(1).max(8192),
   identifier: z.string().trim().min(1).max(100),
@@ -30,6 +31,7 @@ export async function POST(req: NextRequest) {
   const input = await validateJsonBody(req, credentials);
   if (!input.success) return input.errorResponse;
   const { initData, identifier, password } = input.data;
+  // initData harus lolos verifikasi HMAC bot token; tanpa itu chat ID dari klien tidak bisa dipercaya.
   const chatId = telegramLoginChat(initData, token);
   if (!chatId) return NextResponse.json({ error: "Buka ulang formulir lewat tombol Masuk di Telegram." }, { status: 401 });
   try {

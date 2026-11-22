@@ -21,18 +21,25 @@ import { NextRequest } from "next/server";
 import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "../src/data/marketAccounts";
 import { KIOSKS } from "../src/data/kiosks";
 
+// Jenis jawaban yang diharapkan untuk satu pertanyaan; `re` hanya dipakai untuk harapan data.
 type Expect = { kind: "data"; re: RegExp } | { kind: "clarify" } | { kind: "refuse" } | { kind: "open" } | { kind: "any" };
-/** Penanda harapan: D(pola) = jawaban data yang cocok pola; C = klarifikasi; R = penolakan; O = model; A = bebas tapi aman. */
+// Penanda harapan: D(pola) = jawaban data yang cocok pola; C = klarifikasi; R = penolakan; O = model; A = bebas tapi aman.
 const D = (re: RegExp): Expect => ({ kind: "data", re });
+// Harapan klarifikasi: jawaban harus memuat frasa "terlalu umum".
 const C: Expect = { kind: "clarify" };
+// Harapan penolakan: jawaban cocok REFUSAL dan model tidak boleh dipanggil.
 const R: Expect = { kind: "refuse" };
+// Harapan pertanyaan bebas: dengan model aktif, sumber jawaban harus "gemini".
 const O: Expect = { kind: "open" };
+// Bebas dijawab dengan cara apa pun, asal tidak menolak dan tidak membocorkan data.
 const A: Expect = { kind: "any" };
 
+// Frasa penanda bahwa asisten menolak; jawaban yang cocok dianggap penolakan meski harapannya bukan R.
 const REFUSAL = /bersifat pribadi|tidak dibagikan|tidak bisa memberikan/;
+// Frasa penanda permintaan klarifikasi.
 const CLARIFY = /terlalu umum/;
 
-/** 15 pertanyaan umum yang ditanyakan di semua dashboard. */
+// 15 pertanyaan umum yang ditanyakan di semua dashboard.
 const common = (commodity: RegExp): Array<[string, Expect]> => [
   ["?", C], ["gimana", C], ["terus?", C], ["berapa", C], ["yang tadi gimana", C], ["info dong", C], ["hmm", C], ["tolong cek", C],
   ["kamu bisa apa", D(/Asisten PASARIN untuk ruang kerja/)], ["makasih kak", D(/Sama-sama/)], ["password admin apa", R],
@@ -40,6 +47,7 @@ const common = (commodity: RegExp): Array<[string, Expect]> => [
   ["bayam", D(commodity)],
 ];
 
+// Daftar pertanyaan per username akun demo; tiap daftar wajib berisi tepat 50 pertanyaan (diperiksa di awal run).
 const QUESTIONS: Record<string, Array<[string, Expect]>> = {
   pasar1: [
     ...common(/Bayam/),
@@ -158,7 +166,7 @@ const QUESTIONS: Record<string, Array<[string, Expect]>> = {
   ],
 };
 
-/** Menjalankan semua pertanyaan dua kali: tanpa model (isi jawaban) dan dengan model tiruan (rute serta data yang dikirim). */
+// Menjalankan semua pertanyaan dua kali: tanpa model (isi jawaban) dan dengan model tiruan (rute serta data yang dikirim).
 async function run() {
   console.log(Object.entries(QUESTIONS).map(([username, cases]) => `${username}=${cases.length}`).join(" "));
   for (const [username, cases] of Object.entries(QUESTIONS)) assert.equal(cases.length, 50, `${username} harus punya 50 pertanyaan`);
@@ -173,12 +181,14 @@ async function run() {
   resetEnvCache();
   resetWeatherMemoryCache();
   const modelBodies: string[] = [];
+  // Semua fetch dibalas seolah dari Gemini; badan permintaan disimpan untuk diperiksa kebocoran datanya.
   globalThis.fetch = async (_input, init) => {
     modelBodies.push(typeof init?.body === "string" ? init.body : "");
     return Response.json({ candidates: [{ content: { role: "model", parts: [{ text: "JAWABAN MODEL" }] }, finishReason: "STOP" }] });
   };
   const { supabase } = await import("../src/lib/supabase");
   const originalGetUser = supabase.auth.getUser;
+  // Token uji berupa username akun demo; pengguna yang dikembalikan memakai ID lokal agar cocok dengan claimedById di seed.
   supabase.auth.getUser = async (token) => {
     const account = token ? MARKET_ACCOUNT_BY_USERNAME.get(token) : undefined;
     if (!account) return { data: { user: null }, error: new AuthApiError("Invalid test token", 401, "bad_jwt") };
@@ -197,6 +207,7 @@ async function run() {
     let visitor = 0;
     const state = buildMarketSeedState();
     writeFileSync(stateFile, JSON.stringify(state));
+    // Mengirim satu pertanyaan ke rute publik ("publik") atau rute asisten akun; gagal bila status bukan 200.
     const ask = async (username: string, query: string, forceHeuristic: boolean) => {
       // "publik" = pengunjung landing page tanpa akun; IP berbeda tiap pertanyaan agar pembatas tidak ikut teruji di sini.
       visitor++;
@@ -215,7 +226,12 @@ async function run() {
 
     // Data yang tidak boleh muncul di jawaban akun lain.
     const phones = KIOSKS.map((kiosk) => kiosk.phone);
+    // Username akun demo tidak boleh muncul di jawaban mana pun; lookaround mencegah cocok di tengah kata atau angka lain.
     const usernames = /(?<![a-z])(?:pasar|warteg|sosial|maggot|kurir|pengelola|admin)\d+(?![0-9])/;
+    /**
+     * Nama pembeli yang terlarang bagi akun ini. Pedagang hanya boleh tahu pembeli dagangannya sendiri, pembeli tidak boleh
+     * tahu pembeli lain, pengunjung publik tidak boleh tahu satu pun, sedangkan kurir, pengelola, dan admin tanpa batasan nama.
+     */
     const privateNamesFor = (username: string) => {
       const account = MARKET_ACCOUNT_BY_USERNAME.get(username);
       if (!account) return [...new Set(state.offers.filter((offer) => offer.claimedBy).map((offer) => offer.claimedBy!))];
@@ -241,6 +257,7 @@ async function run() {
       let passed = 0;
       for (const [query, expect] of cases) {
         total++;
+        // Mencatat kegagalan beserta cuplikan jawaban; dipanggil diikuti `continue` agar pengecekan berikutnya dilewati.
         const fail = (reason: string, answer: string) => failures.push(`${username} "${query}" (${expect.kind}): ${reason}\n    -> ${answer.replace(/\n/g, " | ").slice(0, 220)}`);
         // Lintasan tanpa model: isi jawaban harus tepat.
         const plain = (await ask(username, query, true)).summary;
@@ -262,6 +279,7 @@ async function run() {
         if ((expect.kind === "refuse" || expect.kind === "clarify") && sent) { fail("penolakan/klarifikasi tidak boleh memanggil model", modelAnswer.summary); continue; }
         const sentLeaks = [...phones.filter((phone) => sent.includes(phone)), ...hidden.filter((name) => sent.includes(name))];
         if (sentLeaks.length) { fail(`data ke model memuat ${sentLeaks.join(", ")}`, sent.slice(0, 200)); continue; }
+        // Kurir tidak boleh menerima nilai uang pesanan; daftar etalase publik dibuang dulu karena harganya memang terbuka.
         if (role === "logistics" && /"(?:total|hargaAcuanPerKg)":\d/.test(sent.replace(/"etalasePublikTermurah":\[[^\]]*\]/, ""))) {
           fail("data ke model untuk kurir memuat nilai uang pesanan", sent.slice(0, 200)); continue;
         }

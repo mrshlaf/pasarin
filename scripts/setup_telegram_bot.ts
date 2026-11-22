@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-/** Membaca TELEGRAM_BOT_TOKEN dari lingkungan, lalu dari .env.local bila belum ada. */
+// Membaca TELEGRAM_BOT_TOKEN dari lingkungan, lalu dari .env.local bila belum ada.
 function botToken() {
   if (process.env.TELEGRAM_BOT_TOKEN) return process.env.TELEGRAM_BOT_TOKEN.trim();
   const envPath = path.resolve(process.cwd(), ".env.local");
@@ -18,7 +18,7 @@ function botToken() {
   return line?.slice("TELEGRAM_BOT_TOKEN=".length).trim().replace(/^["']|["']$/g, "") || undefined;
 }
 
-/** Perintah yang ditangani src/lib/telegramWorkspace.ts dan rute webhook. Perintah di luar peran akun dibalas menu peran. */
+// Perintah yang ditangani src/lib/telegramWorkspace.ts dan rute webhook. Perintah di luar peran akun dibalas menu peran.
 const COMMANDS = [
   { command: "menu", description: "Buka menu sesuai peran akun" },
   { command: "akun", description: "Pilih akun atau masuk dengan akun lain" },
@@ -34,14 +34,17 @@ const COMMANDS = [
   { command: "keluar", description: "Keluar dari akun aktif" },
 ];
 
+// Teks panjang yang tampil di layar awal bot sebelum pengguna menekan Start.
 const DESCRIPTION = "Asisten PASARIN untuk Pasar Induk Kramat Jati. Masuk dengan akun mitra untuk mengelola stok, pesanan, dan pengantaran, " +
   "atau ketik pertanyaan biasa seperti \"sayur apa yang paling murah?\".";
+// Teks singkat untuk halaman profil bot dan pratinjau saat tautan bot dibagikan.
 const SHORT_DESCRIPTION = "Penyaluran sisa sayur dan buah Pasar Induk Kramat Jati.";
 
-/** Memasang daftar perintah untuk chat privat dan default, deskripsi, serta tombol menu bot. */
+// Memasang daftar perintah untuk chat privat dan default, deskripsi, serta tombol menu bot.
 async function main() {
   const token = botToken();
   if (!token) throw new Error("TELEGRAM_BOT_TOKEN tidak ditemukan di lingkungan atau .env.local.");
+  // Memanggil satu metode Bot API; melempar galat bila Telegram membalas `ok: false`.
   const call = async (method: string, body: Record<string, unknown>) => {
     const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10000),

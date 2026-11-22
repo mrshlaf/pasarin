@@ -24,6 +24,7 @@ export type EscrowPaymentStatus =
  * Metadata kios pedagang pasar penerima pembayaran QRIS (PSR-37).
  */
 export interface QrisMerchantDetails {
+  // NMID merchant yang disisipkan ke tag 26.
   merchantId: string;
   merchantName: string;
   merchantCity?: string;
@@ -34,12 +35,15 @@ export interface QrisMerchantDetails {
  * Struktur payload dan metadata QRIS Dinamis standar Bank Indonesia EMVCo (PSR-37).
  */
 export interface DynamicQrisResult {
+  // String QRIS lengkap termasuk CRC di 4 karakter terakhir.
   qrisPayload: string;
   transactionReference: string;
+  // Nominal rupiah setelah dibulatkan dan dinaikkan ke minimal Rp100.
   amountIdr: number;
   merchantName: string;
   currency: "IDR";
   crc16: string;
+  // Waktu pembuatan payload (ISO 8601).
   generatedAt: string;
 }
 
@@ -96,6 +100,7 @@ export function generateBankIndonesiaQrisPayload(
     merchantName: "PASARIN Kramat Jati",
   }
 ): DynamicQrisResult {
+  // Nominal minimal Rp100; nama merchant dan referensi dipotong agar panjang TLV tetap dua digit dan sesuai batas tag.
   const cleanAmount = Math.max(100, Math.round(amountIdr));
   const safeMerchantName = merchant.merchantName.substring(0, 25);
   const cleanRef = invoiceRef.replace(/[^a-zA-Z0-9_-]/g, "").substring(0, 20);
@@ -184,6 +189,7 @@ export function validateQrisPayloadStructure(payload: string): {
 
   let offset = 0;
   while (offset < payload.length - 4) {
+    // Setiap elemen TLV: 2 karakter tag, 2 digit panjang, lalu nilai; hanya tag 54 (nominal) dan 59 (merchant) yang diambil.
     const tag = payload.substring(offset, offset + 2);
     const len = parseInt(payload.substring(offset + 2, offset + 4), 10);
     if (isNaN(len)) break;

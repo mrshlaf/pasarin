@@ -47,6 +47,7 @@ export const envSchema = z.object({
  */
 export type Env = z.infer<typeof envSchema>;
 
+// Hasil validasi env yang di-cache selama proses berjalan; dikosongkan lewat resetEnvCache.
 let cachedEnv: Env | null = null;
 
 /**
@@ -67,6 +68,7 @@ export function getEnv(): Env {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY?.trim() || undefined,
     OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY?.trim() || undefined,
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN?.trim() || undefined,
+    // Nama variabel lama (TELEGRAM_SECRET_TOKEN, CRON_SECRET) tetap diterima sebagai alias.
     TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET?.trim() || process.env.TELEGRAM_SECRET_TOKEN?.trim() || undefined,
     CRON_SECRET_KEY: process.env.CRON_SECRET?.trim() || process.env.CRON_SECRET_KEY?.trim() || undefined,
     NODE_ENV: process.env.NODE_ENV,

@@ -1,7 +1,7 @@
 /**
  * Eksekutor Skenario Uji Pasar PASARIN (PSR-39 / Scenario Seed Runner).
  * Menginjeksikan 7 skenario pengujian nyata ke dalam sistem state pasar:
- * 1. Skenario Segar Prima: Penjualan ritel normal di Kios A-01 (DecayScore < 0.35).
+ * 1. Skenario Segar Prima: Penjualan ritel normal di Kios A-12 milik vendor_kramat_01 (DecayScore < 0.35).
  * 2. Skenario Layu Ringan: Penawaran Tier 1 Warteg dengan diskon modal 58%.
  * 3. Skenario Layu Kritis: Penawaran Tier 2 Dapur Sosial dengan masa reservasi 30 menit.
  * 4. Skenario Afkir Biologis: Penawaran Tier 3 Biokonversi Maggot BSF.
@@ -24,14 +24,17 @@ import { buildMarketSeedState } from "../src/lib/marketSeed";
 
 // Memuat konfigurasi variabel lingkungan lokal dari .env.local
 try {
+  // Root proyek saat dijalankan via npm, lalu folder induk skrip sebagai cadangan; hanya berkas pertama yang ada yang dibaca.
   const envCandidates = [
     path.resolve(process.cwd(), ".env.local"),
     path.resolve(__dirname, "../.env.local"),
   ];
   for (const envPath of envCandidates) {
     if (fs.existsSync(envPath)) {
+      // Isi mentah .env.local; tanda kutip di sekitar nilai tidak dibuang.
       const envContent = fs.readFileSync(envPath, "utf-8");
       for (const line of envContent.split("\n")) {
+        // Pola KEY=VALUE; baris komentar (#) tidak cocok. Nilai dari berkas menimpa variabel lingkungan yang sudah ada.
         const match = line.match(/^([^#=]+)=(.*)$/);
         if (match) process.env[match[1].trim()] = match[2].trim();
       }
@@ -157,6 +160,7 @@ const scenarioStocks: StockItem[] = [
   },
 ];
 
+// Penawaran penyelamatan untuk stok skenario 2, 3, 4, 6, dan 7; harga dan diskon ditulis manual, bukan dihitung mesin harga.
 const scenarioOffers: RescueOffer[] = [
   // Tier 1 Warteg Penawaran Aktif (Diskon 58% & 56%)
   {
@@ -288,6 +292,7 @@ const scenarioOffers: RescueOffer[] = [
   },
 ];
 
+// Catatan escrow untuk skenario 6 (dana tertahan) dan 7 (dana sudah cair ke pedagang).
 const scenarioTransactions: EscrowTransaction[] = [
   // Transaksi 1: Dana Tertahan di Escrow (Kurir Siap Antar)
   {
@@ -314,7 +319,7 @@ const scenarioTransactions: EscrowTransaction[] = [
   },
 ];
 
-/** Menulis seed pasar plus 7 skenario uji ke berkas lokal, lalu menyinkronkannya ke Supabase bila kredensial tersedia. */
+// Menulis seed pasar plus 7 skenario uji ke berkas lokal, lalu menyinkronkannya ke Supabase bila kredensial tersedia.
 async function seedTestingScenarios() {
   console.log("\nInisialisasi dan Verifikasi Skenario Pengujian PASARIN\n");
 
@@ -373,6 +378,7 @@ async function seedTestingScenarios() {
       const unresolved = cloudState.offers.filter((offer) => offer.claimedById?.startsWith("local:"));
       if (unresolved.length) throw new Error(`Akun pemilik pesanan belum ada di Supabase: ${unresolved.map((offer) => offer.claimedById).join(", ")}`);
 
+      // Revisi dinaikkan dari nilai cloud saat ini tanpa pengecekan konflik, jadi penulis lain di antaranya bisa tertimpa.
       const nextRevision = (current?.revision ?? 0) + 1;
       const { error: upsertErr } = await supabase
         .from("pasarin_simulation_state")

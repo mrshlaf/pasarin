@@ -26,6 +26,7 @@ export interface VehicleSpec {
   maxCapacityKg: number;
   fuelEfficiencyKmPerLiter: number;
   fuelType: string;
+  // Harga BBM rupiah per liter.
   fuelPricePerLiterIdr: number;
   suitability: string;
   defaultDriver: string;
@@ -79,6 +80,7 @@ export interface FleetAllocationResult {
   vehicleSpec: VehicleSpec;
   unitsRequired: number;
   totalPayloadKg: number;
+  // Persentase kapasitas terpakai (0-100) dari total kapasitas seluruh unit.
   capacityUtilizationPct: number;
   targetCategory: "warteg" | "social_kitchen" | "maggot" | "mixed";
   recommendedDriver: string;
@@ -115,6 +117,7 @@ export interface DeliveryManifest {
   fuelConsumptionLiters: number;
   estimatedFuelCostIdr: number;
   orderedPickUpStops: CargoStop[];
+  // Waktu pembuatan manifes (ISO 8601).
   createdAt: string;
 }
 
@@ -129,6 +132,7 @@ export function calculateFleetAllocation(
   totalWeightKg: number,
   targetCategory: "warteg" | "social_kitchen" | "maggot" | "mixed" = "mixed"
 ): FleetAllocationResult {
+  // Bobot minimal 1 kg agar pembagian kapasitas tidak menghasilkan 0 unit atau NaN.
   const normalizedWeight = Math.max(1, totalWeightKg);
 
   let vehicleType: VehicleClass;
@@ -198,10 +202,11 @@ export function generateDeliveryManifest(
     const pA = blockPriority[a.block] || 4;
     const pB = blockPriority[b.block] || 4;
     if (pA !== pB) return pA - pB;
+    // Dalam blok yang sama, urutkan per nomor los agar kurir tidak bolak-balik.
     return a.kioskStall.localeCompare(b.kioskStall);
   });
 
-  // Estimasi jarak total: jarak penjemputan antar kios di pasar (~0.3 km per kios) + jarak ke tujuan
+  // Estimasi jarak total: jarak penjemputan antar kios di pasar (~0.25 km per kios, minimal 0.5 km) + jarak ke tujuan
   const internalMarketKm = Math.max(0.5, stops.length * 0.25);
   const totalDistanceKm = Number((internalMarketKm + destination.distanceKm).toFixed(1));
 

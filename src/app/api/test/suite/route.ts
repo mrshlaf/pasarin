@@ -9,6 +9,7 @@ import { requireApiRole } from "@/lib/apiAuth";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { runMasterInClassTestSuite } from "@/lib/inClassTestbench";
 
+// Suite uji harus dijalankan pada setiap permintaan, bukan sekali saat build.
 export const dynamic = "force-dynamic";
 
 /**

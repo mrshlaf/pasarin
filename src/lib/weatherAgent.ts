@@ -59,6 +59,7 @@ interface CachedWeatherEntry {
   expiresAtTimestamp: number;
 }
 
+// Cache cuaca per proses; profil cadangan juga di-cache agar API yang gagal tidak dipanggil ulang tiap permintaan.
 let memoryCache: CachedWeatherEntry | null = null;
 
 /**
@@ -82,6 +83,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
   const env = getEnv();
   const apiKey = env.OPENWEATHER_API_KEY;
 
+  // Kunci contoh dari .env.example diperlakukan sama dengan kunci kosong.
   if (!apiKey || apiKey.includes("your-openweather") || apiKey.trim().length === 0) {
     return returnFallbackProfile(now, "FALLBACK");
   }
@@ -116,6 +118,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
       conditionLower.includes("thunderstorm") ||
       weatherDescription.includes("hujan");
 
+    // OpenWeather tidak selalu mengirim rain.1h; saat hujan tanpa angka, diasumsikan 12,5 mm (hujan lebat sore).
     const rainfallMm = Number(payload.rain?.["1h"] ?? (isRaining ? 12.5 : 0.0));
 
     const freshData: WeatherTelemetryData = {
@@ -194,6 +197,10 @@ export function resetWeatherMemoryCache(): void {
 export const weatherAgent = {
   fetch: getHyperlocalMarketWeather,
   getHyperlocalMarketWeather,
+  /**
+   * Versi cuaca dengan label sumber huruf kecil (cache, live_api, fallback_offline) untuk UI.
+   * simulateOffline mengosongkan cache dan langsung memakai profil cadangan.
+   */
   getMarketWeather: async (options?: { forceRefresh?: boolean; simulateOffline?: boolean }) => {
     if (options?.simulateOffline) {
       resetWeatherMemoryCache();
@@ -216,6 +223,7 @@ export const weatherAgent = {
   },
   clearCache: resetWeatherMemoryCache,
   resetCache: resetWeatherMemoryCache,
+  // Status cache saat ini dan sisa masa berlakunya dalam detik.
   getCacheMetrics: () => {
     const now = Date.now();
     const hasActiveCache = memoryCache !== null && now < memoryCache.expiresAtTimestamp;
@@ -224,6 +232,7 @@ export const weatherAgent = {
       : 0;
     return { hasActiveCache, expiresInSeconds };
   },
+  // Menghitung peluruhan komoditas memakai suhu dan kelembapan cuaca terkini.
   evaluateCommodityDecay: async (commodity: Commodity, hoursElapsed: number) => {
     const weather = await getHyperlocalMarketWeather();
     const decay = calculateDecay(commodity, weather.temperatureC, weather.humidityPercent, hoursElapsed);

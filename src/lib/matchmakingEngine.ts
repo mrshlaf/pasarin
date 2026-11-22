@@ -39,6 +39,7 @@ export interface BuyerMatchScore {
   tier: "tier_1" | "tier_2" | "tier_3";
   typeLabel: string;
   distanceKm: number;
+  // Sisa kuota serap harian mitra dalam kg (kapasitas harian dikurangi alokasi berjalan).
   remainingCapacityKg: number;
   isEligible: boolean;
   ineligibilityReason?: string;
@@ -49,6 +50,7 @@ export interface BuyerMatchScore {
     commodityPreferenceBonus: number; // 0.0 atau 0.05
   };
   totalMatchScore: number;     // 0.0 - 1.0 (Skor komposit terbobot)
+  // Perkiraan menit angkut: 4 menit per km ditambah 5 menit muat.
   estimatedTransitMinutes: number;
 }
 
@@ -71,6 +73,7 @@ export interface MatchmakingResult {
   rankedMatches: BuyerMatchScore[];
   topRecommendedBuyer: CircularBuyer | null;
   matchmakingDurationMs: number;
+  // Waktu eksekusi pencocokan (ISO 8601).
   executedAt: string;
 }
 
@@ -90,6 +93,7 @@ export function haversineDistanceKm(
   lat2: number,
   lon2: number
 ): number {
+  // Mengubah derajat desimal ke radian untuk fungsi trigonometri.
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180.0;
 
   const dLat = toRadians(lat2 - lat1);
@@ -265,6 +269,7 @@ export function batchMatchOffers(
     targetTier: "tier_1" | "tier_2" | "tier_3";
   }>
 ): MatchmakingResult[] {
+  // Tiap penawaran dinilai terpisah; kuota mitra tidak dikurangi antar-penawaran dalam satu batch.
   return offers.map((offer) => findMatchesForOffer(offer));
 }
 

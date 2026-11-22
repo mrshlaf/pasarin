@@ -5,6 +5,7 @@
 
 import Image from "next/image";
 
+// Ukuran logo, varian warna (`white` untuk latar gelap), dan opsi tagline di bawah nama.
 interface PasarinLogoProps {
   size?: "sm" | "md" | "lg";
   variant?: "teal" | "white";

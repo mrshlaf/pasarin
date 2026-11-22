@@ -14,6 +14,7 @@ import { getRecentAuditLogs } from "../src/lib/audit";
 
 // Variabel pelacak jumlah asersi lolos dan gagal
 let passedCount = 0;
+// Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
 /**

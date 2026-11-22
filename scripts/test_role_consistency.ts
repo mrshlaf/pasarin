@@ -15,9 +15,10 @@ import { KIOSKS } from "../src/data/kiosks";
 import type { ServerState } from "../src/lib/serverSimulationState";
 import { isDonation, isReadyForDelivery, type RescueOffer, type StockItem } from "../src/types/market";
 
+// Respons GET state per peran: state yang sudah disaring ditambah skor peluruhan per lot (null bila tidak dihitung).
 type Snapshot = ServerState & { stockHealth: Record<string, { decayScore: number } | null> };
 
-/** Saran yang ditampilkan tombol asisten (src/components/common/MarketChatbot.tsx). */
+// Saran yang ditampilkan tombol asisten (src/components/common/MarketChatbot.tsx).
 const SUGGESTIONS: Record<string, string[]> = {
   pasar1: ["Ringkas stok kios saya", "Apa yang perlu ditimbang?", "Bagaimana diskon dihitung?"],
   warteg1: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana cara membayar?"],
@@ -28,10 +29,10 @@ const SUGGESTIONS: Record<string, string[]> = {
   admin1: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
 };
 
-/** Mengambil semua angka dari jawaban untuk dibandingkan dengan angka dashboard. */
+// Mengambil semua angka dari jawaban untuk dibandingkan dengan angka dashboard.
 const numbers = (text: string) => (text.match(/\d+(?:[.,]\d+)?/g) ?? []).map((value) => Number(value.replace(",", ".")));
 
-/** Invarian buku besar yang harus berlaku untuk state server lengkap. */
+// Invarian buku besar yang harus berlaku untuk state server lengkap.
 function assertLedgerInvariants(state: ServerState, label: string) {
   const kioskIds = new Set(KIOSKS.map((kiosk) => kiosk.id));
   const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
@@ -58,7 +59,7 @@ function assertLedgerInvariants(state: ServerState, label: string) {
   assert.equal(state.vendorWalletIdr, releasedTotal, `${label}: saldo pedagang harus sama dengan total dana cair`);
 }
 
-/** Membandingkan jawaban asisten dengan rumus dashboard di setiap tahap alur jual-bayar-antar. */
+// Membandingkan jawaban asisten dengan rumus dashboard di setiap tahap alur jual-bayar-antar.
 async function run() {
   const originalEnv = { ...process.env };
   const originalFetch = globalThis.fetch;
@@ -70,6 +71,7 @@ async function run() {
   const { resetWeatherMemoryCache } = await import("../src/lib/weatherAgent");
   resetEnvCache();
   resetWeatherMemoryCache();
+  // Jaringan dimatikan agar cuaca dan model tidak ikut memengaruhi angka; semua jawaban harus berasal dari data lokal.
   globalThis.fetch = async () => { throw new Error("Network disabled in consistency test"); };
 
   // Token Bearer = username akun pasar; ID pengguna = ID aktor lokal seperti pada seed.
@@ -87,6 +89,7 @@ async function run() {
   };
 
   let passed = 0;
+  // Asersi yang menghitung jumlah lulus; galat pertama langsung menghentikan run.
   const check = (condition: unknown, message: string) => {
     assert.ok(condition, message);
     passed++;
@@ -101,22 +104,26 @@ async function run() {
     const chatRoute = await import("../src/app/api/orchestrator/query/route");
     writeFileSync(stateFile, JSON.stringify(buildMarketSeedState()));
 
+    // Membangun permintaan dengan Bearer username; tanpa body menjadi GET, dengan body menjadi POST.
     const request = (url: string, username: string, body?: unknown) => new NextRequest(`http://localhost${url}`, {
       method: body === undefined ? "GET" : "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${username}` },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    // Membaca state seperti yang dilihat dashboard akun tersebut.
     const snapshot = async (username: string): Promise<Snapshot> => {
       const response = await stateRoute.GET(request("/api/simulation/state", username));
       assert.equal(response.status, 200, `snapshot ${username}`);
       return (await response.json()).data;
     };
+    // Menjalankan aksi state (stok, publish, bayar, antar) sebagai akun tersebut; gagal bila status bukan 200.
     const mutate = async (username: string, body: unknown) => {
       const response = await stateRoute.POST(request("/api/simulation/state", username, body));
       const json = await response.json();
       assert.equal(response.status, 200, `${username} ${JSON.stringify(body)}: ${json.error ?? ""}`);
       return json.data;
     };
+    // Bertanya ke asisten tanpa model (forceHeuristic) dan mengembalikan teks ringkasannya.
     const ask = async (username: string, query: string): Promise<string> => {
       const response = await chatRoute.POST(request("/api/orchestrator/query", username, { query, forceHeuristic: true }));
       const json = await response.json();
@@ -126,21 +133,26 @@ async function run() {
 
     // Rumus dashboard (BuyerDashboard, VendorDashboard, LogisticsDashboard, OversightDashboard).
     const buyerTier = { warteg1: "tier_1", sosial1: "tier_2", maggot1: "tier_3" } as const;
+    // Katalog aktif dan pesanan milik pembeli sesuai tier akunnya, seperti dihitung BuyerDashboard.
     const buyerView = (view: Snapshot, username: keyof typeof buyerTier) => {
       const listings = view.offers.filter((offer) => offer.targetTier === buyerTier[username] && offer.status === "active");
       const orders = view.offers.filter((offer) => offer.targetTier === buyerTier[username] && offer.isMine &&
         (offer.status === "claimed" || offer.status === "settled"));
       return { listings, orders };
     };
+    // Urutan [total, belum dibayar, siap antar, selesai] harus sama dengan urutan angka di jawaban status pesanan.
     const ordersSummary = (orders: RescueOffer[]) => [orders.length,
       orders.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length,
       orders.filter(isReadyForDelivery).length, orders.filter((offer) => offer.status === "settled").length];
+    // Penawaran aktif yang stoknya sudah ditimbang; penawaran dari stok belum terverifikasi tidak dihitung dashboard.
     const verifiedActive = (view: Snapshot) => {
       const weighed = new Set(view.stocks.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
       return view.offers.filter((offer) => offer.status === "active" && weighed.has(offer.stockId));
     };
+    // Lot bersisa dengan skor peluruhan minimal 0,35 (batas segar), sama dengan kartu stok berisiko di dashboard.
     const risky = (view: Snapshot) => view.stocks.filter((stock: StockItem) => stock.remainingKg > 0 && (view.stockHealth[stock.id]?.decayScore ?? 0) >= 0.35);
 
+    // Memeriksa invarian buku besar lalu mencocokkan angka asisten dengan dashboard semua peran pada tahap `label`.
     const compareAll = async (label: string) => {
       console.log(`\n[${label}] Asisten vs dashboard untuk setiap peran`);
       assertLedgerInvariants(await getServerSimulationState(), label);

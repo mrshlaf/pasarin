@@ -123,6 +123,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   let currentSuiteId = "";
   let currentSuiteName = "";
 
+  // Menutup rangkuman suite sebelumnya lalu memulai suite baru.
   const startSuite = (id: string, name: string) => {
     if (currentSuiteId) {
       suiteSummaries.push({
@@ -141,6 +142,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     }
   };
 
+  // Mencatat satu asersi ke suite aktif dan mencetak hasilnya bila tidak senyap.
   const assert = (condition: boolean, testId: string, testName: string, detail?: string) => {
     totalTests++;
     if (condition) {

@@ -204,13 +204,17 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
     });
   });
 
+  // Mencari penawaran seed menurut nomor kios dan tier; melempar galat bila seed tidak lengkap.
   const findOffer = (kioskNumber: number, tier: OfferTier) => {
     const offer = offers.find((item) => item.vendorId === KIOSKS[kioskNumber - 1].id && item.targetTier === tier);
     if (!offer) throw new Error(`Seed offer missing for kiosk ${kioskNumber} ${tier}`);
     return offer;
   };
+  // ID aktor untuk username; memakai ID akun Supabase bila ada, jika tidak ID lokal.
   const actorId = (username: string) => actorIds[username] ?? localActorId(username);
+  // Nama kios menurut ID, atau ID itu sendiri bila tidak ditemukan.
   const vendorName = (vendorId: string) => KIOSKS.find((kiosk) => kiosk.id === vendorId)?.name ?? vendorId;
+  // Nama lokal komoditas menurut ID, atau ID itu sendiri bila tidak ditemukan.
   const commodityName = (commodityId: string) =>
     COMMODITIES.find((commodity) => commodity.id === commodityId)?.localName ?? commodityId;
 

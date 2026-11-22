@@ -11,9 +11,10 @@ import { getMarketOperations } from "@/lib/marketOperations";
 import { answerDashboardQuestion } from "@/lib/marketChatbot";
 import { APP_ROLES } from "@/data/accounts";
 
+// Pertanyaan dibatasi 1000 karakter; `forceHeuristic` melewati model AI dan memakai jawaban berbasis aturan.
 const query = z.object({ query: z.string().trim().min(1).max(1000), forceHeuristic: z.boolean().optional() });
 
-/** Metrik operasional pasar, hanya untuk pengelola dan admin. */
+// Metrik operasional pasar, hanya untuk pengelola dan admin.
 export async function GET(req: NextRequest) {
   const auth = await requireApiRole(req, ["manager", "admin"]);
   if (auth.response) return auth.response;
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-/** Menjawab satu pertanyaan dari akun yang sedang masuk; 401 tanpa sesi, 422 untuk input tidak valid. */
+// Menjawab satu pertanyaan dari akun yang sedang masuk; 401 tanpa sesi, 422 untuk input tidak valid.
 export async function POST(req: NextRequest) {
   const auth = await requireApiRole(req, APP_ROLES);
   if (auth.response) return auth.response;
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** Pemeriksaan ketersediaan rute tanpa isi. */
+// Pemeriksaan ketersediaan rute tanpa isi.
 export async function HEAD() {
   return new Response(null, { status: 200 });
 }

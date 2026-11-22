@@ -6,7 +6,7 @@
  * 3. Eksekusi alat berjalan secara tepat urutan tanpa memanggil modul yang tidak dibutuhkan.
  * 4. Keluaran akhir menyajikan rincian tonase surplus dan rekomendasi jenis kendaraan angkut secara padat.
  * 5. Pengujian eksekusi nyata setiap alat fungsi terdaftar (Weather, Decay, Pricing, QualityGate, Fleet, Units, Carbon).
- * 6. Kecepatan pemrosesan kueri kompleks dibatasi memberikan respon di bawah 1.500 ms (< 2.000 ms target).
+ * 6. Kecepatan pemrosesan kueri kompleks diuji di bawah 2.000 ms (target ideal 1.500 ms).
  * 7. Penanganan galat jika dipanggil alat yang tidak terdaftar dalam registri.
  */
 
@@ -18,13 +18,14 @@ import {
   executeDecomposedManagerialQuery,
 } from "../src/lib/toolCallingRegistry";
 
-/** Mengambil isi data hasil pemanggilan alat dari respons registry. */
+// Mengambil isi data hasil pemanggilan alat dari respons registry.
 function toolData(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === "object" ? value as Record<string, unknown> : {};
 }
 
 // Variabel pelacak asersi uji lulus dan gagal
 let passedCount = 0;
+// Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
 /**
@@ -135,7 +136,7 @@ async function runToolCallingRegistryTests() {
     `Langkah: ${execResult.thoughtProcess.length} tahap`
   );
 
-  // Memvalidasi pemrosesan kueri kompleks selesai di bawah batas target 1.500 ms (< 2.000 ms SLA)
+  // Memvalidasi pemrosesan kueri kompleks selesai di bawah 2.000 ms (target ideal 1.500 ms tidak diasersikan)
   assert(
     elapsedMs < 2000,
     "Waktu pemrosesan kueri kompleks selesai di bawah batas target 1.500 ms (< 2.000 ms)",

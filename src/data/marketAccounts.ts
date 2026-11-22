@@ -21,6 +21,7 @@ export interface MarketAccount {
   buyerId?: string;
 }
 
+// Satu akun pedagang per kios, diturunkan dari data KIOSKS.
 const vendorAccounts: MarketAccount[] = KIOSKS.map((kiosk, index) => {
   const username = `pasar${index + 1}`;
   return {
@@ -33,7 +34,7 @@ const vendorAccounts: MarketAccount[] = KIOSKS.map((kiosk, index) => {
   };
 });
 
-/** Akun pembeli untuk satu tier, dengan username berurutan (warteg1, sosial1, maggot1, ...). */
+// Akun pembeli untuk satu tier, dengan username berurutan (warteg1, sosial1, maggot1, ...).
 const buyerAccounts = (tier: "tier_1" | "tier_2" | "tier_3", prefix: string, role: AppRole) =>
   CIRCULAR_BUYERS.filter((buyer) => buyer.tier === tier).map((buyer, index) => {
     const username = `${prefix}${index + 1}`;
@@ -47,6 +48,7 @@ const buyerAccounts = (tier: "tier_1" | "tier_2" | "tier_3", prefix: string, rol
     } satisfies MarketAccount;
   });
 
+// Kelurahan di sekitar Kramat Jati yang dipakai sebagai area asal Warteg tambahan.
 const WARTEG_AREAS = [
   "Condet", "Kramat Jati", "Cililitan", "Cawang", "TMII", "Duren Sawit",
   "Jatinegara", "Pasar Rebo", "Ciracas", "Makasar", "Halim", "Cibubur",
@@ -55,7 +57,9 @@ const WARTEG_AREAS = [
   "Bambu Apus", "Ceger", "Muncul", "Pondok Kelapa", "Duren Sawit Barat", "Pondok Kopi",
 ] as const;
 
+// Warteg yang sudah ada di data pembeli sirkular (tier 1).
 const existingWarteg = CIRCULAR_BUYERS.filter((buyer) => buyer.tier === "tier_1");
+// Warteg tambahan agar total akun Warteg mencapai 100.
 const extraWarteg: MarketAccount[] = Array.from({ length: 100 - existingWarteg.length }, (_, index) => {
   const number = existingWarteg.length + index + 1;
   const area = WARTEG_AREAS[index % WARTEG_AREAS.length];
@@ -69,6 +73,7 @@ const extraWarteg: MarketAccount[] = Array.from({ length: 100 - existingWarteg.l
   };
 });
 
+// Lima akun kurir demo.
 const courierAccounts: MarketAccount[] = Array.from({ length: 5 }, (_, index) => {
   const username = `kurir${index + 1}`;
   return {
@@ -95,7 +100,9 @@ export const MARKET_ACCOUNTS: MarketAccount[] = [
   { username: "admin1", password: "admin1", role: "admin", name: "Administrator", organization: "Pasarin" },
 ];
 
+// Pencarian akun menurut username.
 export const MARKET_ACCOUNT_BY_USERNAME = new Map(MARKET_ACCOUNTS.map((account) => [account.username, account]));
+// Pencarian akun pedagang menurut ID kios.
 export const MARKET_ACCOUNT_BY_VENDOR_ID = new Map(
   MARKET_ACCOUNTS.filter((account) => account.vendorId).map((account) => [account.vendorId as string, account]),
 );

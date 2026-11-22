@@ -15,19 +15,24 @@ import { EmptyState, kg, marketButton, marketSecondary } from "@/components/comm
 import { useAuth } from "@/lib/authContext";
 import type { readPublicMarketOverview } from "@/lib/serverSimulationState";
 
+// Bentuk ringkasan publik, diturunkan dari fungsi server agar tipe klien tidak menyimpang dari API.
 type Overview = Awaited<ReturnType<typeof readPublicMarketOverview>>;
+// Ringkasan terakhir yang berhasil dimuat beserta waktu servernya, tetap ditampilkan saat pembaruan gagal.
 type Snapshot = { data: Overview; timestamp: string };
 
+// Urutan, label, dan warna batang tiga jalur distribusi pada seksi "Pasokan menurut tujuan".
 const lanes = [
   { id: "tier_1", name: "Warteg", detail: "Bahan untuk dimasak", icon: UtensilsCrossed, color: "bg-tier-1" },
   { id: "tier_2", name: "Dapur sosial", detail: "Bahan untuk olahan dan donasi", icon: HeartHandshake, color: "bg-tier-2" },
   { id: "tier_3", name: "Sentra maggot", detail: "Bahan untuk biokonversi", icon: Recycle, color: "bg-tier-3" },
 ] as const;
 
+// Format waktu pembaruan ringkasan, selalu dalam WIB apa pun zona waktu perangkat.
 const clock = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
+// Pemisah ribuan Indonesia untuk jumlah lot, porsi, dan unit kendaraan.
 const number = new Intl.NumberFormat("id-ID");
 
-/** Memuat ringkasan publik, dengan status memuat, kosong, dan gagal. */
+// Memuat ringkasan publik, dengan status memuat, kosong, dan gagal.
 export function PublicMarketDashboard() {
   const { isAuthenticated } = useAuth();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -35,9 +40,11 @@ export function PublicMarketDashboard() {
   const [refresh, setRefresh] = useState(0);
   const [refreshing, setRefreshing] = useState(true);
 
+  // Muat saat mount dan setiap tombol perbarui ditekan, lalu ulangi tiap menit selama tab terlihat.
   useEffect(() => {
     let request: AbortController | undefined;
     let disposed = false;
+    // Mengambil ringkasan publik dengan batas 12 detik; dilewati bila permintaan sebelumnya belum selesai.
     async function sync() {
       if (request) return;
       const controller = new AbortController();

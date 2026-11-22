@@ -13,14 +13,18 @@ import {
 } from "@/lib/pasarinCore";
 import { DecayEvaluationResult } from "@/types/api";
 
+// Hasil bergantung pada parameter kueri tiap permintaan, jadi tidak dirender statis.
 export const dynamic = "force-dynamic";
 
+// Kondisi pajang dengan nilai bawaan 10,5 jam, 32,5 °C, dan kelembapan 75% bila tidak dikirim klien.
 const conditions = z.object({
   hoursElapsed: z.number().nonnegative().default(10.5),
   temperatureC: z.number().default(32.5),
   humidityPercent: z.number().min(0).max(100).default(75),
 });
+// ID komoditas dibatasi 100 karakter agar kueri katalog tidak menerima string liar.
 const commodityIdSchema = z.string().trim().min(1).max(100);
+// Body POST: maksimal 200 item, tiap item berupa ID atau objek dengan jam pajang sendiri.
 const batch = conditions.extend({
   items: z.array(z.union([
     commodityIdSchema,
@@ -45,6 +49,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const temperatureC = Number(searchParams.get("temperatureC") ?? "32.5");
     const humidityPercent = Number(searchParams.get("humidityPercent") ?? "75");
 
+    // Number() mengubah teks tak valid menjadi NaN, dan z.number() menolaknya di sini.
     if (!conditions.safeParse({ hoursElapsed, temperatureC, humidityPercent }).success) {
       return errorResponse("Parameter jam pajang, suhu, atau kelembapan tidak valid.", 400);
     }
@@ -100,6 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     for (const item of items) {
       const commId = typeof item === "string" ? item : item.commodityId;
+      // Jam pajang per item menimpa nilai global bila disertakan.
       const itemHours = typeof item === "object" && item.hoursElapsed !== undefined ? item.hoursElapsed : hoursElapsed;
 
       const evalResult = evaluateProduceById(commId, itemHours, temperatureC, humidityPercent);

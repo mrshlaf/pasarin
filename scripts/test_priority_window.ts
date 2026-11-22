@@ -15,6 +15,7 @@ import { RescueOffer } from "../src/lib/simulationStore";
 
 // Pelacak jumlah asersi uji
 let passedCount = 0;
+// Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
 /**

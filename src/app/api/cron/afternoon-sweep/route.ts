@@ -12,6 +12,7 @@ import { AfternoonSweepResult } from "@/types/api";
 import { getServerSimulationState, publishMarketOffers } from "@/lib/serverSimulationState";
 import { matchesSecret } from "@/lib/apiAuth";
 
+// Sapuan membaca dan mengubah state pasar setiap dipanggil, jadi tidak boleh dirender statis.
 export const dynamic = "force-dynamic";
 
 /**
@@ -38,10 +39,12 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   const startTime = Date.now();
   const triggeredAt = new Date().toISOString();
 
+  // Terbitkan dulu usulan dari stok yang belum terjual agar agregasi di bawah membaca state terbaru.
   const published = await publishMarketOffers();
   if (!published.success) throw new Error(published.message);
   const { offers, stocks } = await getServerSimulationState();
   const pending = offers.filter((offer) => offer.status === "pending_vendor");
+  // Menjumlahkan kilogram usulan yang menunggu untuk satu jalur penyaluran.
   const totalForTier = (tier: "tier_1" | "tier_2" | "tier_3") =>
     pending.filter((offer) => offer.targetTier === tier).reduce((sum, offer) => sum + offer.quantityKg, 0);
   const kiosksScanned = new Set(stocks.map((stock) => stock.vendorId)).size;
@@ -99,6 +102,7 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
 
 /**
  * Menangani pemicuan sapuan berkala via HTTP GET (standar Vercel Cron dan external cron trigger).
+ * Jadwal di vercel.json `30 7 * * *` dalam UTC, setara 14.30 WIB.
  *
  * @param req - Objek NextRequest pembawa header otorisasi Bearer token.
  * @returns Respons JSON berisi AfternoonSweepResult jika terotorisasi, atau HTTP 401 jika ditolak.

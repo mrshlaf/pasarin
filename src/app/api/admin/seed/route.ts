@@ -14,12 +14,15 @@ import { getDatabasePool, databaseConfigured } from "@/lib/database";
 import { countMarketAccounts, seedAccounts } from "@/lib/serverAuth";
 import { getServerSimulationState, seedMarketStateServer } from "@/lib/serverSimulationState";
 
+// Wajib Node.js karena rute ini memakai pool Postgres dan Supabase admin API.
 export const runtime = "nodejs";
+// Status seed dibaca langsung dari basis data, jadi respons tidak boleh di-cache saat build.
 export const dynamic = "force-dynamic";
 
+// Body opsional; bendera `reset` diterima agar klien lama tetap valid.
 const bodySchema = z.object({ reset: z.boolean().optional() }).optional();
 
-/** Rahasia seed khusus, atau rahasia sesi sebagai cadangan. */
+// Mengambil rahasia seed dari header `x-pasarin-seed-secret`, atau dari Bearer token sebagai cadangan.
 function seedSecret(req: NextRequest) {
   return req.headers.get("x-pasarin-seed-secret") ??
     req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
@@ -27,6 +30,9 @@ function seedSecret(req: NextRequest) {
 
 /**
  * Memvalidasi otorisasi administratif untuk rute penyemaian (seeding) massal.
+ * Di luar produksi cukup sesi admin; di produksi wajib kunci PASARIN_SEED_SECRET (401) dan kredensial basis data (503).
+ *
+ * @returns `response` berisi galat bila ditolak, atau `actorIds` (null di produksi karena UUID dibuat saat seed).
  */
 async function authorizeSeed(req: NextRequest) {
   if (process.env.NODE_ENV !== "production") {
@@ -76,6 +82,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Pengembangan tanpa basis data memakai berkas lokal, jadi akun dianggap selalu lengkap.
   if (process.env.NODE_ENV !== "production") {
     return successResponse({ backend: "local-file", accounts: MARKET_ACCOUNTS.length, marketTableReady: true });
   }
@@ -110,6 +117,7 @@ export async function POST(req: NextRequest) {
     if (databaseConfigured()) {
       actorIds = await seedAccounts();
     } else if (!actorIds) {
+      // Tanpa SUPABASE_DB_URL, akun dibuat lewat Supabase Auth admin; akun yang sudah ada diperbarui, bukan diduplikasi.
       const client = getServiceRoleClient();
       const { data: list, error: listError } = await client.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (listError) throw listError;

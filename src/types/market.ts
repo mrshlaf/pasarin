@@ -6,13 +6,13 @@
 
 export type DistributionMode = "sale" | "donation";
 
-/** Hasil timbang pedagang: berat sisa fisik dan pilihan jual/donasi untuk lot dapur sosial. */
+// Hasil timbang pedagang: berat sisa fisik dan pilihan jual/donasi untuk lot dapur sosial.
 export interface StockConfirmation {
   confirmedKg: number;
   mode?: DistributionMode;
 }
 
-/** Satu lot pasokan kios. verifiedAt terisi setelah pedagang menimbang sisa fisik. */
+// Satu lot pasokan kios. verifiedAt terisi setelah pedagang menimbang sisa fisik.
 export interface StockItem {
   id: string;
   vendorId: string;
@@ -125,7 +125,7 @@ export function completedDonationLots(offers: RescueOffer[], vendorId: string) {
     .map((offer) => offer.stockId)).size;
 }
 
-/** Catatan dana escrow per pesanan berbayar: ditahan saat dibayar, cair saat serah terima. */
+// Catatan dana escrow per pesanan berbayar: ditahan saat dibayar, cair saat serah terima.
 export interface EscrowTransaction {
   id: string;
   offerId: string;

@@ -13,6 +13,7 @@ import {
 } from "@/lib/serverAuth";
 import { databaseConfigured } from "@/lib/database";
 
+// Batas panjang mencegah body raksasa; username dinormalisasi agar login tidak peka huruf besar.
 const credentials = z.object({
   username: z.string().trim().toLowerCase().min(1).max(100),
   password: z.string().max(256),

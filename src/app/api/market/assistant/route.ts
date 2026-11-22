@@ -10,6 +10,7 @@ import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-resp
 import { answerPublicQuestion } from "@/lib/publicChatbot";
 import { allowRequest } from "@/lib/rateLimit";
 
+// Pertanyaan dibatasi 500 karakter; `forceHeuristic` melewati model AI dan memakai jawaban berbasis aturan.
 const query = z.object({ query: z.string().trim().min(1).max(500), forceHeuristic: z.boolean().optional() });
 
 /**
@@ -21,6 +22,7 @@ const query = z.object({ query: z.string().trim().min(1).max(500), forceHeuristi
 export async function POST(req: NextRequest) {
   const input = await validateJsonBody(req, query);
   if (!input.success) return input.errorResponse;
+  // IP pertama di x-forwarded-for adalah klien asli di belakang proxy Vercel.
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "anonim";
   if (!allowRequest("public:" + ip, 12, 5 * 60 * 1000)) {
     return errorResponse("Terlalu banyak pertanyaan dalam waktu singkat. Coba lagi beberapa menit lagi.", 429);

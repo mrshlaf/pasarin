@@ -13,6 +13,7 @@ import { ArrowLeft, Eye, EyeOff } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import { useAuth } from "@/lib/authContext";
 
+// Tiga tahap alur kerja yang ditampilkan di panel samping halaman login.
 const timeline = [
   ["Pasokan", "Pedagang mencatat barang masuk"],
   ["Pesanan", "Pembeli mengklaim penawaran"],
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pengguna yang sudah punya sesi tidak perlu melihat formulir; termasuk setelah login berhasil.
   useEffect(() => {
     if (isAuthenticated) router.replace("/dashboard");
   }, [isAuthenticated, router]);

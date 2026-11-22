@@ -18,7 +18,9 @@ import {
 
 // Variabel penghitung metrik pengujian
 let totalTests = 0;
+// Jumlah asersi lulus, ditampilkan di ringkasan akhir.
 let passedTests = 0;
+// Jumlah asersi gagal; bila lebih dari nol, proses dihentikan dengan kode 1.
 let failedTests = 0;
 
 /**

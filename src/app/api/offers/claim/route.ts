@@ -10,7 +10,9 @@ import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-resp
 import { requireApiRole } from "@/lib/apiAuth";
 import { claimOfferServer, getSurplusOffersForRole, marketOfferForUser } from "@/lib/serverSimulationState";
 
+// Peran mitra pembeli yang boleh melihat dan mengklaim lot.
 const buyerRoles = ["warteg", "social_kitchen", "maggot"] as const;
+// Body klaim; strictObject menolak field tambahan, `requestId` mencegah klaim ganda saat klien mengulang permintaan.
 const claim = z.strictObject({
   offerId: z.string().trim().min(1).max(100),
   quantityKg: z.number().positive().max(10_000).optional(),
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
   if (auth.response) return auth.response;
   const { user } = auth;
   const { role } = user;
+  // Cek ulang peran untuk mempersempit tipe `role` bagi claimOfferServer.
   if (role !== "warteg" && role !== "social_kitchen" && role !== "maggot") return errorResponse("Peran pembeli diperlukan.", 403);
 
   const input = await validateJsonBody(req, claim);

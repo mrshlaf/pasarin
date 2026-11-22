@@ -36,6 +36,7 @@ import { completedDonationLots } from "../src/types/market";
 
 // Menyiapkan direktori penyimpanan terisolasi untuk pengujian lokal
 const directory = mkdtempSync(join(tmpdir(), "pasarin-market-test-"));
+// Berkas state JSON milik rute API; tes menyuntingnya langsung untuk memajukan umur stok.
 const stateFile = join(directory, "state.json");
 Object.assign(process.env, {
   NODE_ENV: "test",
@@ -51,6 +52,7 @@ resetEnvCache();
 // Mock autentikasi Supabase untuk memvalidasi token berbasis peran resmi
 const verifyUser = supabase.auth.getUser;
 supabase.auth.getUser = async (token) => {
+  // Token uji berupa nama peran mentah (mis. "Bearer vendor"); token lain dibalas seperti JWT rusak.
   const role = APP_ROLES.find((item) => item === token);
   if (!role) return { data: { user: null }, error: new AuthApiError("Invalid test token", 401, "bad_jwt") };
   const user: User = {
@@ -215,6 +217,7 @@ async function run() {
   }
   // Memvalidasi pedagang mencatat pasokan via bot Telegram (/pasok bayam 12)
   assert.equal((await sendTelegram(11, 101, "/pasok bayam 12")).status, 200, "Perintah /pasok telegram wajib HTTP 200");
+  // Update ID yang sama dikirim ulang untuk memastikan webhook mengabaikan update duplikat dari Telegram.
   await sendTelegram(11, 101, "/pasok bayam 12");
   const telegramStock = (await view("vendor")).stocks[0];
   assert.equal((await view("vendor")).stocks.length, 2, "Stok pedagang bertambah via Telegram");
@@ -224,6 +227,7 @@ async function run() {
 
   // Memvalidasi klaim sebagian 4 kg oleh warteg via Telegram (/klaim <id> 4)
   assert.equal((await (await sendTelegram(22, 103, "/klaim " + botOffer + " 4")).json()).actionTaken, "order_reserved", "Klaim sebagian Telegram wajib order_reserved");
+  // Klaim duplikat dengan update ID sama tidak boleh membuat pesanan kedua.
   await sendTelegram(22, 103, "/klaim " + botOffer + " 4");
   const partial = await view("warteg");
   const botOrder = partial.offers.find((offer: RescueOffer) => offer.listingId === botOffer);
@@ -257,6 +261,7 @@ async function run() {
     assert.equal((await update(request({ action: "stock", commodityId: "kangkung", quantityKg: 8 }, "vendor"))).status, 200, "Pencatatan lot uji wajib sukses");
     const saved = JSON.parse(readFileSync(stateFile, "utf8")) as ServerState;
     const lot = saved.stocks[0];
+    // Mundurkan umur lot per jam sampai skor peluruhan masuk rentang tier target (cuaca dikunci 32 C, 75%).
     for (let hours = 1; hours < 150; hours++) {
       lot.createdAt = new Date(Date.now() - hours * 3600000).toISOString();
       const score = evaluateMarketStock(lot, { temperatureC: 32, humidityPercent: 75 })?.decayScore ?? 0;
@@ -315,6 +320,7 @@ async function run() {
   assert.equal((await update(request({ action: "stock", commodityId: "kangkung", quantityKg: 200 }, "vendor"))).status, 200, "Pencatatan stok 200 kg wajib sukses");
   const savedLarge = JSON.parse(readFileSync(stateFile, "utf8")) as ServerState;
   const largeLot = savedLarge.stocks[0];
+  // Umur lot dimundurkan sampai skor 0,65-0,85 agar sapuan sore mengusulkannya ke jalur Tier 2.
   for (let hours = 1; hours < 150; hours++) {
     largeLot.createdAt = new Date(Date.now() - hours * 3600000).toISOString();
     const score = evaluateMarketStock(largeLot, { temperatureC: 32, humidityPercent: 75 })?.decayScore ?? 0;
@@ -402,6 +408,7 @@ async function checkGemini() {
 async function checkLocalTestSessions() {
   const environment = process.env.NODE_ENV;
   const databaseUrl = process.env.SUPABASE_DB_URL;
+  // Login lokal sebagai pasar1 dengan kata sandi dan header opsional untuk menguji penolakan origin/proxy.
   const login = (password: string, headers?: Record<string, string>) =>
     localLogin(request({ username: "pasar1", password }, undefined, headers));
 

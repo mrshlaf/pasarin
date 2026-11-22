@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { successResponse } from "@/lib/api-response";
 import { HealthCheckData } from "@/types/api";
 
+// Uptime dan memori harus dibaca saat permintaan, bukan dibekukan ketika build.
 export const dynamic = "force-dynamic";
 
 /**
@@ -21,6 +22,7 @@ export async function GET(): Promise<NextResponse> {
   const memUsage = process.memoryUsage();
   const memoryMB = Math.round((memUsage.rss / 1024 / 1024) * 100) / 100;
 
+  // URL berisi "placeholder" adalah nilai bawaan contoh, jadi dianggap belum dikonfigurasi.
   const supabaseConfigured =
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL) &&
     !process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("placeholder");

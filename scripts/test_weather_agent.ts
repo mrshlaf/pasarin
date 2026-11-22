@@ -12,6 +12,7 @@ import { COMMODITIES } from "../src/data/commodities";
 
 // Variabel pelacak total kasus uji lulus dan gagal
 let passedCount = 0;
+// Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
 /**

@@ -22,6 +22,7 @@ import { OversightDashboard } from "@/components/roles/OversightDashboard";
 import { MarketChatbot } from "@/components/common/MarketChatbot";
 
 
+// Sapaan dan ringkasan tugas di hero ruang kerja untuk tiap peran.
 const friendlyRoleCopy: Record<AppRole, { greeting: string; description: string }> = {
   vendor: {
     greeting: "Hai, Pedagang! Selamat datang!",
@@ -92,6 +93,7 @@ function DashboardContent() {
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <AppSidebar />
           <main id="market-content" className="min-w-0 flex-1 scroll-mt-20" aria-busy={busy || isSyncing} tabIndex={-1}>
+            {/* Peran yang dipilih di sidebar bisa berbeda dari peran akun; server tetap menolak aksi peran lain. */}
             {user?.role !== role && (
               <p className="mb-4 flex items-start gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-[13px] leading-5 text-ink-muted">
                 <Eye size={15} aria-hidden className="mt-0.5 shrink-0 text-brand" />

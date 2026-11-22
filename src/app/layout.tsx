@@ -10,16 +10,19 @@ import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
 import { SimulationProvider } from "@/lib/simulationStore";
 
+// Font teks utama, diekspos sebagai variabel CSS agar bisa dipakai token tema Tailwind.
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
+// Font monospace untuk angka dan kode, juga lewat variabel CSS.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
+// Judul, deskripsi, dan ikon default yang diwarisi semua halaman.
 export const metadata: Metadata = {
   title: "PASARIN · Proactive Market Surplus Redistribution",
   description: "Multi-Agent System berbasis Agentic AI untuk Penyelamatan & Redistribusi Surplus Sayur-Buah Pasar Tradisional",
@@ -34,6 +37,7 @@ export const metadata: Metadata = {
 
 /**
  * Komponen pembungkus tata letak utama aplikasi.
+ * SimulationProvider ada di dalam AuthProvider karena state pasar bergantung pada akun yang masuk.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

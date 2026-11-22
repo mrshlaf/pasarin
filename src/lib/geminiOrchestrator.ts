@@ -52,6 +52,7 @@ export const ORCHESTRATOR_SYSTEM_PROMPT =
 
 // Penyimpanan cache in-memory jejak CoT terakhir untuk visualisasi real-time pada dasbor Admin
 let latestOrchestratorRun: OrchestratorRunResult | null = null;
+// Riwayat kueri terbaru untuk panel admin; hanya di memori instans ini.
 const latestQueryHistory: OrchestratorQueryResult[] = [];
 
 /**

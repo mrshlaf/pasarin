@@ -10,6 +10,7 @@ import { getServerSimulationState, evaluateMarketStock } from "@/lib/serverSimul
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
 import { isReadyForDelivery } from "@/types/market";
 
+// Formatter tanggal WIB; locale sv-SE dipilih karena menghasilkan format YYYY-MM-DD.
 const jakartaDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" });
 
 /**
@@ -36,9 +37,11 @@ export async function getMarketOperations() {
   const today = jakartaDate.format(new Date());
   const stock = state.stocks.filter((item) => item.remainingKg > 0);
   const weighed = new Set(stock.filter((item) => item.verifiedAt).map((item) => item.id));
+  // Penawaran aktif yang stoknya belum ditimbang tetap dihitung tertahan karena belum boleh dibeli.
   const pending = state.offers.filter((offer) => offer.status === "pending_vendor" || (offer.status === "active" && !weighed.has(offer.stockId))).length;
   const unpaid = state.offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid").length;
   const ready = state.offers.filter(isReadyForDelivery).length;
+  // Skor 0,35 adalah awal fase layu ringan, jadi stok di atasnya dianggap berisiko.
   const atRisk = stock.filter((item) => (evaluateMarketStock(item, weather)?.decayScore ?? 0) >= 0.35).length;
   return {
     date: today,

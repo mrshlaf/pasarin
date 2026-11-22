@@ -20,8 +20,10 @@ import {
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
+// Jalur distribusi yang dilayani setiap peran pembeli.
 const tier = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" } as const;
 
+// Judul, ajakan, ikon, dan rumus dampak per peran; angka porsi dan larva di sini harus sama dengan perhitungan `impact`.
 const framing = {
   warteg: {
     title: "Pasokan Segar Siap Masak",
@@ -55,7 +57,9 @@ const framing = {
 export function BuyerDashboard({ role }: { role: BuyerRole }) {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, transactions, weather, busy, claimOfferByBuyer, payQrisForOffer } = useMarketSimulation();
+  // Hanya pemilik peran yang bisa memesan; admin dan pengelola yang meninjau dashboard ini hanya melihat.
   const canBuy = user?.role === role;
+  // Lot aktif di jalur peran ini; lot disembunyikan bila skor susut terbarunya sudah masuk tier lain.
   const listings = offers.filter((offer) => {
     if (offer.targetTier !== tier[role] || offer.status !== "active") return false;
     const health = stockHealth[offer.stockId];
@@ -66,9 +70,11 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
     }
     return true;
   });
+  // Pembeli hanya melihat pesanannya sendiri; peninjau melihat semua pesanan di jalur ini.
   const orders = offers.filter((offer) => offer.targetTier === tier[role] &&
     (!canBuy || offer.isMine) && (offer.status === "claimed" || offer.status === "settled"));
   const [invoice, setInvoice] = useState<RescueOffer | null>(null);
+  // `requestId` dibuat sekali per dialog sebagai kunci idempoten, jadi kirim ulang formulir tidak menggandakan klaim.
   const [selection, setSelection] = useState<{ offer: RescueOffer; requestId: string } | null>(null);
   const [requestedKg, setRequestedKg] = useState("");
   const [error, setError] = useState("");
@@ -97,6 +103,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
     ? [...filteredListings].sort((a, b) => (stockHealth[a.stockId]?.decayScore ?? Infinity) - (stockHealth[b.stockId]?.decayScore ?? Infinity))
     : sort === "price" ? [...filteredListings].sort((a, b) => a.salvagePricePerKg - b.salvagePricePerKg) : filteredListings;
   const visibleListings = showAllListings ? sortedListings : sortedListings.slice(0, 8);
+  // Ambil versi lot terbaru agar sisa kg di dialog ikut berubah bila pembeli lain mengklaim lebih dulu.
   const selectedOffer = selection ? listings.find((offer) => offer.id === selection.offer.id) ?? selection.offer : null;
   const selectedStock = selectedOffer && stockById.get(selectedOffer.stockId);
 

@@ -37,6 +37,7 @@ export function matchesSecret(value: string | null | undefined, secret: string |
  * @returns Objek hasil berisi profil pengguna valid atau respons galat 401/403/503 siap kirim.
  */
 export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[]) {
+  // Cookie sesi server diprioritaskan; bila tidak ada, lanjut ke Bearer lalu sesi uji lokal.
   if (serverAuthEnabled()) {
     const serverUser = readSessionUser(req);
     if (serverUser) {
@@ -47,6 +48,7 @@ export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[
     }
   }
   const token = req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
+  // Tanpa Bearer, hanya sesi uji lokal bertanda tangan yang diterima (readLocalTestUser menolaknya di luar mode uji).
   if (!token) {
     const user = readLocalTestUser(req);
     if (!user) return { response: errorResponse("Silakan masuk terlebih dahulu.", 401) } as const;

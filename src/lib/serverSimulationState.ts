@@ -55,11 +55,13 @@ type MutationResult = { success: true; message: string; offer?: RescueOffer } |
  */
 type Actor = Pick<AuthUser, "id" | "name" | "role" | "vendorId">;
 
+// Tabel Supabase yang menyimpan snapshot state pasar.
 const table = "pasarin_simulation_state";
+// Kunci baris state pasar di tabel itu.
 const stateKey = "market";
-/** Lokasi berkas state lokal; bisa diganti dengan PASARIN_STATE_FILE untuk data uji terpisah. */
+// Lokasi berkas state lokal; bisa diganti dengan PASARIN_STATE_FILE untuk data uji terpisah.
 const stateFile = () => process.env.PASARIN_STATE_FILE ?? path.join(os.tmpdir(), "pasarin_market_state_v2.json");
-/** Produksi dan mode Supabase menyimpan state di database; selain itu di berkas lokal. */
+// Produksi dan mode Supabase menyimpan state di database; selain itu di berkas lokal.
 const storesStateInDatabase = () => databaseConfigured() || process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
 
 /**
@@ -190,7 +192,7 @@ export async function getServerSimulationState() {
   return (await readDatabaseState(databaseClient()))?.state ?? newState();
 }
 
-/** Antrean mutasi lokal untuk mencegah kondisi balapan (race condition) pada penyimpanan berkas. */
+// Antrean mutasi lokal untuk mencegah kondisi balapan (race condition) pada penyimpanan berkas.
 let localMutationQueue: Promise<void> = Promise.resolve();
 
 /**
@@ -560,9 +562,10 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
   return { ...visible, stockHealth, estimatedUnsoldKg, weather: { isEstimated: weather.isEstimated ?? false, temperatureC: weather.temperatureC, humidityPercent: weather.humidityPercent } };
 }
 
-/** Model Gemini mengikuti GEMINI_MODEL, sama dengan chatbot dan orkestrator. */
+// Model Gemini mengikuti GEMINI_MODEL, sama dengan chatbot dan orkestrator.
 const forecastModel = () => process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 
+// Cache ramalan AI di memori instans agar model tidak dipanggil ulang selama masa berlaku.
 let aiForecastCache: {
   key: string;
   expiresAt: number;

@@ -23,6 +23,7 @@ export function MarketDialog({ title, onClose, children }: {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
+  // Modal dibuka saat dipasang; elemen yang fokus sebelumnya dicatat agar fokus kembali ke sana ketika dilepas.
   useEffect(() => {
     const element = dialog.current;
     const trigger = document.activeElement;

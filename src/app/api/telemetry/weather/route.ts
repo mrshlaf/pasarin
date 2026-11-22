@@ -10,6 +10,7 @@ import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
 import { requireApiRole } from "@/lib/apiAuth";
 import { WeatherTelemetryData } from "@/types/api";
 
+// Data cuaca berubah sepanjang hari, jadi rute tidak boleh dirender statis saat build.
 export const dynamic = "force-dynamic";
 
 /**
@@ -22,6 +23,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
+    // Memotong cache berarti memanggil API cuaca hulu dan memakan kuotanya, jadi hanya admin yang boleh.
     if (forceRefresh) {
       const auth = await requireApiRole(req, ["admin"]);
       if (auth.response) return auth.response;

@@ -10,8 +10,10 @@ import { createClient } from "@supabase/supabase-js";
  */
 export const supabaseAuthConfigured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
+// URL Supabase; jatuh ke Supabase lokal default agar build tidak gagal tanpa env.
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
+// Kunci anon; nilai dummy hanya agar createClient tidak melempar galat saat env kosong.
 const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.dummy";
 

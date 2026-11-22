@@ -10,11 +10,12 @@ import { useState, type FormEvent } from "react";
 import { Eye, EyeOff, Send } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 
+// Bagian objek global Telegram WebApp yang dipakai halaman ini.
 interface TelegramWindow extends Window {
   Telegram?: { WebApp?: { initData: string; ready: () => void; close: () => void } };
 }
 
-/** Formulir masuk yang dibuka dari tombol "Masuk dengan akun Pasarin" di bot. */
+// Formulir masuk yang dibuka dari tombol "Masuk dengan akun Pasarin" di bot.
 export default function TelegramLogin() {
   const [initData, setInitData] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -23,6 +24,10 @@ export default function TelegramLogin() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  /**
+   * Mengirim kredensial bersama initData ke server; nama akun ditampilkan bila berhasil.
+   * Formulir dikosongkan setelah sukses agar kata sandi tidak tertinggal di Mini App.
+   */
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !initData) return;
@@ -51,6 +56,7 @@ export default function TelegramLogin() {
 
   return (
     <main className="min-h-dvh bg-canvas px-4 py-5 text-ink sm:py-10">
+      {/* initData hanya tersedia bila halaman dibuka dari tombol web_app di Telegram; di peramban biasa nilainya kosong. */}
       <Script src="https://telegram.org/js/telegram-web-app.js" onReady={() => {
         const webApp = (window as TelegramWindow).Telegram?.WebApp;
         webApp?.ready();

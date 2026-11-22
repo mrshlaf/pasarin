@@ -16,23 +16,26 @@ import { getMarketOperations } from "@/lib/marketOperations";
 import { readMarketSnapshot, readPublicCatalog } from "@/lib/serverSimulationState";
 import { distributionTierForDecay, isDonation, isReadyForDelivery, roundKg, type RescueOffer, type StockItem } from "@/types/market";
 
+// Snapshot pasar sesuai peran pengguna.
 type Snapshot = Awaited<ReturnType<typeof readMarketSnapshot>>;
+// Data operasional pasar: cuaca dan pengiriman.
 type Operations = Awaited<ReturnType<typeof getMarketOperations>>;
+// Tier tujuan distribusi: tier_1, tier_2, atau tier_3.
 type Tier = RescueOffer["targetTier"];
-/** Penawaran sebagaimana terlihat oleh akun (termasuk penanda isMine). */
+// Penawaran sebagaimana terlihat oleh akun (termasuk penanda isMine).
 export type Offer = Snapshot["offers"][number];
 
-/** Komoditas dan kios yang ditanyakan, untuk menyaring etalase. */
+// Komoditas dan kios yang ditanyakan, untuk menyaring etalase.
 export type CatalogScope = Pick<View, "commodityId" | "commodityName" | "kioskIds">;
 
-/** Data yang sudah disaring sesuai hak akses dan komoditas yang ditanyakan. */
+// Data yang sudah disaring sesuai hak akses dan komoditas yang ditanyakan.
 interface View {
   user: ChatUser;
   snapshot: Snapshot;
   operations: Operations | null;
   commodityId?: string;
   commodityName?: string;
-  /** Kios lain yang disebut dalam pertanyaan. */
+  // Kios lain yang disebut dalam pertanyaan.
   kioskIds: string[];
   stocks: StockItem[];
   offers: Offer[];
@@ -75,6 +78,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
   const commodityListString = distinctCommodities.length > 0 ? distinctCommodities.join(", ") : "belum ada komoditas tercatat";
   const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
   const today = dateFormat.format(new Date());
+  // Apakah stempel waktu jatuh pada hari ini (zona Jakarta).
   const isToday = (value?: string) => {
     const parsed = Date.parse(value ?? "");
     return Number.isFinite(parsed) && dateFormat.format(parsed) === today;
@@ -383,7 +387,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
   return { summary: answer, source: "data_pasar", metrics };
 }
 
-/** Chat menampilkan teks biasa, jadi format Markdown dari model diubah menjadi teks yang rapi. */
+// Chat menampilkan teks biasa, jadi format Markdown dari model diubah menjadi teks yang rapi.
 export function plainText(text: string) {
   return text
     .replace(/\*\*(.+?)\*\*/g, "$1")
@@ -393,6 +397,7 @@ export function plainText(text: string) {
     .trim();
 }
 
+// Instruksi model untuk pertanyaan terbuka: hanya memakai data yang diberikan, menolak data pribadi pihak lain, dan menjawab teks polos.
 export const OPEN_QUESTION_INSTRUCTION = [
   "Kamu Asisten PASARIN, platform penyaluran surplus sayur dan buah Pasar Induk Kramat Jati.",
   "Jawab pertanyaan pengguna dalam bahasa Indonesia yang alami, langsung ke inti, dan ringkas (maksimal sekitar 8 kalimat atau daftar pendek).",
@@ -410,15 +415,18 @@ export const OPEN_QUESTION_INSTRUCTION = [
   "Tulis teks biasa tanpa Markdown (tanpa **, #, atau tabel); gunakan • di awal baris untuk daftar.",
 ].join(" ");
 
+// Nama peran dalam bahasa Indonesia untuk jawaban.
 const ROLE_LABELS: Record<AppRole, string> = {
   vendor: "Pedagang", warteg: "Warteg & UMKM", social_kitchen: "Dapur Sosial", maggot: "Sentra Maggot",
   logistics: "Kurir & Logistik", manager: "Pengelola Pasar", admin: "Admin",
 };
 
+// Nama penerima menurut tier.
 export const DESTINATION: Record<Tier, string> = { tier_1: "Warteg & UMKM", tier_2: "Dapur Sosial", tier_3: "Sentra Maggot" };
+// Tier yang dibeli tiap peran pembeli.
 const BUYER_TIER: Partial<Record<AppRole, Tier>> = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" };
 
-/** Contoh pertanyaan per peran untuk jawaban "bisa apa" dan fallback. Tiga contoh pertama tampil di fallback. */
+// Contoh pertanyaan per peran untuk jawaban "bisa apa" dan fallback. Tiga contoh pertama tampil di fallback.
 const EXAMPLES: Record<AppRole, string[]> = {
   vendor: ["Sayur saya bisa dijual ke mana?", "Berapa pendapatan saya?", "Apa yang perlu ditimbang?", "Lot mana yang paling cepat busuk?", "Berapa harga jual bayam saya?", "Siapa yang membeli stok saya?"],
   warteg: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Berapa pengeluaran saya?", "Sayur apa yang paling murah?", "Kapan pesanan saya diantar?", "Berapa penghematan saya?"],
@@ -429,35 +437,36 @@ const EXAMPLES: Record<AppRole, string[]> = {
   admin: ["Ringkas operasional pasar", "Apa yang perlu dievaluasi?", "Berapa dana yang sudah cair?", "Komoditas apa yang paling berisiko?", "Berapa pangan yang sudah tersalurkan?"],
 };
 
-/** Format rupiah dengan titik ribuan, misalnya Rp16.000. */
+// Format rupiah dengan titik ribuan, misalnya Rp16.000.
 const rupiah = (value: number) => `Rp${Math.round(value).toLocaleString("id-ID")}`;
+// Jawaban baku karena modal dan biaya usaha tidak dicatat PASARIN.
 const netProfitUnavailable = "PASARIN belum mencatat modal dan biaya usaha, sehingga keuntungan bersih belum bisa dihitung.";
-/** Nama lokal komoditas; id dikembalikan apa adanya bila tidak dikenal. */
+// Nama lokal komoditas; id dikembalikan apa adanya bila tidak dikenal.
 export const commodityName = (id: string) => COMMODITIES.find((item) => item.id === id)?.localName ?? id;
-/** Label kios yang sama dengan dashboard: "Kios A-12 (Nama Kios)". */
+// Label kios yang sama dengan dashboard: "Kios A-12 (Nama Kios)".
 export const kioskLabel = (id: string) => {
   const kiosk = KIOSKS.find((item) => item.id === id);
   return kiosk ? `Kios ${kiosk.stallNumber} (${kiosk.name})` : id;
 };
-/** Berat dibulatkan dua desimal dengan satuan kg. */
+// Berat dibulatkan dua desimal dengan satuan kg.
 export const kg = (value: number) => `${roundKg(value)} kg`;
-/** Skor mutu dengan koma desimal, misalnya 0,74. */
+// Skor mutu dengan koma desimal, misalnya 0,74.
 const score = (value: number) => value.toFixed(2).replace(".", ",");
-/** Jumlah berat penawaran dalam kg. */
+// Jumlah berat penawaran dalam kg.
 const sumKg = (items: Array<{ quantityKg: number }>) => roundKg(items.reduce((total, item) => total + item.quantityKg, 0));
-/** Memotong daftar panjang dan menambahkan baris "dan N lainnya" agar balasan tetap ringkas. */
+// Memotong daftar panjang dan menambahkan baris "dan N lainnya" agar balasan tetap ringkas.
 const limit = (lines: string[], max = 6) => lines.length > max ? [...lines.slice(0, max), `…dan ${lines.length - max} lainnya di dashboard.`] : lines;
-/** Frasa komoditas untuk kalimat jawaban, kosong bila pertanyaan tidak menyebut komoditas. */
+// Frasa komoditas untuk kalimat jawaban, kosong bila pertanyaan tidak menyebut komoditas.
 const subjectOf = (view: { commodityName?: string }) => view.commodityName ? ` ${view.commodityName}` : "";
 
-/** Sisa simpan sebelum busuk; skor 0,85 ke atas dianggap sudah melewati batas konsumsi. */
+// Sisa simpan sebelum busuk; skor 0,85 ke atas dianggap sudah melewati batas konsumsi.
 function shelfLife(hours: number, decayScore: number) {
   if (decayScore >= 0.85 || !(hours > 0)) return "sudah melewati batas konsumsi";
   if (hours < 1) return `sisa simpan sekitar ${Math.max(1, Math.round(hours * 60))} menit`;
   return `sisa simpan sekitar ${Math.floor(hours)} jam`;
 }
 
-/** Status pesanan dalam bahasa pengguna, mengikuti status pesanan dan status pembayaran. */
+// Status pesanan dalam bahasa pengguna, mengikuti status pesanan dan status pembayaran.
 function orderState(offer: Offer) {
   if (offer.status === "settled") return offer.paymentStatus === "released_to_vendor" ? "selesai, dana sudah cair ke pedagang" : "selesai diserahterimakan";
   if (offer.paymentStatus === "unpaid") return "menunggu pembayaran";
@@ -465,25 +474,25 @@ function orderState(offer: Offer) {
   return "gratis, menunggu diantar kurir";
 }
 
-/** Harga per kg beserta diskonnya, atau "gratis"/"gratis (donasi)" untuk lot Rp0. */
+// Harga per kg beserta diskonnya, atau "gratis"/"gratis (donasi)" untuk lot Rp0.
 function offerPrice(offer: Offer) {
   if (offer.salvagePricePerKg > 0) return `${rupiah(offer.salvagePricePerKg)}/kg (diskon ${Math.round(offer.discountPercentage)}% dari ${rupiah(offer.originalPricePerKg)}/kg)`;
   return isDonation(offer) ? "gratis (donasi)" : "gratis";
 }
 
-/** Jawaban "kamu bisa apa": daftar contoh pertanyaan sesuai peran. */
+// Jawaban "kamu bisa apa": daftar contoh pertanyaan sesuai peran.
 function capabilitiesAnswer(role: AppRole) {
   return `Saya Asisten PASARIN untuk ruang kerja ${ROLE_LABELS[role]}. Saya membaca data akun Anda untuk menjawab pertanyaan seperti:\n` +
     `${EXAMPLES[role].map((item) => `• ${item}`).join("\n")}\n` +
     "Asisten hanya membaca data; klaim, pembayaran, penimbangan, dan serah terima tetap dilakukan di dashboard.";
 }
 
-/** Balasan saat pertanyaan tidak dikenali dan model tidak tersedia. */
+// Balasan saat pertanyaan tidak dikenali dan model tidak tersedia.
 function fallbackAnswer(role: AppRole) {
   return `Saya belum memahami pertanyaan itu. Coba salah satu pertanyaan ini:\n${EXAMPLES[role].slice(0, 4).map((item) => `• ${item}`).join("\n")}`;
 }
 
-/** Ringkasan hal yang perlu ditindaklanjuti pengelola, dari metrik operasional pasar. */
+// Ringkasan hal yang perlu ditindaklanjuti pengelola, dari metrik operasional pasar.
 function evaluationAnswer(ops: Operations) {
   return `${ops.pending} penawaran menunggu timbang atau konfirmasi pedagang, ${ops.atRisk} lot berisiko menurut model, ${ops.unpaid} pesanan menunggu pembayaran, dan ${ops.ready} pesanan siap diantar.` +
     (ops.workstreams.length ? ` Alur yang perlu ditangani: ${ops.workstreams.join(", ")}.` : " Tidak ada alur yang perlu ditangani saat ini.");
@@ -498,6 +507,7 @@ function earningsAnswer(role: AppRole, snapshot: Snapshot) {
   const orders = buyer ? snapshot.offers.filter((item) => item.isMine && (item.status === "claimed" || item.status === "settled")) : [];
   const orderIds = new Set(orders.map((item) => item.id));
   const transactions = buyer ? snapshot.transactions.filter((item) => orderIds.has(item.offerId)) : snapshot.transactions;
+  // Total transaksi menurut status, dalam rupiah.
   const sumByStatus = (status: "released" | "held_in_escrow") => transactions.reduce(
     (total, item) => total + (item.status === status ? item.amountIdr : 0), 0,
   );
@@ -523,7 +533,7 @@ function earningsAnswer(role: AppRole, snapshot: Snapshot) {
   return "Data pendapatan kurir belum tercatat di PASARIN. Anda bisa memeriksa antrean dan riwayat pengantaran.";
 }
 
-/** Menjelaskan kapan dana cair (setelah serah terima) beserta jumlah yang masih ditahan di escrow. */
+// Menjelaskan kapan dana cair (setelah serah terima) beserta jumlah yang masih ditahan di escrow.
 function payoutAnswer(view: View) {
   const { user, snapshot } = view;
   const heldItems = snapshot.transactions.filter((item) => item.status === "held_in_escrow" &&
@@ -536,13 +546,14 @@ function payoutAnswer(view: View) {
   return `${rule} Saat ini ${rupiah(held)} dari ${heldItems.length} pesanan masih ditahan di escrow.`;
 }
 
+// Rute penyaluran menurut tier, dipakai dalam jawaban tentang tujuan sayur.
 const ROUTES = {
   tier_1: "Warteg & UMKM (jual dengan harga diskon)",
   tier_2: "Dapur Sosial (jual atau donasikan)",
   tier_3: "Sentra Maggot (gratis, khusus biokonversi)",
 } as const;
 
-/** Berat yang sudah dipesan tetapi belum diserahterimakan, per lot. */
+// Berat yang sudah dipesan tetapi belum diserahterimakan, per lot.
 function reservedByStock(offers: Offer[]) {
   const reserved = new Map<string, number>();
   for (const offer of offers) {
@@ -602,7 +613,7 @@ function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commod
 }
 
 
-/** Perkiraan harga per kg jika lot diterbitkan sekarang; sama dengan aturan penerbitan di server. */
+// Perkiraan harga per kg jika lot diterbitkan sekarang; sama dengan aturan penerbitan di server.
 function estimatedPricePerKg(stock: StockItem, snapshot: Snapshot) {
   const health = snapshot.stockHealth[stock.id];
   const commodity = COMMODITIES.find((item) => item.id === stock.commodityId);
@@ -613,7 +624,7 @@ function estimatedPricePerKg(stock: StockItem, snapshot: Snapshot) {
   return { tier, price: Math.max(floor, health.estimatedSalvagePrice) };
 }
 
-/** Harga lot milik pedagang: harga penawaran aktif, atau perkiraan harga jika lot diterbitkan sekarang. */
+// Harga lot milik pedagang: harga penawaran aktif, atau perkiraan harga jika lot diterbitkan sekarang.
 function vendorPriceAnswer(view: View) {
   const { snapshot } = view;
   const reserved = reservedByStock(snapshot.offers);
@@ -633,7 +644,7 @@ function vendorPriceAnswer(view: View) {
   return `Harga lot${subjectOf(view)} di kios Anda (yang paling cepat rusak lebih dulu):\n${limit(lines).join("\n")}\nPerkiraan harga berasal dari estimasi mutu dan bisa berubah saat ditimbang; Tier 1 tidak turun di bawah harga minimum komoditas.`;
 }
 
-/** Daftar penawaran terurut harga, dipakai bersama oleh katalog pembeli, pengelola, dan etalase publik. */
+// Daftar penawaran terurut harga, dipakai bersama oleh katalog pembeli, pengelola, dan etalase publik.
 function listOffers(view: CatalogScope, source: Offer[], order: "cheap" | "expensive", where: string, footer: string, showDestination: boolean) {
   const list = [...source].sort((a, b) => order === "cheap"
     ? a.salvagePricePerKg - b.salvagePricePerKg || b.quantityKg - a.quantityKg
@@ -645,13 +656,13 @@ function listOffers(view: CatalogScope, source: Offer[], order: "cheap" | "expen
   return `Ada ${list.length} penawaran aktif${subjectOf(view)}${kiosks} ${where} (${kg(sumKg(list))}). ${heading}:\n${limit(lines, 5).join("\n")}\n${footer}`;
 }
 
-/** Katalog yang bisa diklaim akun pembeli, atau seluruh penawaran aktif untuk pengelola. */
+// Katalog yang bisa diklaim akun pembeli, atau seluruh penawaran aktif untuk pengelola.
 function catalogAnswer(view: View, order: "cheap" | "expensive", source: Offer[] = view.active) {
   return listOffers(view, source, order, view.oversight ? "di pasar" : "yang bisa diklaim akun Anda",
     view.oversight ? "Ketersediaan bisa berubah setiap saat." : "Klaim dari katalog di dashboard; ketersediaan dicek ulang saat klaim.", view.oversight);
 }
 
-/** Etalase publik seluruh pasar: hanya komoditas, kios, harga, berat, dan tujuan. */
+// Etalase publik seluruh pasar: hanya komoditas, kios, harga, berat, dan tujuan.
 export function publicCatalogAnswer(view: CatalogScope, catalog: Offer[], order: "cheap" | "expensive") {
   const source = catalog.filter((offer) => (!view.commodityId || offer.commodityId === view.commodityId) &&
     (view.kioskIds.length === 0 || view.kioskIds.includes(offer.vendorId)));
@@ -659,7 +670,7 @@ export function publicCatalogAnswer(view: CatalogScope, catalog: Offer[], order:
     "Ini info etalase publik; klaim dan pembelian dilakukan oleh akun pembeli sesuai tujuannya.", true);
 }
 
-/** Jawaban untuk pertanyaan yang hanya menyebut nama sayur ("bayam", "cek kangkung dong"). */
+// Jawaban untuk pertanyaan yang hanya menyebut nama sayur ("bayam", "cek kangkung dong").
 async function commodityOverview(view: View) {
   const role = view.user.role;
   if (role === "vendor") {
@@ -672,24 +683,25 @@ async function commodityOverview(view: View) {
   return courierQueueAnswer(view, false);
 }
 
-/** Dana cair dan dana tertahan satu kios; hanya dipanggil untuk pengelola dan admin. */
+// Dana cair dan dana tertahan satu kios; hanya dipanggil untuk pengelola dan admin.
 function kioskFinanceAnswer(view: View, kioskId: string) {
   const { snapshot } = view;
   const kioskOffers = snapshot.offers.filter((offer) => offer.vendorId === kioskId);
   const ids = new Set(kioskOffers.map((offer) => offer.id));
   const transactions = snapshot.transactions.filter((item) => ids.has(item.offerId));
+  // Total transaksi menurut status, dalam rupiah.
   const total = (status: "released" | "held_in_escrow") => transactions.reduce((sum, item) => sum + (item.status === status ? item.amountIdr : 0), 0);
   const orders = kioskOffers.filter((offer) => offer.status === "claimed" || offer.status === "settled").length;
   const active = kioskOffers.filter((offer) => offer.status === "active").length;
   return `${kioskLabel(kioskId)}: dana sudah cair ${rupiah(total("released"))} dan ${rupiah(total("held_in_escrow"))} masih ditahan di escrow, dari ${orders} pesanan; ${active} penawaran aktif. ${netProfitUnavailable}`;
 }
 
-/** Meminta pengguna memperjelas pertanyaan yang terlalu umum, dengan contoh sesuai peran. */
+// Meminta pengguna memperjelas pertanyaan yang terlalu umum, dengan contoh sesuai peran.
 function clarifyAnswer(role: AppRole) {
   return `Pertanyaannya masih terlalu umum. Maksud Anda yang mana?\n${EXAMPLES[role].slice(0, 4).map((item) => `• ${item}`).join("\n")}\nAnda juga bisa menyebut nama sayur, misalnya "bayam", untuk melihat stok dan harganya.`;
 }
 
-/** Kata umum yang tidak cukup untuk menebak maksud bila berdiri sendiri. */
+// Kata umum yang tidak cukup untuk menebak maksud bila berdiri sendiri.
 export const VAGUE = new Set([
   "gimana", "bagaimana", "terus", "lalu", "trus", "jadi", "yang", "tadi", "itu", "ini", "berapa", "kapan", "dimana", "kemana",
   "kenapa", "mengapa", "apa", "siapa", "info", "informasi", "tolong", "bantu", "cek", "lihat", "dong", "deh", "sih", "ya", "kak",
@@ -700,10 +712,10 @@ export const VAGUE = new Set([
   "ngerti", "mengerti", "paham", "cara", "caranya", "gitu", "anu", "lagi", "dulu",
 ]);
 
-/** Kata pengisi yang boleh menyertai nama sayur ("cek bayam dong", "bayam gimana"). */
+// Kata pengisi yang boleh menyertai nama sayur ("cek bayam dong", "bayam gimana").
 export const FILLERS = new Set(["tentang", "kabar", "kondisi", "update", "terbaru", "punya", "masih", "tersedia", "sisa", "kalau", "harini"]);
 
-/** Pesanan atas stok pedagang (atau seluruh pasar untuk pengelola) beserta pembeli dan statusnya. */
+// Pesanan atas stok pedagang (atau seluruh pasar untuk pengelola) beserta pembeli dan statusnya.
 function vendorOrdersAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.status === "claimed" || offer.status === "settled")
     .sort((a, b) => Number(a.status === "settled") - Number(b.status === "settled"));
@@ -714,7 +726,7 @@ function vendorOrdersAnswer(view: View) {
   return `Ada ${orders.length} pesanan${subjectOf(view)} ${owner} (${kg(sumKg(orders))}, nilai ${rupiah(value)}):\n${limit(lines).join("\n")}`;
 }
 
-/** Pesanan milik pembeli yang sedang masuk, dengan pengingat bayar bila masih tertunda. */
+// Pesanan milik pembeli yang sedang masuk, dengan pengingat bayar bila masih tertunda.
 function buyerOrdersAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.isMine && (offer.status === "claimed" || offer.status === "settled"))
     .sort((a, b) => Number(a.status === "settled") - Number(b.status === "settled"));
@@ -726,7 +738,7 @@ function buyerOrdersAnswer(view: View) {
     "Perkiraan jam tiba belum tercatat; status berubah menjadi selesai setelah kurir mengonfirmasi serah terima.";
 }
 
-/** Antrean kurir: rute kios ke penerima, total muatan, dan rekomendasi kendaraan. Tanpa nilai uang. */
+// Antrean kurir: rute kios ke penerima, total muatan, dan rekomendasi kendaraan. Tanpa nilai uang.
 function courierQueueAnswer(view: View, asksAddress: boolean) {
   const queue = view.offers.filter(isReadyForDelivery);
   if (!queue.length) return `Belum ada pesanan${subjectOf(view)} siap diantar saat ini. Pesanan masuk antrean setelah dibayar, atau setelah lot gratis diklaim.`;
@@ -737,7 +749,7 @@ function courierQueueAnswer(view: View, asksAddress: boolean) {
     (asksAddress ? "\nTitik jemput ada di kios Pasar Induk Kramat Jati yang tertera; alamat penerima belum tercatat di PASARIN." : "");
 }
 
-/** Penghematan pembeli dibanding harga acuan grosir. */
+// Penghematan pembeli dibanding harga acuan grosir.
 function savingsAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.isMine && (offer.status === "claimed" || offer.status === "settled"));
   if (!orders.length) return "Belum ada pesanan, jadi belum ada penghematan yang tercatat.";
@@ -746,7 +758,7 @@ function savingsAnswer(view: View) {
   return `Dari ${orders.length} pesanan (${kg(sumKg(orders))}), nilainya ${rupiah(paid)} dibanding ${rupiah(reference)} pada harga acuan grosir. Penghematan sekitar ${rupiah(reference - paid)}.`;
 }
 
-/** Lot paling cepat rusak (atau paling segar) menurut skor mutu, untuk didahulukan. */
+// Lot paling cepat rusak (atau paling segar) menurut skor mutu, untuk didahulukan.
 function freshnessAnswer(view: View, freshest: boolean) {
   const { snapshot } = view;
   const offered = new Set(view.active.map((offer) => offer.stockId));
@@ -765,11 +777,12 @@ function freshnessAnswer(view: View, freshest: boolean) {
   return `${heading}\n${limit(lines, 5).join("\n")}\nSkor berasal dari model peluruhan, bukan pemeriksaan fisik.`;
 }
 
-/** Pangan yang sudah diserahterimakan per tujuan; porsi dapur sosial memakai estimasi 4 porsi per kg seperti dashboard. */
+// Pangan yang sudah diserahterimakan per tujuan; porsi dapur sosial memakai estimasi 4 porsi per kg seperti dashboard.
 function impactAnswer(view: View) {
   const settled = view.offers.filter((offer) => offer.status === "settled" && (!view.buyer || offer.isMine));
   const owner = view.user.role === "vendor" ? "dari kios Anda" : view.buyer ? "milik Anda" : "di pasar";
   if (!settled.length) return `Belum ada pesanan${subjectOf(view)} ${owner} yang selesai diserahterimakan.`;
+  // Berat pesanan selesai untuk satu tier.
   const byTier = (tier: Tier) => sumKg(settled.filter((offer) => offer.targetTier === tier));
   const parts = [
     byTier("tier_1") > 0 ? `Warteg & UMKM ${kg(byTier("tier_1"))}` : "",
@@ -781,7 +794,7 @@ function impactAnswer(view: View) {
     (donations ? ` ${donations} di antaranya donasi.` : "");
 }
 
-/** Peringkat penjualan dari pesanan yang sudah diklaim atau selesai (berat dan nilai). */
+// Peringkat penjualan dari pesanan yang sudah diklaim atau selesai (berat dan nilai).
 function salesRankingAnswer(view: View, by: "kiosk" | "commodity" | "buyer", donationsOnly = false, catalog?: Offer[]) {
   const groups = new Map<string, { orders: number; kg: number; value: number }>();
   const source = catalog ?? view.offers.filter((offer) => (offer.status === "claimed" || offer.status === "settled") && (!donationsOnly || isDonation(offer)));
@@ -794,6 +807,7 @@ function salesRankingAnswer(view: View, by: "kiosk" | "commodity" | "buyer", don
     groups.set(key, group);
   }
   const ranked = [...groups].sort((a, b) => b[1].kg - a[1].kg);
+  // Label baris peringkat menurut dimensi pengelompokan.
   const name = (key: string) => by === "kiosk" ? kioskLabel(key) : by === "commodity" ? commodityName(key) : key;
   if (catalog) {
     if (!ranked.length) return `Belum ada penawaran aktif${subjectOf(view)} untuk akun Anda saat ini.`;
@@ -807,7 +821,7 @@ function salesRankingAnswer(view: View, by: "kiosk" | "commodity" | "buyer", don
   return `${heading} (menurut berat):\n${limit(lines, 5).join("\n")}`;
 }
 
-/** Ringkasan satu kios untuk pengelola: stok, risiko, penawaran, pesanan, dan dana. */
+// Ringkasan satu kios untuk pengelola: stok, risiko, penawaran, pesanan, dan dana.
 function kioskSummaryAnswer(view: View) {
   return view.kioskIds.map((kioskId) => {
     const stocks = view.stocks.filter((stock) => stock.vendorId === kioskId && stock.remainingKg > 0);
@@ -821,7 +835,7 @@ function kioskSummaryAnswer(view: View) {
   }).join("\n");
 }
 
-/** Peringkat kios menurut berat stok berisiko (skor 0,35 ke atas). */
+// Peringkat kios menurut berat stok berisiko (skor 0,35 ke atas).
 function kioskRankingAnswer(view: View) {
   const { snapshot } = view;
   const groups = new Map<string, { lots: number; risky: number; riskyKg: number }>();
@@ -841,7 +855,7 @@ function kioskRankingAnswer(view: View) {
   return `Kios dengan stok${subjectOf(view)} berisiko terbanyak (menurut berat):\n${limit(lines, 5).join("\n")}\nRisiko adalah estimasi peluruhan dan termasuk lot yang belum ditimbang.`;
 }
 
-/** Peringkat komoditas menurut berat stok berisiko. */
+// Peringkat komoditas menurut berat stok berisiko.
 function commodityRankingAnswer(view: View) {
   const { snapshot } = view;
   const groups = new Map<string, { lots: number; risky: number; riskyKg: number; kg: number }>();
@@ -862,7 +876,7 @@ function commodityRankingAnswer(view: View) {
   return `Komoditas dengan stok berisiko terbanyak:\n${limit(lines, 5).join("\n")}\nRisiko adalah estimasi peluruhan dan termasuk lot yang belum ditimbang.`;
 }
 
-/** Menjelaskan kenapa penawaran atau pesanan belum tampil, sesuai aturan tiap peran. */
+// Menjelaskan kenapa penawaran atau pesanan belum tampil, sesuai aturan tiap peran.
 function visibilityAnswer(view: View) {
   const { user } = view;
   if (user.role === "vendor") {
@@ -885,7 +899,7 @@ function visibilityAnswer(view: View) {
     (ops ? ` Saat ini ${ops.pending} penawaran menunggu timbang atau konfirmasi dan ${ops.unpaid} pesanan menunggu pembayaran.` : "");
 }
 
-/** Panduan keamanan konsumsi berdasarkan tujuan lot, plus tips penyimpanan komoditas bila disebut. */
+// Panduan keamanan konsumsi berdasarkan tujuan lot, plus tips penyimpanan komoditas bila disebut.
 function safetyAnswer(view: View) {
   const commodity = view.commodityName ? COMMODITIES.find((item) => item.localName === view.commodityName) : undefined;
   return "Skor mutu adalah estimasi model peluruhan, bukan hasil pemeriksaan fisik, jadi cek kondisi barang sebelum diolah. " +
@@ -894,7 +908,7 @@ function safetyAnswer(view: View) {
     (commodity ? ` Tips penyimpanan ${commodity.localName}: ${commodity.storageAdvice}` : "");
 }
 
-/** Daftar tindakan yang sebaiknya dilakukan sekarang, dihitung dari data akun. */
+// Daftar tindakan yang sebaiknya dilakukan sekarang, dihitung dari data akun.
 function actionAnswer(view: View) {
   const { user, snapshot } = view;
   if (view.operations) return evaluationAnswer(view.operations);
@@ -904,6 +918,7 @@ function actionAnswer(view: View) {
     const reserved = reservedByStock(snapshot.offers);
     const listed = new Set(view.offers.filter((offer) => offer.status === "active" || offer.status === "pending_vendor").map((offer) => offer.stockId));
     const open = view.stocks.filter((stock) => stock.remainingKg - (reserved.get(stock.id) ?? 0) > 0 && !listed.has(stock.id));
+    // Tier tujuan berdasarkan skor peluruhan stok; kosong bila belum dievaluasi.
     const tierOf = (stock: StockItem) => {
       const health = snapshot.stockHealth[stock.id];
       return health ? distributionTierForDecay(health.decayScore) : undefined;
@@ -932,11 +947,13 @@ function actionAnswer(view: View) {
   return `Yang sebaiknya Anda lakukan sekarang:\n${steps.map((step) => `• ${step}`).join("\n")}`;
 }
 
-/** Konteks data per peran untuk pertanyaan bebas yang dijawab model. Hanya memuat data yang boleh dilihat akun. */
+// Konteks data per peran untuk pertanyaan bebas yang dijawab model. Hanya memuat data yang boleh dilihat akun.
 function knowledgeFor(view: View, today: string, publicCatalog: Offer[]) {
   const { user, snapshot } = view;
+  // Hasil evaluasi mutu stok.
   const health = (stockId: string) => snapshot.stockHealth[stockId];
   const reserved = reservedByStock(snapshot.offers);
+  // Ringkasan satu lot stok untuk konteks model.
   const lot = (stock: StockItem) => {
     const evaluation = health(stock.id);
     return {
@@ -947,12 +964,15 @@ function knowledgeFor(view: View, today: string, publicCatalog: Offer[]) {
       sisaSimpan: evaluation ? shelfLife(evaluation.hoursRemaining, evaluation.decayScore) : null,
     };
   };
+  // Ringkasan satu penawaran untuk konteks model.
   const offer = (item: Offer) => ({
     komoditas: commodityName(item.commodityId), kios: kioskLabel(item.vendorId), tujuan: DESTINATION[item.targetTier], beratKg: item.quantityKg,
     hargaPerKg: item.salvagePricePerKg, hargaAcuanPerKg: item.originalPricePerKg, diskonPersen: Math.round(item.discountPercentage),
     total: item.totalAmountIdr, donasi: isDonation(item),
   });
+  // Penawaran beserta pembeli dan status pesanan.
   const order = (item: Offer) => ({ ...offer(item), pembeli: item.claimedBy ?? null, status: orderState(item) });
+  // Jumlah rupiah transaksi menurut status.
   const money = (status: "released" | "held_in_escrow", items = snapshot.transactions) => items.filter((item) => item.status === status).reduce((total, item) => total + item.amountIdr, 0);
   const aturan = [
     "Skor mutu (0-1) adalah estimasi model peluruhan berdasar jam pajang dan cuaca. Di bawah 0,35 masih segar (bisa dijual eceran), 0,35-0,65 untuk Warteg & UMKM (Tier 1, jual diskon dengan harga minimum per komoditas), 0,65-0,85 untuk Dapur Sosial (Tier 2, jual murah atau donasi Rp0), 0,85 ke atas untuk Sentra Maggot (Tier 3, gratis, tidak untuk konsumsi).",

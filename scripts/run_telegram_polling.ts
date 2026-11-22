@@ -27,10 +27,13 @@ import type { AuthUser } from "../src/data/accounts";
 
 // Memuat token bot Telegram dari berkas lingkungan .env.local
 try {
+  // Hanya .env.local di direktori kerja yang dibaca; jalankan skrip dari root proyek.
   const envPath = path.resolve(process.cwd(), ".env.local");
   if (fs.existsSync(envPath)) {
+    // Isi mentah .env.local; tanda kutip di sekitar nilai tidak dibuang.
     const envContent = fs.readFileSync(envPath, "utf-8");
     for (const line of envContent.split("\n")) {
+      // Pola KEY=VALUE; baris komentar (#) tidak cocok. Nilai dari berkas menimpa variabel lingkungan yang sudah ada.
       const match = line.match(/^([^#=]+)=(.*)$/);
       if (match) process.env[match[1].trim()] = match[2].trim();
     }
@@ -47,10 +50,12 @@ if (!token) {
 // Basis URL endpoint Telegram Bot API resmi
 const API_BASE = `https://api.telegram.org/bot${token}`;
 
+// ID update berikutnya untuk getUpdates; dinaikkan tiap update agar Telegram tidak mengirim ulang pesan yang sudah diproses.
 let offset = 0;
+// Bendera loop polling; dimatikan oleh handler SIGINT.
 let running = true;
 
-/** Memanggil satu metode Telegram Bot API dengan token dari .env.local. */
+// Memanggil satu metode Telegram Bot API dengan token dari .env.local.
 async function apiCall(method: string, body?: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/${method}`, {
     method: "POST",
@@ -60,7 +65,7 @@ async function apiCall(method: string, body?: Record<string, unknown>) {
   return res.json();
 }
 
-/** Mengambil pembaruan lewat getUpdates (tanpa webhook) dan memprosesnya dengan handler bot yang sama dengan produksi. */
+// Mengambil pembaruan lewat getUpdates (tanpa webhook) dan memprosesnya dengan handler bot yang sama dengan produksi.
 async function startPolling() {
   console.log("\nPASARIN Real-Time Telegram Bot Polling Gateway");
   console.log("Menghubungkan ke Telegram Bot API...");
@@ -78,6 +83,10 @@ async function startPolling() {
   await apiCall("deleteWebhook", { drop_pending_updates: false });
   console.log("[INFO] Mode Long-Polling Aktif. Menunggu pesan masuk dari Telegram...\n");
 
+  /**
+   * Akun cadangan untuk chat tanpa sesi aktif. Semua pengirim tanpa login diperlakukan sebagai admin,
+   * jadi skrip ini hanya untuk bot pengembangan, bukan bot publik.
+   */
   const defaultAdminActor: AuthUser = {
     ...localTestProfile("admin1")!,
     id: "local:admin1",
@@ -89,6 +98,7 @@ async function startPolling() {
     try {
       const updatesRes = await apiCall("getUpdates", {
         offset,
+        // Long polling: Telegram menahan permintaan hingga 15 detik sampai ada update baru.
         timeout: 15,
         allowed_updates: ["message", "callback_query"],
       });
@@ -144,6 +154,7 @@ async function startPolling() {
             const sessions = await telegramChatSessions(chatId);
             const activeUser = sessions.active ? (await currentTelegramAccount(sessions.active.user))! : defaultAdminActor;
 
+            // Callback data diawali kunci sesi aktif; prefiks itu dibuang agar tersisa aksi:id:argumen.
             let parts = (data || "").split(":");
             if (sessions.active && parts[0] === sessions.active.key) {
               parts = parts.slice(1);
@@ -172,11 +183,13 @@ async function startPolling() {
       if (error?.name !== "AbortError") {
         console.error("[ERROR POLLING]:", error?.message);
       }
+      // Jeda 2 detik sebelum mencoba lagi agar galat jaringan tidak memicu loop permintaan yang rapat.
       await new Promise((r) => setTimeout(r, 2000));
     }
   }
 }
 
+// Ctrl+C menghentikan loop dan keluar segera tanpa menunggu long polling yang sedang berjalan selesai.
 process.on("SIGINT", () => {
   console.log("\nMenghentikan polling bot...");
   running = false;

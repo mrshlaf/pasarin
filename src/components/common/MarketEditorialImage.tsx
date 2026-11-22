@@ -8,7 +8,7 @@ import { useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 
-/** Konteks halaman (landing page atau peran dashboard) yang menentukan foto mana yang dipakai. */
+// Konteks halaman (landing page atau peran dashboard) yang menentukan foto mana yang dipakai.
 export type MarketImageContext =
   | "public"
   | "vendor"
@@ -19,13 +19,14 @@ export type MarketImageContext =
   | "manager"
   | "admin";
 
-/** Satu foto beserta teks alternatif dan posisi fokus (object-position) agar subjek tidak terpotong. */
+// Satu foto beserta teks alternatif dan posisi fokus (object-position) agar subjek tidak terpotong.
 export interface EditorialItem {
   src: string;
   alt: string;
   position?: string;
 }
 
+// Foto per konteks; vendor, manager, dan admin berbagi foto pasar landing page dengan teks alternatif berbeda.
 export const EDITORIAL_MAP: Record<MarketImageContext, EditorialItem> = {
   public: {
     src: "/images/editorial/market.webp",
@@ -69,7 +70,7 @@ export const EDITORIAL_MAP: Record<MarketImageContext, EditorialItem> = {
   },
 };
 
-/** Properti latar foto hero: konteks halaman dan kelas tambahan. */
+// Properti latar foto hero: konteks halaman dan kelas tambahan.
 export interface MarketHeroBackgroundProps {
   context: MarketImageContext;
   className?: string;

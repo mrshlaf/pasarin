@@ -15,7 +15,7 @@ export interface ApiResponse<T = unknown> {
   timestamp: string;
 }
 
-/** Metadata halaman untuk respons API berhalaman. */
+// Metadata halaman untuk respons API berhalaman.
 export interface ApiPagination {
   page: number;
   pageSize: number;
@@ -25,7 +25,7 @@ export interface ApiPagination {
   hasPrev: boolean;
 }
 
-/** Respons API berhalaman: daftar data beserta metadata halaman. */
+// Respons API berhalaman: daftar data beserta metadata halaman.
 export interface PaginatedApiResponse<T = unknown> extends ApiResponse<T[]> {
   pagination: ApiPagination;
 }
@@ -46,7 +46,7 @@ export interface HealthCheckData {
   };
 }
 
-/** Isi permintaan untuk memicu sapuan agen sore (cron 14.30 WIB). */
+// Isi permintaan untuk memicu sapuan agen sore (cron 14.30 WIB).
 export interface AgentSweepTriggerPayload {
   cronSecret?: string;
   forcedTrigger?: boolean;
@@ -151,7 +151,7 @@ export interface DecayEvaluationResult {
   calculatedAt: string;
 }
 
-/** Isi permintaan perhitungan peluruhan: komoditas, cuaca, dan lama pajang. */
+// Isi permintaan perhitungan peluruhan: komoditas, cuaca, dan lama pajang.
 export interface CalculateDecayRequestPayload {
   commodityId: string;
   hoursElapsed: number;

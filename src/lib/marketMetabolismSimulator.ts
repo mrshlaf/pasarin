@@ -30,6 +30,7 @@ import {
  */
 export interface PhaseLogEntry {
   phase: string;
+  // Label jam WIB tahapan, misalnya "04:30 WIB" atau rentang "17:30 - 21:00 WIB".
   timeClock: string;
   temperatureC: number;
   humidityPercent: number;
@@ -52,6 +53,7 @@ export interface MetabolismTrialReport {
   totalMarketIntakeKg: number;
   totalProjectedSurplusKg: number;
   totalRescuedKg: number;
+  // Persentase surplus terproyeksi yang berhasil dialihkan (0-100).
   wasteDiversionEfficiencyPct: number;
   meetsDlhThreshold: boolean; // Ambang batas target DLH DKI >= 90%
   invariantsAudit: {
@@ -92,6 +94,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   // Fase 1: Penerimaan Pasokan Grosir Subuh (04:30 WIB)
   let totalIntakeKg = 0;
   KIOSKS.forEach((_, idx) => {
+    // Pasokan per kios dibuat deterministik dari indeks agar hasil uji bisa diulang.
     const kg1 = 70 + ((idx * 5) % 40);
     const kg2 = 50 + ((idx * 3) % 30);
     totalIntakeKg += kg1 + kg2;
@@ -136,6 +139,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
 
   // Fase 3: Evaluasi Mutu Harian & ReAct AI Cron Sweep (14:30 WIB)
   const orchestrationDossier = await executeAutonomousOrchestration({ forceHeuristic: true, recordResult: false });
+  // Angka surplus dan alokasi tier memakai nilai acuan tetap, bukan hasil orkestrasi di atas.
   const projectedSurplusKg = 1329.0;
   const tier1WartegKg = 785.0;
   const tier2SocialKg = 284.0;
@@ -234,11 +238,13 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   // Evaluasi kepatuhan invarian dan audit akuntansi lingkungan IPCC 2006
   const sampleTomat = COMMODITIES.find((c) => c.id === "tomat")!;
   const p1 = calculateInverseSurgePricing(sampleTomat, 14.5, 0.0).offeredSalvagePrice;
+  // Invarian 2 dicek dengan harga contoh tomat: Tier 1 dari inverse surge, Tier 2 sekitar 20% harga grosir, Tier 3 Rp1.500.
   const p2 = Math.max(sampleTomat.minimumSalvagePricePerKg, Math.round(sampleTomat.baseWholesalePricePerKg * 0.2));
   const p3 = 1500;
 
   const inv1 = !maggotClaimCheck.allowed;
   const inv2 = p1 > p2 && p2 >= p3 && p3 >= 1500;
+  // Penawaran contoh baru dibuat, jadi jendela harus aktif dengan sisa tepat 30 menit.
   const inv3 = windowEval.isWindowActive && windowEval.remainingMinutes === 30;
 
   const totalRescuedKg = tier1WartegKg + tier2SocialKg + tier3MaggotKg;

@@ -15,10 +15,12 @@ export type ChatUser = Pick<AuthUser, "id" | "role" | "name" | "vendorId"> & { e
 import { KIOSKS } from "@/data/kiosks";
 import { MARKET_ACCOUNTS } from "@/data/marketAccounts";
 
+// Sapaan di depan nama pemilik atau kios yang dibuang saat mencocokkan nama.
 const TITLES = /^(?:h\.|hj\.|haji|pak|bu|ibu|mbak|cak|bang|kang|mang)\s+/;
-/** Meloloskan karakter khusus regex dari nama kios atau akun. */
+// Meloloskan karakter khusus regex dari nama kios atau akun.
 const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// Pola pencocokan tiap kios: kode los, nama kios, nama pemilik, dan nama depannya.
 const KIOSK_PATTERNS = KIOSKS.map((kiosk) => {
   const [block, number] = kiosk.stallNumber.toLowerCase().split("-");
   const owner = kiosk.ownerName.toLowerCase().replace(TITLES, "");
@@ -31,23 +33,28 @@ const KIOSK_PATTERNS = KIOSKS.map((kiosk) => {
   };
 });
 
+// Pola pencocokan nama akun non-pedagang (Warteg, dapur sosial, maggot, kurir, pengelola).
 const ACCOUNT_PATTERNS = MARKET_ACCOUNTS.filter((account) => account.role !== "vendor").map((account) => ({
   username: account.username,
   name: account.name,
   pattern: new RegExp(`(?<![a-z0-9])(?:${escape(account.name.toLowerCase())})(?![a-z0-9])`),
 }));
 
+// Username demo seperti "pasar1" atau "warteg 12".
 const USERNAME = /(?<![a-z])(pasar|warteg|sosial|maggot|kurir|pengelola|admin)\s?(\d{1,3})(?![0-9])/g;
+// Rujukan umum ke pihak lain, misalnya "toko lain" atau "semua pedagang".
 const GENERIC_OTHER = /\b(?:toko|kios|lapak|pedagang|penjual|pembeli|warteg|dapur|akun|user|orang|pengguna|pelanggan|kurir|maggot|tetangga) (?:lain|sebelah|tetangga|yang lain)\b|\b(?:punya|milik) (?:orang|dia|mereka|yang lain|pedagang lain)\b|\borang lain\b|\bkompetitor\b|\bpesaing\b|\bsemua (?:pedagang|toko|kios|lapak|pembeli|warteg|dapur|akun|user|pengguna)\b|\brata(?:-rata| rata)? (?:pedagang|kios|toko|pembeli)\b/;
 
-/** Topik keuangan dan transaksi yang bersifat pribadi. */
+// Topik keuangan dan transaksi yang bersifat pribadi.
 const MONEY = /\b(?:pendapatan|penghasilan|keuntungan|untung|laba|rugi|omzet|omset|saldo|dompet|uang|dana|penjualan|belanja|pengeluaran|tagihan|utang|hutang|gaji|transaksi|escrow|cair)\b/;
-/** Topik pesanan dan pelanggan yang bersifat pribadi bagi penjual dan pembeli. */
+// Topik pesanan dan pelanggan yang bersifat pribadi bagi penjual dan pembeli.
 const ORDERS = /\b(?:pesanan|pesan|memesan|order|pembeli|pelanggan|terjual|laku|dibeli|beli apa|membeli|klaim|diklaim|reputasi)\b|\byang (?:beli|membeli|pesan|memesan|klaim|ambil)\b|\bsiapa\b.*\b(?:beli|membeli|pesan|memesan|klaim|ambil)\b/;
+// Permintaan data kontak: nomor telepon, rekening, email.
 const CONTACT = /\b(?:nomor (?:hp|handphone|telepon|telp|wa|whatsapp|kontak|rekening|ktp|induk)|no hp|hp|handphone|telepon|telp|whatsapp|wa|kontak|email|surel|rekening|ktp|nik|alamat rumah|instagram)\b/;
+// Permintaan kredensial: kata sandi, PIN, OTP, token.
 const CREDENTIAL = /\b(?:password|kata sandi|sandi|pin|otp|token|kredensial|username)\b|\bcara (?:masuk|login) (?:ke )?akun (?:orang|lain|pasar|warteg|sosial|maggot|kurir|admin|pengelola)/;
 
-/** Kios yang disebut dalam pertanyaan (kode lapak, nama kios, atau nama pemilik). */
+// Kios yang disebut dalam pertanyaan (kode lapak, nama kios, atau nama pemilik).
 export function mentionedKioskIds(raw: string) {
   return KIOSK_PATTERNS.filter((item) => item.pattern.test(raw)).map((item) => item.id);
 }
@@ -66,7 +73,7 @@ export function publicPrivacyRefusal(text: string) {
   return null;
 }
 
-/** Hasil pemeriksaan privasi: boleh dijawab, ditolak, atau ringkasan keuangan kios untuk pengelola. */
+// Hasil pemeriksaan privasi: boleh dijawab, ditolak, atau ringkasan keuangan kios untuk pengelola.
 export type PrivacyCheck =
   | { kind: "allow"; otherKioskIds: string[]; accountNames: string[] }
   | { kind: "refuse"; message: string }

@@ -18,6 +18,7 @@ import {
   commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
+// Respons /api/simulation/metabolism-trial; `data` hanya ada saat simulasi berhasil.
 type MetabolismTrialResponse = {
   success: boolean;
   data?: MetabolismTrialReport;
@@ -37,6 +38,7 @@ export function OversightDashboard() {
   const [dlhLoading, setDlhLoading] = useState(false);
   const [dlhReport, setDlhReport] = useState<MetabolismTrialReport | null>(null);
 
+  // Membuka dialog dan menjalankan ulang simulasi 24 jam di server; laporan lama dikosongkan dulu agar tidak tertukar.
   async function openDlhReport() {
     setDlhModalOpen(true);
     setDlhLoading(true);
@@ -56,16 +58,20 @@ export function OversightDashboard() {
     }
   }
 
+  // Memicu sapuan orkestrator (/api/orchestrator/run) tanpa menunggu jadwal cron; tombolnya hanya tampil untuk admin.
   async function runStockEvaluation() {
     setSweepResult(null);
     setSweepResult(await triggerCronSweepNow());
   }
 
   const ready = offers.filter(isReadyForDelivery);
+  // Lot berisiko: masih bersisa dan skor susutnya sudah keluar dari zona "Segar" (>= 0,35).
   const risk = stockItems.filter((item) => item.remainingKg > 0 && (stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
   const settled = offers.filter((offer) => offer.status === "settled");
   const stockById = new Map(stockItems.map((item) => [item.id, item]));
+  // Penawaran aktif dihitung hanya bila lotnya sudah ditimbang pedagang; sisanya tampil sebagai "Perlu timbang".
   const activeOffers = offers.filter((offer) => offer.status === "active" && stockById.get(offer.stockId)?.verifiedAt).length;
+  // Urutkan dari yang butuh tindakan (perlu timbang) ke yang sudah final (selesai, ditolak).
   const offerRank = { pending_vendor: 0, active: 1, claimed: 2, settled: 3, rejected: 4 } as const;
   const sortedOffers = [...offers].sort((a, b) => offerRank[a.status] - offerRank[b.status]);
   const visibleOffers = showAllOffers ? sortedOffers : sortedOffers.slice(0, 12);

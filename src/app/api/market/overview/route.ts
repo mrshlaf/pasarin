@@ -15,6 +15,7 @@ import { readPublicMarketOverview } from "@/lib/serverSimulationState";
 export async function GET() {
   try {
     const response = successResponse(await readPublicMarketOverview());
+    // Header khusus CDN Vercel ini tetap berlaku walau proxy memasang Cache-Control no-store untuk /api.
     response.headers.set("Vercel-CDN-Cache-Control", "public, s-maxage=30, stale-while-revalidate=60");
     return response;
   } catch (error) {

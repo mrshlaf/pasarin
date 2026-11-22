@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation, type AppRole } from "@/lib/simulationStore";
 import { distributionTierForDecay, isReadyForDelivery } from "@/types/market";
 
+// Nama tampilan setiap peran; juga dipakai subjudul Asisten PASARIN.
 export const ROLE_LABELS: Record<AppRole, string> = {
   vendor: "Pedagang",
   warteg: "Warteg",
@@ -21,6 +22,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   admin: "Administrator",
 };
 
+// Ikon tombol peran di sidebar desktop.
 const ROLE_ICONS: Record<AppRole, LucideIcon> = {
   vendor: Store,
   warteg: UtensilsCrossed,
@@ -31,6 +33,7 @@ const ROLE_ICONS: Record<AppRole, LucideIcon> = {
   admin: ShieldCheck,
 };
 
+// Tier penawaran yang menjadi antrean tiap peran pembeli; pedagang dan kurir dihitung terpisah, pengawas tanpa antrean.
 const PREVIEW_TIERS: Partial<Record<AppRole, "tier_1" | "tier_2" | "tier_3">> = {
   warteg: "tier_1",
   social_kitchen: "tier_2",
@@ -62,6 +65,7 @@ export function AppSidebar() {
     }).length;
   }
 
+  // Teks pembaca layar dan opsi select untuk angka antrean, disesuaikan dengan jenis antrean peran.
   function pendingLabel(item: AppRole, count: number) {
     if (item === "vendor") return `${count} pedagang dengan stok tersedia`;
     if (item === "logistics") return `${count} pengantaran siap diproses`;

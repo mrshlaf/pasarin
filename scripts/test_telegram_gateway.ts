@@ -18,8 +18,11 @@ import { telegramChatSessions } from "../src/lib/telegramSessions";
 
 // Konfigurasi rahasia bot uji coba
 const token = "telegram-test-bot-token";
+// Nilai header X-Telegram-Bot-Api-Secret-Token yang diterima webhook.
 const secret = "telegram-test-webhook";
+// Origin tiruan; tombol Web App login diharapkan menunjuk ke `${site}/telegram/login`.
 const site = "https://pasarin.example.test";
+// Badan setiap sendMessage yang ditangkap mock fetch, untuk memeriksa teks dan tombol balasan bot.
 const sent: { text: string; reply_markup?: { inline_keyboard: Record<string, unknown>[][] } }[] = [];
 
 /**
@@ -31,6 +34,7 @@ const sent: { text: string; reply_markup?: { inline_keyboard: Record<string, unk
  */
 function launchData(chat: number, seconds = Math.floor(Date.now() / 1000)) {
   const user = JSON.stringify({ id: chat, first_name: "Tester" });
+  // Sesuai spesifikasi Mini App: kunci = HMAC("WebAppData", token), lalu data-check-string berisi key=value urut abjad dipisah baris baru.
   const key = createHmac("sha256", "WebAppData").update(token).digest();
   const hash = createHmac("sha256", key).update("auth_date=" + seconds + "\nuser=" + user).digest("hex");
   return new URLSearchParams({ user, auth_date: String(seconds), hash }).toString();
@@ -52,6 +56,7 @@ function signIn(chat: number, identifier: string, password = identifier, initDat
   }));
 }
 
+// Penghitung update_id agar setiap update unik dan tidak dianggap duplikat oleh webhook.
 let updateId = 0;
 
 /**

@@ -53,8 +53,11 @@ export const telegramRoleName: Record<TelegramActor["role"], string> = {
   logistics: "Kurir", manager: "Pengelola pasar", admin: "Administrator",
 };
 
+// Format rupiah tanpa desimal.
 const money = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 });
+// Format bobot dalam kg dengan maksimal dua desimal.
 const weight = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 });
+// Jumlah baris per halaman daftar Telegram.
 const pageSize = 6;
 
 /**
@@ -163,7 +166,7 @@ function workspaceMenu(user: TelegramActor) {
   }
 }
 
-/** Contoh pertanyaan bebas per peran, ditampilkan di menu agar pengguna tahu bot bisa ditanya langsung. */
+// Contoh pertanyaan bebas per peran, ditampilkan di menu agar pengguna tahu bot bisa ditanya langsung.
 const QUESTION_EXAMPLE: Record<TelegramActor["role"], string> = {
   vendor: "sayur saya bisa dijual ke mana?", warteg: "sayur apa yang paling murah?", social_kitchen: "ada donasi apa?",
   maggot: "biomassa apa yang tersedia?", logistics: "ke mana saja tujuan antar?", manager: "kios mana yang paling berisiko?",
@@ -388,6 +391,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     const state = await readMarketSnapshot(user);
     const lotOffer = new Map(state.offers.filter((offer) => offer.status === "active" || offer.status === "pending_vendor")
       .map((offer) => [offer.stockId, offer]));
+    // Sisa stok yang belum diklaim pembeli, dalam kg.
     const freeKg = (stock: typeof state.stocks[number]) => roundKg(stock.remainingKg - state.offers
       .filter((offer) => offer.stockId === stock.id && offer.status === "claimed").reduce((sum, offer) => sum + offer.quantityKg, 0));
     const view = paged("stok", "Inventaris", "Belum ada pasokan.", state.stocks, args[0], (stock) => {

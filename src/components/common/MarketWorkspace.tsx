@@ -12,9 +12,10 @@ import type { RescueOffer } from "@/types/market";
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 
-/** Warna status yang tersedia untuk pill dan metrik. */
+// Warna status yang tersedia untuk pill dan metrik.
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
+// Kelas border, latar, dan teks untuk setiap tone pill.
 const toneStyles: Record<Tone, string> = {
   neutral: "border-brand/20 bg-brand-soft text-brand-ink",
   info: "border-tier-1/30 bg-tier-1-soft text-tier-1-ink",
@@ -23,6 +24,7 @@ const toneStyles: Record<Tone, string> = {
   danger: "border-danger/30 bg-danger-soft text-danger",
 };
 
+// Tone bawaan menurut teks label status; label yang tidak terdaftar jatuh ke `neutral`.
 const statusTones: Record<string, Tone> = {
   Tersedia: "success",
   Selesai: "success",
@@ -62,13 +64,14 @@ export function MarketSection({ title, description, action, variant = "card", ch
   );
 }
 
-/** Satu kartu metrik: label, nilai, dan keterangan opsional. */
+// Satu kartu metrik: label, nilai, dan warna nilai opsional.
 export interface MarketMetric {
   label: string;
   value: ReactNode;
   tone?: "brand" | "success" | "warning" | "danger";
 }
 
+// Warna teks nilai metrik menurut tone; `brand` dipakai bila tone tidak diisi.
 const metricTones = {
   brand: "text-ink",
   success: "text-tier-3-ink",
@@ -107,12 +110,14 @@ export function StatusPill({ label, tone }: { label: string; tone?: Tone }) {
   );
 }
 
+// Label jalur distribusi beserta peran penerimanya, dipakai lintas dashboard.
 export const TIER_LABELS: Record<RescueOffer["targetTier"], string> = {
   tier_1: "Tier 1, Warteg",
   tier_2: "Tier 2, Dapur sosial",
   tier_3: "Tier 3, Maggot",
 };
 
+// Kelas warna chip per tier, selaras dengan tone `info` (tier 1) dan `success` (tier 3).
 const tierStyles: Record<RescueOffer["targetTier"], string> = {
   tier_1: "border-tier-1/30 bg-tier-1-soft text-tier-1-ink",
   tier_2: "border-tier-2/30 bg-tier-2-soft text-tier-2-ink",
@@ -235,12 +240,12 @@ export function LotFacts({ items }: { items: { label: string; value: string }[] 
   );
 }
 
-/** Nama lokal komoditas untuk tampilan; id dikembalikan bila tidak dikenal. */
+// Nama lokal komoditas untuk tampilan; id dikembalikan bila tidak dikenal.
 export function commodityName(id: string) {
   return COMMODITIES.find((item) => item.id === id)?.localName ?? id;
 }
 
-/** Data kios dari direktori, atau undefined bila id tidak dikenal. */
+// Data kios dari direktori, atau undefined bila id tidak dikenal.
 export function kioskInfo(vendorId: string) {
   return KIOSKS.find((item) => item.id === vendorId);
 }
@@ -308,6 +313,9 @@ export function dateLabel(value?: string) {
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 }
 
+// Kelas tombol aksi utama; tinggi minimum 44px untuk target sentuh.
 export const marketButton = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong disabled:opacity-60";
+// Kelas tombol sekunder bergaris untuk aksi pendamping.
 export const marketSecondary = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-transparent px-4 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft disabled:opacity-60";
+// Kelas tombol tanpa garis dan tanpa latar untuk aksi ringan.
 export const marketGhost = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft disabled:opacity-60";

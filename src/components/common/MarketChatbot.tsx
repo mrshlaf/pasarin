@@ -12,9 +12,12 @@ import { apiFetch } from "@/lib/apiFetch";
 import { ROLE_LABELS } from "@/components/layout/AppSidebar";
 import type { AppRole } from "@/data/accounts";
 
+// Satu gelembung percakapan; `source` hanya ada pada jawaban asisten untuk menandai asal jawabannya.
 type Message = { id: number; sender: "user" | "assistant"; text: string; source?: string };
+// Bentuk respons kedua endpoint asisten; jawaban dianggap gagal bila `data.summary` kosong.
 type Answer = { success?: boolean; error?: string; data?: { summary?: string; source?: string } };
 
+// Contoh pertanyaan per peran, disesuaikan dengan data yang boleh dilihat peran tersebut.
 const suggestions: Record<AppRole, string[]> = {
   vendor: ["Ringkas stok kios saya", "Apa yang perlu ditimbang?", "Bagaimana diskon dihitung?"],
   warteg: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Bagaimana cara membayar?"],
@@ -25,10 +28,10 @@ const suggestions: Record<AppRole, string[]> = {
   admin: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
 };
 
-/** Saran untuk pengunjung landing page yang belum masuk. */
+// Saran untuk pengunjung landing page yang belum masuk.
 const publicSuggestions = ["Sayur apa yang tersedia hari ini?", "Bayam paling murah di kios mana?", "Bagaimana cara kerja PASARIN?"];
 
-/** Asisten dashboard untuk akun yang sedang masuk; tidak tampil saat belum login. */
+// Asisten dashboard untuk akun yang sedang masuk; tidak tampil saat belum login.
 export function MarketChatbot() {
   const { user } = useAuth();
   // A different account gets a new conversation, including after switching role.
@@ -37,13 +40,14 @@ export function MarketChatbot() {
     suggestions={suggestions[user.role]} endpoint="/api/orchestrator/query" authenticated /> : null;
 }
 
-/** Asisten landing page: hanya etalase publik dan panduan, tanpa data akun. */
+// Asisten landing page: hanya etalase publik dan panduan, tanpa data akun.
 export function PublicMarketAssistant() {
   return <ChatWorkspace greeting="Halo!" subtitle="Info publik pasar"
     intro="Tanyakan komoditas, harga, dan kios penjual di etalase pasar, atau cara kerja PASARIN. Data akun seperti pesanan dan saldo hanya terlihat setelah masuk."
     suggestions={publicSuggestions} endpoint="/api/market/assistant" authenticated={false} />;
 }
 
+// Teks pembuka, contoh pertanyaan, dan endpoint yang membedakan asisten dashboard dari asisten landing page.
 interface WorkspaceProps {
   greeting: string;
   subtitle: string;
@@ -72,7 +76,9 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
   const inFlight = useRef(false);
   const nextId = useRef(0);
 
+  // Batalkan permintaan yang masih berjalan saat komponen dilepas agar tidak ada setState setelah unmount.
   useEffect(() => () => controller.current?.abort(), []);
+  // Sinkronkan state `open` dengan API modal native <dialog>, lalu fokuskan kolom pertanyaan.
   useEffect(() => {
     if (open) {
       dialog.current?.showModal();
@@ -81,16 +87,22 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
       dialog.current?.close();
     }
   }, [open]);
+  // Gulir transkrip ke pesan terbaru setiap ada jawaban, status memuat, atau galat baru.
   useEffect(() => {
     const area = transcript.current;
     if (area) area.scrollTop = area.scrollHeight;
   }, [messages, loading, error, open]);
 
+  // Menutup dialog dan mengembalikan fokus keyboard ke tombol "Tanya asisten".
   function close() {
     setOpen(false);
     trigger.current?.focus();
   }
 
+  /**
+   * Mengirim pertanyaan ke endpoint asisten; diabaikan bila kosong, lebih dari 1.000 karakter, atau masih ada permintaan berjalan.
+   * Saat `retry`, pertanyaan tidak ditambahkan lagi ke transkrip karena sudah tampil sebelumnya.
+   */
   async function send(text: string, retry = false) {
     const question = text.trim();
     if (!question || question.length > 1000 || inFlight.current) return;

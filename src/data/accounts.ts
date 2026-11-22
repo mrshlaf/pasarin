@@ -12,11 +12,12 @@
 
 import type { User } from "@supabase/supabase-js";
 
+// Daftar peran akun yang valid; urutannya dipakai untuk menurunkan tipe AppRole.
 export const APP_ROLES = ["vendor", "warteg", "social_kitchen", "maggot", "logistics", "manager", "admin"] as const;
-/** Tujuh peran aplikasi; peran menentukan data dan tindakan yang boleh diakses. */
+// Tujuh peran aplikasi; peran menentukan data dan tindakan yang boleh diakses.
 export type AppRole = typeof APP_ROLES[number];
 
-/** Profil akun yang sudah terautentikasi. vendorId hanya ada untuk pedagang. */
+// Profil akun yang sudah terautentikasi. vendorId hanya ada untuk pedagang.
 export interface AuthUser {
   id: string;
   email: string;

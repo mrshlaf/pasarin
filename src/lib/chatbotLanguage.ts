@@ -6,7 +6,7 @@
 
 import { COMMODITIES, type Commodity } from "@/data/commodities";
 
-/** Singkatan dan bahasa santai yang umum di chat. */
+// Singkatan dan bahasa santai yang umum di chat.
 const SLANG: Record<string, string> = {
   brp: "berapa", brapa: "berapa", berapakah: "berapa", brpa: "berapa",
   dmn: "dimana", dimn: "dimana", dmana: "dimana", kmn: "kemana", kmana: "kemana",
@@ -26,7 +26,7 @@ const SLANG: Record<string, string> = {
   thx: "terima kasih", makasih: "terima kasih", makasi: "terima kasih", trims: "terima kasih", tq: "terima kasih",
 };
 
-/** Kata kunci maksud yang dikenali asisten; menjadi sasaran koreksi salah ketik. */
+// Kata kunci maksud yang dikenali asisten; menjadi sasaran koreksi salah ketik.
 const KEYWORDS = [
   "berapa", "bagaimana", "dimana", "kemana", "kapan", "kenapa", "mengapa", "siapa",
   "harga", "stok", "sayur", "sayuran", "jual", "dijual", "menjual", "penjualan", "beli", "dibeli", "membeli", "pembeli",
@@ -41,7 +41,7 @@ const KEYWORDS = [
   "pasar", "dapur", "sosial", "warteg", "pedagang", "penerima", "lakukan", "muncul", "tampil", "terlihat", "lebih",
 ];
 
-/** Kata umum yang tidak pernah dikoreksi. */
+// Kata umum yang tidak pernah dikoreksi.
 const KNOWN = new Set([
   ...KEYWORDS, "saya", "anda", "kamu", "yang", "ada", "apa", "di", "ke", "dari", "untuk", "dengan", "dan", "atau",
   "tidak", "sudah", "belum", "bisa", "mau", "ingin", "akan", "ini", "itu", "sini", "sana", "mana", "saja", "lagi",
@@ -72,9 +72,10 @@ const KNOWN = new Set([
   "bentar", "sebentar", "nyetir", "menyetir", "tren", "analisis", "aktif", "pantau", "monitor", "sering", "jarang",
 ]);
 
+// Akhiran kepemilikan (-ku, -mu, -nya) beserta kata pengganti yang dipakai saat dilepas dari kata dasarnya.
 const SUFFIX_OWNER: Array<[string, string]> = [["ku", "saya"], ["mu", "anda"], ["nya", ""]];
 
-/** Jarak Damerau-Levenshtein (optimal string alignment) dengan batas atas untuk efisiensi. */
+// Jarak Damerau-Levenshtein (optimal string alignment) dengan batas atas untuk efisiensi.
 function editDistance(a: string, b: string, limit: number) {
   if (Math.abs(a.length - b.length) > limit) return limit + 1;
   const rows = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)]);
@@ -89,7 +90,7 @@ function editDistance(a: string, b: string, limit: number) {
   return rows[a.length][b.length];
 }
 
-/** Alias komoditas: frasa yang biasa dipakai pedagang dan pembeli. */
+// Alias komoditas: frasa yang biasa dipakai pedagang dan pembeli.
 const ALIASES: Record<string, string[]> = {
   kangkung: ["kangkung"], bayam: ["bayam"], sawi_hijau: ["sawi hijau", "caisim", "sawi"],
   pakcoy: ["pakcoy", "pak choy", "pakchoy", "bok choy"], selada: ["selada"], daun_singkong: ["daun singkong"],
@@ -102,17 +103,21 @@ const ALIASES: Record<string, string[]> = {
   pepaya: ["pepaya", "papaya"], semangka: ["semangka"], melon: ["melon"], pisang: ["pisang"],
 };
 
+// Pasangan alias dan komoditas, diurutkan dari alias terpanjang agar "bayam merah" menang atas "bayam".
 const COMMODITY_PATTERNS = COMMODITIES.flatMap((commodity) => [
   ...(ALIASES[commodity.id] ?? []), commodity.id.replace(/_/g, " "), commodity.localName.toLowerCase(), commodity.name.toLowerCase(),
 ].map((alias) => ({ alias, commodity })))
   .filter((item, index, list) => list.findIndex((other) => other.alias === item.alias) === index)
   .sort((a, b) => b.alias.length - a.alias.length);
 
+// Kata-kata penyusun alias komoditas yang cukup panjang untuk dikoreksi ejaannya.
 const COMMODITY_WORDS = [...new Set(COMMODITY_PATTERNS.flatMap(({ alias }) => alias.split(" ")).filter((word) => word.length >= 4))];
+// Kata target koreksi ejaan: kosakata umum dan nama komoditas.
 const TARGETS = [...new Set([...KNOWN, ...COMMODITY_WORDS])].filter((word) => word.length >= 4 && !word.includes("-"));
+// Kata yang dianggap benar sehingga tidak dikoreksi.
 const RESOLVABLE = new Set([...KNOWN, ...COMMODITY_WORDS]);
 
-/** Mengoreksi satu kata ke kata kunci terdekat bila salah ketiknya ringan; null jika tidak yakin. */
+// Mengoreksi satu kata ke kata kunci terdekat bila salah ketiknya ringan; null jika tidak yakin.
 function correctWord(word: string) {
   if (word.length < 4 || /\d/.test(word)) return null;
   const limit = word.length >= 8 ? 2 : 1;
@@ -132,7 +137,7 @@ function correctWord(word: string) {
   return best && bestDistance <= limit && !tie ? best : null;
 }
 
-/** Menormalkan satu kata: singkatan, akhiran -ku/-mu/-nya, lalu koreksi salah ketik. */
+// Menormalkan satu kata: singkatan, akhiran -ku/-mu/-nya, lalu koreksi salah ketik.
 function resolveWord(word: string): string[] {
   if (SLANG[word]) return [SLANG[word]];
   if (RESOLVABLE.has(word)) return [word];
@@ -162,15 +167,15 @@ export function normalizeQuestion(question: string) {
   return words.flatMap((word) => word.includes("+") ? [word] : resolveWord(base(word))).join(" ").replace(/\s+/g, " ").trim();
 }
 
-/** Pola kata utuh untuk satu alias komoditas. */
+// Pola kata utuh untuk satu alias komoditas.
 const aliasPattern = (alias: string) => new RegExp(`(?<![a-z])${alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`, "g");
 
-/** Mencari komoditas yang disebut dalam teks ternormalisasi, mendahulukan frasa terpanjang. */
+// Mencari komoditas yang disebut dalam teks ternormalisasi, mendahulukan frasa terpanjang.
 export function findCommodity(text: string): Commodity | undefined {
   return COMMODITY_PATTERNS.find(({ alias }) => aliasPattern(alias).test(text))?.commodity;
 }
 
-/** Menghapus semua sebutan komoditas dari teks, untuk mengetahui apakah pertanyaan hanya menyebut nama sayur. */
+// Menghapus semua sebutan komoditas dari teks, untuk mengetahui apakah pertanyaan hanya menyebut nama sayur.
 export function withoutCommodities(text: string) {
   return COMMODITY_PATTERNS.reduce((rest, { alias }) => rest.replace(aliasPattern(alias), " "), text).replace(/\s+/g, " ").trim();
 }

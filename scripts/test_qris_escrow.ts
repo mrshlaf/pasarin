@@ -16,6 +16,7 @@ import {
 
 // Variabel pelacak total asersi uji lulus dan gagal
 let passedCount = 0;
+// Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
 /**
@@ -84,7 +85,7 @@ async function runQrisEscrowTests() {
     `Valid: ${validationSuccess.valid} | Nominal: Rp ${validationSuccess.amountIdr}`
   );
 
-  // Manipulasi payload (ubah 1 digit nominal) untuk menguji deteksi pemalsuan transaksi
+  // Manipulasi payload (nominal Rp 112.500 diganti Rp 999.999 tanpa menghitung ulang CRC) untuk menguji deteksi pemalsuan transaksi
   const tamperedPayload = qrisGen.qrisPayload.replace("5406112500", "5406999999");
   const validationTampered = validateQrisPayloadStructure(tamperedPayload);
 

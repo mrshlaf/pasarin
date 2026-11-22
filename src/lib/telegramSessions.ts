@@ -32,12 +32,16 @@ interface ChatState {
   attempts?: { count: number; until: number };
 }
 
+// Tabel Supabase yang juga menyimpan sesi Telegram.
 const table = "pasarin_simulation_state";
 declare global {
+  // Cadangan sesi di memori proses; bertahan di antara hot reload saat pengembangan.
   var pasarinTelegramSessions: Map<number, ChatState> | undefined;
 }
 
+// Peta sesi per chat Telegram yang dipakai bila penyimpanan Supabase tidak tersedia.
 const local = globalThis.pasarinTelegramSessions ??= new Map<number, ChatState>();
+// Batas waktu kode masuk Telegram: 15 menit.
 const loginWindow = 15 * 60_000;
 
 /**

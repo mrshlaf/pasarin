@@ -6,6 +6,7 @@
 
 import { Pool } from "pg";
 
+// Pool tunggal per proses, dibuat malas saat pertama dipanggil.
 let pool: Pool | null = null;
 
 /**
@@ -28,6 +29,7 @@ export function getDatabasePool() {
   const connectionString = process.env.SUPABASE_DB_URL;
   if (!connectionString) throw new Error("SUPABASE_DB_URL belum diatur.");
   if (!pool) {
+    // Postgres lokal biasanya tanpa SSL; host cloud memakai SSL tanpa verifikasi rantai sertifikat.
     const isLocal = /(^|@)(localhost|127\.0\.0\.1)(:|\/)/.test(connectionString);
     pool = new Pool({
       connectionString,

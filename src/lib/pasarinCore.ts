@@ -72,6 +72,7 @@ export function calculateArrheniusDecayRate(
     rhFactor += excessFraction * (HUMIDITY_PENALTY_COEFFICIENT * 10.0);
   }
 
+  // Akselerasi dibatasi minimal 0,1 agar suhu sangat dingin tidak menghentikan peluruhan; 0,035/jam adalah laju dasar pada 25°C.
   const accelerationFactor = Math.max(0.1, Number((q10Multiplier * rhFactor).toFixed(3)));
   const kRatePerHour = Number((0.035 * accelerationFactor).toFixed(6));
 
@@ -104,6 +105,7 @@ export function calculateDecayScore(
     commodity.humiditySensitivityFactor
   );
 
+  // Jam pajang dikonversi ke jam ekuivalen pada 25°C, lalu dipetakan linear per fase layu komoditas.
   const equivalentHours = hoursElapsed * accelerationFactor;
   const lr = commodity.decayLayuRinganHour;
   const ls = commodity.decayLayuSedangHour;
@@ -223,6 +225,7 @@ export function evaluateProduceDecay(
     const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.35) / 0.30));
     baseDiscountPercent = 50 + Math.round(surgeStep * 20);
     floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
+    // Harga dibulatkan ke kelipatan Rp500 agar mudah dibayar tunai, lalu dikunci di atas harga lantai.
     const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
     estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
   } else if (arrhenius.condition === 'layu_sedang') {
@@ -246,6 +249,7 @@ export function evaluateProduceDecay(
     temperatureC,
     humidityPercent,
     hoursElapsed,
+    // 0,045 adalah k dasar pada 20°C, sehingga nilai ini adalah kelipatan laju terhadap suhu acuan.
     accelerationFactor: Number((arrhenius.rateConstantK / 0.045).toFixed(3)),
     decayScore: arrhenius.decayScore,
     condition: arrhenius.condition,
@@ -312,6 +316,7 @@ export const ARRHENIUS_CONSTANTS = {
   GAS_CONSTANT_R: UNIVERSAL_GAS_CONSTANT_R,
   ACTIVATION_ENERGY_EA: ACTIVATION_ENERGY_EA_J_MOL,
   FREQUENCY_FACTOR_A: ARRHENIUS_FREQUENCY_FACTOR_A,
+  // Acuan model k(T, RH) adalah 20°C, berbeda dari BASELINE_STORAGE_TEMP_C (25°C) milik calculateArrheniusDecayRate.
   BASELINE_TEMP_CELSIUS: 20.0,
   THERMAL_QUOTIENT_Q10: 2.0,
   CRITICAL_HUMIDITY_PERCENT: CRITICAL_RELATIVE_HUMIDITY_PERCENT,
@@ -332,11 +337,13 @@ export interface ArrheniusDecayResult {
   temperatureCelsius: number;
   relativeHumidityPercent: number;
   hoursElapsed: number;
+  // Konstanta laju peluruhan per jam, dibulatkan 4 desimal.
   rateConstantK: number;
   decayScore: number;
   condition: ProduceCondition;
   recommendedTier: RescueTier;
   tierLabel: string;
+  // Jam tersisa sampai skor mencapai 0,85 (batas tidak layak konsumsi); 0 bila sudah lewat.
   hoursRemaining: number;
   isEdibleForHumans: boolean;
 }
@@ -356,6 +363,8 @@ export function calculateArrheniusRateConstant(
 ): number {
   const { BASELINE_TEMP_CELSIUS, CRITICAL_HUMIDITY_PERCENT, BETA_HUMIDITY_COEFFICIENT } = ARRHENIUS_CONSTANTS;
   const k_baseline = 0.045;
+  // Q10 komoditas tidak dipakai langsung: nilai positif apa pun diganti 2,2 per 13°C (kalibrasi ~2,2x pada 33°C vs 20°C).
+  // Koreksi kelembapan hanya menambah laju di atas 80% RH.
   const effectiveQ10 = q10 > 0 ? 2.2 : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
   const tempDelta = temperatureCelsius - BASELINE_TEMP_CELSIUS;
   const thermalRatio = Math.pow(effectiveQ10, tempDelta / 13.0);
@@ -391,6 +400,7 @@ export function evaluateArrheniusDecay(
 
   const safeHorizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
   const normalizedExposure = hoursElapsed / safeHorizonHours;
+  // Penskalaan termal baru aktif di atas ~33°C (rasio > 2,2); eksponen 1,15 membuat peluruhan makin cepat menjelang akhir umur simpan.
   const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
   const rawScore = Math.pow(normalizedExposure, 1.15) * 0.82 * thermalScaling;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
@@ -450,8 +460,11 @@ export interface FootfallSimulationResult {
   rainfallMm: number;
   isRaining: boolean;
   isMuddy: boolean;
+  // Persentase penurunan pengunjung (0-80).
   footfallDropPercentage: number;
+  // Rasio pengunjung tersisa (0-1), yaitu 1 - penurunan/100.
   footfallIndex: number;
+  // Pengali surplus stok (1,0 sampai ~1,76) akibat pembeli yang batal datang.
   surplusMultiplier: number;
   aisleAccessibilityDescription: string;
 }
@@ -471,6 +484,7 @@ export function calculateRainFootfallAttenuation(
   const isRaining = isRainDetected || rainfallMm > 0.0;
   const isMuddy = rainfallMm > 5.0 || (isRaining && rainfallMm > 1.0);
 
+  // Penurunan bertingkat: gerimis 15%, hujan sedang 28%, lalu naik linear hingga 48% di 10 mm dan dibatasi 80%.
   let footfallDropPercentage = 0.0;
 
   if (rainfallMm <= 0.0 && !isRaining) {
@@ -516,8 +530,11 @@ export function calculateRainFootfallAttenuation(
 export interface DynamicPricingResult {
   commodityId: string;
   commodityName: string;
+  // Harga grosir pagi dalam rupiah per kg.
   baseMorningWholesalePrice: number;
+  // Harga lantai rupiah per kg; minimal Rp2.500 (tarif maggot + margin pedagang).
   minimumPriceFloor: number;
+  // Harga tebus penyelamatan rupiah per kg setelah dikunci harga lantai.
   offeredSalvagePrice: number;
   appliedDiscountPercent: number;
   pricingMechanism: "inverse_surge_normal" | "inverse_surge_rain_accelerated" | "price_floor_locked";
@@ -614,6 +631,7 @@ export interface KioskStockInput {
   kioskName: string;
   commodityId: string;
   initialStockKg: number;
+  // Jam kedatangan pasokan dalam format desimal WIB, misalnya 4.5 untuk 04:30.
   arrivalHourDecimal: number;
 }
 
@@ -627,9 +645,11 @@ export interface StallSurplusPrediction {
   initialStockKg: number;
   estimatedSurplusKg: number;
   decayScore: number;
+  // Jam tersisa sampai batas tidak layak konsumsi (skor 0,85).
   hoursRemaining: number;
   urgencyLevel: UrgencyLevel;
   allocatedTier: RescueTier;
+  // Harga tebus hasil inverse surge, rupiah per kg.
   recommendedSalvagePricePerKg: number;
 }
 
@@ -671,6 +691,7 @@ export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
  * @returns Estimasi bobot surplus yang perlu dialihkan ke jalur penyelamatan sirkular (kg).
  */
 export function predictRetailSurplusKg(initialStockKg: number, footfallDropPercentage: number) {
+  // Normalnya 82% stok laku eceran; hujan memangkas serapan, tetapi serapan minimal 20% dan surplus minimal 10% stok.
   const baselineRetailClearance = 0.82;
   const weatherDropImpact = (footfallDropPercentage / 100) * 0.72;
   const effectiveClearanceRate = Math.max(0.2, baselineRetailClearance - weatherDropImpact);
@@ -709,9 +730,11 @@ export function calculateCompositeMarketSurplus(
   let criticalEmergencyItemsCount = 0;
 
   for (const item of stallItems) {
+    // ID komoditas yang tidak dikenal jatuh ke komoditas pertama katalog agar agregat tetap terhitung.
     const commodity = COMMODITIES.find((c) => c.id === item.commodityId) || COMMODITIES[0];
     totalMarketStockKg += item.initialStockKg;
 
+    // Lama pajang minimal 1 jam agar pasokan yang baru datang tetap dievaluasi.
     const hoursElapsed = Math.max(1.0, currentHourDecimal - item.arrivalHourDecimal);
     const decayResult = evaluateArrheniusDecay(
       commodity,

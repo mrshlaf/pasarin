@@ -32,6 +32,7 @@ export async function GET() {
 
 /**
  * Memicu eksekusi simulasi metabolisme pasar 24 jam via HTTP POST.
+ * Sama persis dengan GET; disediakan untuk klien yang memicu simulasi sebagai aksi.
  *
  * @returns Respons JSON laporan hasil simulasi.
  */

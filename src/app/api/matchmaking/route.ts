@@ -13,14 +13,17 @@ import {
   MatchmakingResult,
 } from "@/lib/matchmakingEngine";
 
+// Hasil bergantung pada parameter kueri tiap permintaan, jadi tidak dirender statis.
 export const dynamic = "force-dynamic";
 
+// Satu penawaran yang dicocokkan; kuantitas dibatasi 10 ton agar perhitungan tetap wajar.
 const matchOffer = z.object({
   id: z.string().min(1).max(100),
   commodityId: z.string().min(1).max(100),
   quantityKg: z.number().positive().max(10_000),
   targetTier: z.enum(["tier_1", "tier_2", "tier_3"]),
 });
+// Body POST: 1 sampai 200 penawaran per permintaan.
 const matchBatch = z.object({ offers: z.array(matchOffer).min(1).max(200) });
 
 /**
@@ -38,6 +41,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const targetTier = (searchParams.get("targetTier") ?? "tier_1") as "tier_1" | "tier_2" | "tier_3";
     const maxRadiusKm = Number(searchParams.get("radiusKm") ?? "5.0");
 
+    // Cast targetTier di atas belum aman; enum di skema inilah yang benar-benar memvalidasinya.
     const offer = matchOffer.safeParse({ id: `ofr_query_${Date.now()}`, commodityId, quantityKg, targetTier });
     if (!offer.success || !Number.isFinite(maxRadiusKm) || maxRadiusKm <= 0) {
       return errorResponse("Parameter pencocokan tidak valid.", 400);

@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { successResponse } from "@/lib/api-response";
 import { PASARIN_TOOL_DECLARATIONS } from "@/lib/toolCallingRegistry";
 
+// Disamakan dengan rute API lain agar respons selalu dibuat saat permintaan, bukan dibekukan saat build.
 export const dynamic = "force-dynamic";
 
 /**

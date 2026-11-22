@@ -16,6 +16,7 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 // Memuat endpoint URL Supabase dan API key (service role atau anon key)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Service role diutamakan; dengan anon key, uji INSERT/UPDATE/DELETE bisa ditolak kebijakan RLS.
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 console.log("\nPASARIN Supabase Connectivity & CRUD Test");

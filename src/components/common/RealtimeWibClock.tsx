@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 
+// Opsi tampilan jam: detik dan tanggal bisa disembunyikan untuk layar sempit.
 interface RealtimeWibClockProps {
   className?: string;
   showSeconds?: boolean;
@@ -27,7 +28,9 @@ export function RealtimeWibClock({
   const [timeStr, setTimeStr] = useState<string>("");
   const [dateStr, setDateStr] = useState<string>("");
 
+  // Jam baru dihitung di klien setelah mount agar teks waktu server dan klien tidak berbeda saat hidrasi.
   useEffect(() => {
+    // Menghitung waktu WIB dari jam perangkat, terlepas dari zona waktu perangkat itu sendiri.
     function updateClock() {
       const now = new Date();
       // Hitung offset akurat ke WIB (UTC+7)
