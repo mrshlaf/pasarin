@@ -53,14 +53,18 @@ const friendlyRoleCopy: Record<AppRole, { greeting: string; description: string 
 };
 // Komponen konten dasbor yang merender tampilan ruang kerja sesuai peran terotorisasi.
 function DashboardContent() {
+  // Akun yang masuk; peran akun bisa berbeda dari peran dasbor yang sedang dipratinjau.
   const { user } = useAuth();
+  // State pasar: peran dasbor aktif, status sinkron, galat, dan umpan balik aksi terakhir.
   const { role, busy, stateReady, syncError, isSyncing, feedback, clearFeedback, refreshMarket } = useMarketSimulation();
 
   return (
     <div className="min-h-dvh bg-canvas text-ink">
+      {/* Tautan lewati navigasi untuk pengguna keyboard. */}
       <a className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-surface focus:p-3" href="#market-content">Lewati ke ruang kerja</a>
       <AppHeader />
       <div className="market-shell pb-8">
+        {/* Kartu sambutan khusus peran dengan foto latar dan tombol segarkan data. */}
         <section aria-labelledby="workspace-role-title" className="relative isolate my-4 flex min-h-[250px] flex-col justify-center overflow-hidden rounded-3xl bg-brand-deep p-6 text-cream shadow-md sm:min-h-[290px] sm:p-10 lg:min-h-[320px] lg:p-12">
           <MarketHeroBackground context={role} />
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
@@ -87,15 +91,18 @@ function DashboardContent() {
         </section>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+          {/* Navigasi peran di samping; admin dan pengelola bisa berpindah ke dasbor peran lain. */}
           <AppSidebar />
           <main id="market-content" className="min-w-0 flex-1 scroll-mt-20" aria-busy={busy || isSyncing} tabIndex={-1}>
             {/* Peran yang dipilih di sidebar bisa berbeda dari peran akun; server tetap menolak aksi peran lain. */}
+            {/* Peringatan pratinjau bila peran yang dilihat berbeda dari peran akun. */}
             {user?.role !== role && (
               <p className="mb-4 flex items-start gap-2 rounded-xl border border-line bg-surface px-3 py-2.5 text-[13px] leading-5 text-ink-muted">
                 <Eye size={15} aria-hidden className="mt-0.5 shrink-0 text-brand" />
                 <span>Pratinjau. Masuk sebagai {ROLE_LABELS[role]} untuk bertransaksi.</span>
               </p>
             )}
+            {/* Hasil aksi terakhir (berhasil atau gagal) yang bisa ditutup. */}
             {feedback && (
               <div role={feedback.success ? "status" : "alert"}
                 className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm ${feedback.success
@@ -104,6 +111,7 @@ function DashboardContent() {
                 <button type="button" className="min-h-11 min-w-11 shrink-0 font-semibold underline underline-offset-2" onClick={clearFeedback}>Tutup</button>
               </div>
             )}
+            {/* Galat sinkronisasi; data terakhir tetap tampil. */}
             {stateReady && syncError && (
               <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger">
                 <p className="min-w-0 flex-1">{syncError} Data terakhir tetap ditampilkan.</p>
@@ -113,6 +121,7 @@ function DashboardContent() {
                 </button>
               </div>
             )}
+            {/* Selama data pasar belum siap tampilkan status memuat atau galat; setelahnya dasbor sesuai peran. */}
             {!stateReady ? (
               <div className="rounded-2xl border border-line bg-surface p-4 text-sm text-ink-muted">
                 {syncError ? (
@@ -127,6 +136,7 @@ function DashboardContent() {
               </div>
             ) : (
               <div className="market-role-content">
+                {/* Satu dasbor per peran; ketiga pembeli memakai komponen yang sama dengan key agar state-nya terpisah. */}
                 {role === "vendor" && <VendorDashboard />}
                 {(role === "warteg" || role === "social_kitchen" || role === "maggot") && <BuyerDashboard key={role} role={role} />}
                 {role === "logistics" && <LogisticsDashboard />}
@@ -141,6 +151,7 @@ function DashboardContent() {
           <span>Pasokan, penawaran, dan distribusi dalam satu ruang kerja.</span>
         </footer>
       </div>
+      {/* Asisten tanya jawab yang membaca data sesuai peran akun. */}
       <MarketChatbot />
     </div>
   );
@@ -148,6 +159,7 @@ function DashboardContent() {
 
 // Halaman utama ruang kerja privat yang mengarahkan pengunjung tanpa sesi kembali ke halaman publik.
 export default function DashboardPage() {
+  // Pengunjung tanpa sesi dikembalikan ke halaman publik setelah pemeriksaan sesi selesai.
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
   useEffect(() => {

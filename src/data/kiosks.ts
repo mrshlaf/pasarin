@@ -2,18 +2,30 @@
 // Memuat atribut spasial los basah/kering (Blok A, B, C), nomor lapak,
 // spesialisasi komoditas, status verifikasi administrasi UPB Pasar Jaya, dan skor reputasi.
 export interface Kiosk {
+  // ID kios (vendor_kramat_NN); dipakai sebagai vendorId di seluruh sistem.
   id: string;
   name: string;
+  // Nama pemilik kios.
   ownerName: string;
+  // Nomor telepon pemilik; data pribadi yang tidak boleh dijawab chatbot ke pihak lain.
   phone: string;
+  // Kode lapak: blok dan nomor los, misalnya A-12.
   stallNumber: string;
+  // Blok pasar: A sayur daun, B bumbu dan buah, C umbi.
   block: "A" | "B" | "C";
+  // Lorong tempat kios berada.
   aisle: string;
+  // Komoditas utama yang dijual kios.
   specialization: string[];
+  // Alamat los lengkap.
   addressDetails: string;
+  // Tautan dokumen izin lapak dari pengelola pasar.
   addressProofDocument: string;
+  // Status verifikasi administrasi; kios belum terverifikasi ditandai menunggu.
   verificationStatus: "verified" | "pending";
+  // Skor reputasi 0-100; bertambah dari donasi.
   reputationScore: number;
+  // Jumlah lot donasi ke dapur sosial yang pernah diselesaikan.
   tier2ContributionCount: number;
 }
 

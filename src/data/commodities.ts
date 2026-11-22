@@ -2,25 +2,41 @@
 // Memuat parameter biologis kinetika respirasi (Q10, laju respirasi dasar),
 // batas waktu pajang layu (ringan, sedang, afkir), serta harga acuan dasar dan price floor pedagang.
 export interface Commodity {
+  // Kunci unik komoditas (huruf kecil, garis bawah); dipakai oleh stok, penawaran, dan chatbot.
   id: string;
+  // Nama Inggris.
   name: string;
+  // Nama yang dikenal pedagang dan tampil di antarmuka.
   localName: string;
+  // Kelompok komoditas; memengaruhi sensitivitas terhadap suhu dan kelembapan.
   category: "leafy_vegetable" | "fruit_vegetable" | "root_vegetable" | "fruit";
+  // Daya simpan standar pada suhu kamar los pasar, jam.
   standardShelfLifeHours: number;
+  // Laju respirasi dasar; semakin tinggi semakin cepat layu.
   respirationRateBase: number;
+  // Koefisien Q10: kelipatan laju peluruhan setiap kenaikan suhu 10 C.
   q10Coefficient: number;
+  // Pengali kepekaan terhadap suhu.
   temperatureSensitivityFactor: number;
+  // Pengali kepekaan terhadap kelembapan di luar 80% RH.
   humiditySensitivityFactor: number;
+  // Harga grosir acuan, rupiah per kg.
   baseWholesalePricePerKg: number;
+  // Harga lantai penyelamatan; harga diskon tidak boleh lebih rendah dari ini.
   minimumSalvagePricePerKg: number;
+  // Batas jam menuju layu ringan (skor 0,35), pada suhu acuan.
   decayLayuRinganHour: number;
+  // Batas jam menuju layu sedang (skor 0,65).
   decayLayuSedangHour: number;
+  // Batas jam menuju tidak layak konsumsi (skor 0,85).
   decayTidakLayakHour: number;
+  // Saran penyimpanan untuk pedagang.
   storageAdvice: string;
 }
 
 // Katalog acuan 30 komoditas sayur dan buah tropis Pasar Induk Kramat Jati.
 export const COMMODITIES: Commodity[] = [
+  // Sayuran daun: paling cepat layu, batas layak 14 sampai 18 jam.
   {
     id: "kangkung",
     name: "Water Spinach",
@@ -191,6 +207,7 @@ export const COMMODITIES: Commodity[] = [
     decayTidakLayakHour: 18.0,
     storageAdvice: "Hindari paparan sinar matahari terik langsung los.",
   },
+  // Sayuran buah.
   {
     id: "tomat",
     name: "Tomato",
@@ -361,6 +378,7 @@ export const COMMODITIES: Commodity[] = [
     decayTidakLayakHour: 70.0,
     storageAdvice: "Simpan di keranjang terbuka dengan sirkulasi udara bebas.",
   },
+  // Sayuran umbi: daya simpan paling panjang.
   {
     id: "wortel",
     name: "Carrot",
@@ -463,6 +481,7 @@ export const COMMODITIES: Commodity[] = [
     decayTidakLayakHour: 48.0,
     storageAdvice: "Kupas kulit segera jika ingin diolah atau lumuri tanah basah.",
   },
+  // Buah tropis.
   {
     id: "pepaya",
     name: "Papaya",

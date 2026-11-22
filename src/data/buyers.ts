@@ -3,20 +3,31 @@
 // kuota tampung harian, komoditas preferensi, dan jam operasional.
 
 export interface CircularBuyer {
+  // ID mitra pembeli.
   id: string;
   name: string;
+  // Nama pemilik atau penanggung jawab.
   ownerName: string;
   phone: string;
+  // ID chat Telegram mitra untuk notifikasi, bila terhubung.
   telegramChatId?: string;
+  // Jalur penyaluran: tier_1 Warteg, tier_2 dapur sosial, tier_3 maggot.
   tier: "tier_1" | "tier_2" | "tier_3";
+  // Jenis usaha untuk tampilan.
   typeLabel: "Warteg & Katering UMKM" | "Dapur Sosial & Panti" | "Sentra Budidaya Maggot BSF";
+  // Koordinat lokasi mitra, derajat desimal; dipakai menghitung jarak ke pasar.
   latitude: number;
   longitude: number;
   address: string;
+  // Kuota serap harian, kg.
   dailyCapacityKg: number;
+  // Alokasi yang sudah terpakai hari ini, kg.
   currentAllocatedKg: number;
+  // Skor reputasi 0-100 untuk pemeringkatan pencocokan.
   reputationScore: number;
+  // ID komoditas favorit; nilai semua_organik berarti menerima segala jenis.
   preferredCommodities: string[];
+  // Jam buka dan tutup mitra (format HH:mm, WIB).
   operationalHours: {
     openClock: string;
     closeClock: string;
