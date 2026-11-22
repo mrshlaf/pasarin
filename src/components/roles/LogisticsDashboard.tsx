@@ -28,6 +28,7 @@ import { useMarketSimulation } from "@/lib/simulationStore";
 import { MarketDialog } from "@/components/common/MarketDialog";
 import {
   EmptyState,
+  LedgerRow,
   LotFacts,
   MarketMetrics,
   MarketSection,
@@ -422,31 +423,15 @@ export function LogisticsDashboard() {
         ) : (
           <ul>
             {filteredCompleted.map((offer) => (
-              <li
-                key={offer.id}
-                className="grid min-w-0 gap-3 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="break-words font-semibold">
-                      {commodityName(offer.commodityId)}, {kg(offer.quantityKg)}
-                    </p>
-                    <span className={`inline-flex items-center rounded-md px-1.5 py-0.2 text-[10px] font-medium ${getTierBadge(offer.targetTier).style}`}>
-                      {getTierBadge(offer.targetTier).label}
-                    </span>
-                  </div>
-                  <p className="mt-1 break-words text-[13px] leading-5 text-ink-muted">
-                    {kioskLabel(offer.vendorId)} ke {offer.claimedBy ?? "Penerima"}
-                    {offer.deliveredOn ? ", " + dateLabel(offer.deliveredOn) : ""}
-                  </p>
-                </div>
-                <div className="flex min-w-0 flex-wrap items-center gap-3">
-                  <span className="text-sm font-semibold tabular-nums text-ink-muted">
-                    {isFreeMaggotOffer(offer) ? "Gratis" : isDonation(offer) ? "Donasi" : rupiah(offer.totalAmountIdr)}
+              <LedgerRow key={offer.id}
+                title={<span className="inline-flex flex-wrap items-center gap-2">
+                  {commodityName(offer.commodityId)}, {kg(offer.quantityKg)}
+                  <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ${getTierBadge(offer.targetTier).style}`}>
+                    {getTierBadge(offer.targetTier).label}
                   </span>
-                  <StatusPill label="Selesai" tone="success" />
-                </div>
-              </li>
+                </span>}
+                detail={<>{kioskLabel(offer.vendorId)} ke {offer.claimedBy ?? "Penerima"}{offer.deliveredOn ? ", " + dateLabel(offer.deliveredOn) : ""}</>}
+                amount={isFreeMaggotOffer(offer) ? "Gratis" : isDonation(offer) ? "Donasi" : rupiah(offer.totalAmountIdr)} />
             ))}
           </ul>
         )}
@@ -466,39 +451,9 @@ export function LogisticsDashboard() {
         ) : (
           <ul>
             {transactions.map((item) => (
-              <li
-                key={item.id}
-                className="grid min-w-0 gap-2 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <p className="break-words font-semibold">{item.commodityName}</p>
-                    <p className="font-semibold tabular-nums text-brand-ink">{rupiah(item.amountIdr)}</p>
-                  </div>
-                  <p className="mt-1 min-w-0 break-words text-[13px] leading-5 text-ink-muted">
-                    {item.vendorName} ke {item.buyerName} ·{" "}
-                    {item.releasedAt ? "Selesai " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
-                  </p>
-                </div>
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <StatusPill
-                    label={
-                      item.status === "released"
-                        ? "Selesai disalurkan"
-                        : item.status === "refunded"
-                          ? "Dikembalikan"
-                          : "Dana ditahan"
-                    }
-                    tone={
-                      item.status === "released"
-                        ? "success"
-                        : item.status === "refunded"
-                          ? "danger"
-                          : "info"
-                    }
-                  />
-                </div>
-              </li>
+              <LedgerRow key={item.id} title={item.commodityName} amount={rupiah(item.amountIdr)}
+                detail={<>{item.vendorName} ke {item.buyerName} · {item.releasedAt ? "Selesai " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}</>}
+                status={<StatusPill label={ item.status === "released" ? "Selesai disalurkan" : item.status === "refunded" ? "Dikembalikan" : "Dana ditahan" } tone={ item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info" } />} />
             ))}
           </ul>
         )}

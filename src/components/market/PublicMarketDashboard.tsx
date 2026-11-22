@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Send, Truck, UtensilsCrossed } from "lucide-react";
+import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Truck, UtensilsCrossed } from "lucide-react";
 import { PasarinLogo } from "@/components/common/PasarinLogo";
 import { MarketHeroBackground } from "@/components/common/MarketEditorialImage";
 import { RealtimeWibClock } from "@/components/common/RealtimeWibClock";
@@ -88,11 +88,11 @@ export function PublicMarketDashboard() {
       {/* Tautan lewati navigasi untuk pengguna keyboard dan pembaca layar. */}
       <a className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-surface focus:p-3" href="#ringkasan">Lewati ke ringkasan pasar</a>
       {/* Bilah atas: logo, jam WIB, dan tombol masuk atau ruang kerja. */}
-      <header className="border-b border-line bg-surface">
-        <div className="market-shell flex min-h-[4.5rem] items-center justify-between gap-3">
+      <header className="sticky top-0 z-40 border-b border-line/70 bg-surface/90 backdrop-blur">
+        <div className="market-shell flex min-h-16 items-center justify-between gap-3">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-lg" aria-label="Dasbor publik Pasarin"><PasarinLogo size="sm" showSubtitle={false} /></Link>
           <div className="flex items-center gap-3 sm:gap-5">
-            <div className="hidden min-[360px]:block text-xs text-ink-soft"><RealtimeWibClock showSeconds={false} showDate={false} /></div>
+            <div className="hidden min-[360px]:block text-xs text-ink-muted"><RealtimeWibClock showSeconds={false} showDate={false} /></div>
             <Link href={workspace} className={marketButton + " shrink-0"}>{isAuthenticated ? "Ruang kerja" : "Masuk"}<ArrowRight size={16} aria-hidden /></Link>
           </div>
         </div>
@@ -213,8 +213,14 @@ export function PublicMarketDashboard() {
         </section>}
 
         {/* Kaki halaman dengan tautan ke bot Telegram. */}
-        <footer className="mt-7 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line pt-3 text-[13px] text-ink-muted">
-          <p>Pasarin · Ringkasan publik tanpa detail akun</p><a href="https://t.me/agent_pasarin_bot" className="inline-flex min-h-11 items-center gap-2 rounded-lg font-semibold text-brand hover:underline" target="_blank" rel="noopener noreferrer"><Send size={15} aria-hidden />Buka bot Telegram</a>
+        <footer className="mt-12 border-t border-line/70 py-4 text-xs text-ink-muted">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+            <p>
+              <span className="font-semibold tracking-[0.18em] text-ink-soft">PASARIN</span>
+              <span aria-hidden className="mx-2">·</span>Ringkasan publik tanpa detail akun
+            </p>
+            <a href="https://t.me/agent_pasarin_bot" className="inline-flex min-h-11 items-center transition-colors hover:text-ink" target="_blank" rel="noopener noreferrer">Bot Telegram</a>
+          </div>
         </footer>
       </main>
     </div>

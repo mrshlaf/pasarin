@@ -13,7 +13,7 @@ import { completedDonationLots, distributionTierForDecay, isDonation, roundKg, t
 import { MarketDialog } from "@/components/common/MarketDialog";
 import { DecayExplainer } from "@/components/common/DecayExplainer";
 import {
-  DecayMeter, EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
+  DecayMeter, EmptyState, LedgerRow, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskInfo, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
@@ -378,21 +378,9 @@ export function VendorDashboard() {
           <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi pembayaran dan pelepasan dana escrow akan tercatat di sini." />
         ) : (
           <ul>{transactions.map((item) => (
-            <li key={item.id} className="grid min-w-0 gap-2 border-b border-line py-3.5 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <p className="break-words font-semibold">{item.commodityName}</p>
-                  <p className="font-semibold tabular-nums text-brand-ink">{rupiah(item.amountIdr)}</p>
-                </div>
-                <p className="mt-1 min-w-0 break-words text-[13px] leading-5 text-ink-muted">
-                  Pembeli: {item.buyerName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
-                </p>
-              </div>
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <StatusPill label={item.status === "released" ? "Selesai dicairkan" : item.status === "refunded" ? "Dikembalikan" : "Ditahan di escrow"}
-                  tone={item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info"} />
-              </div>
-            </li>
+            <LedgerRow key={item.id} title={item.commodityName} amount={rupiah(item.amountIdr)}
+              detail={<>Pembeli: {item.buyerName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}</>}
+              status={<StatusPill label={item.status === "released" ? "Selesai dicairkan" : item.status === "refunded" ? "Dikembalikan" : "Ditahan di escrow"} tone={item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info"} />} />
           ))}</ul>
         )}
       </MarketSection>

@@ -181,6 +181,27 @@ export function EmptyState({ icon: Icon, title, description }: {
   );
 }
 
+// Baris riwayat yang sama untuk semua dasbor: judul dan keterangan di kiri, nominal di atas label status di kanan.
+export function LedgerRow({ title, detail, amount, status }: {
+  title: ReactNode;
+  detail: ReactNode;
+  amount: string;
+  status?: ReactNode;
+}) {
+  return (
+    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-b border-line py-3.5 last:border-b-0">
+      <div className="min-w-0">
+        <p className="break-words text-sm font-semibold text-ink">{title}</p>
+        <p className="mt-0.5 break-words text-[13px] leading-5 text-ink-muted">{detail}</p>
+      </div>
+      <div className="flex flex-col items-end gap-1.5">
+        <p className="text-sm font-semibold tabular-nums text-ink">{amount}</p>
+        {status}
+      </div>
+    </li>
+  );
+}
+
 // Komponen baris daftar pasokan atau penawaran yang responsif pada layar ponsel maupun desktop.
 export function MarketRow({ title, detail, status, children }: {
   title: string; detail: string; status?: string; children?: ReactNode;

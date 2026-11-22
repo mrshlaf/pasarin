@@ -1,9 +1,9 @@
 // Tata Letak Akar Aplikasi PASARIN (Root Layout).
-// Mengonfigurasi metadata SEO, font tipografi Geist, pembungkus AuthProvider,
+// Mengonfigurasi metadata SEO, font Geist (teks) dan Newsreader (judul), pembungkus AuthProvider,
 // dan penyedia state simulasi pasar (SimulationProvider).
 
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/authContext";
 import { SimulationProvider } from "@/lib/simulationStore";
@@ -18,6 +18,14 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Font judul (serif). Dimuat sebagai webfont agar tampil sama di semua perangkat, tidak bergantung pada Georgia milik sistem.
+const display = Newsreader({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  display: "swap",
 });
 
 // Judul, deskripsi, dan ikon default yang diwarisi semua halaman.
@@ -39,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <AuthProvider>

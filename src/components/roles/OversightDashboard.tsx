@@ -12,7 +12,7 @@ import type { MetabolismTrialReport } from "@/lib/marketMetabolismSimulator";
 import { MarketDialog } from "@/components/common/MarketDialog";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
-  EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
+  EmptyState, LedgerRow, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
   commodityName, dateLabel, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
@@ -179,18 +179,9 @@ export function OversightDashboard() {
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
             ) : (
               <ul>{transactions.map((item) => (
-                <li key={item.id} className="grid min-w-0 gap-2 border-b border-line py-3.5 last:border-b-0">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                    <p className="break-words font-semibold">{item.commodityName}</p>
-                    <p className="font-semibold tabular-nums">{rupiah(item.amountIdr)}</p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="min-w-0 break-words text-[13px] leading-5 text-ink-muted">
-                      {item.buyerName} ke {item.vendorName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}
-                    </p>
-                    <StatusPill label={item.status === "released" ? "Dana disalurkan" : item.status === "refunded" ? "Dikembalikan" : "Dana ditahan"} tone={item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info"} />
-                  </div>
-                </li>
+                <LedgerRow key={item.id} title={item.commodityName} amount={rupiah(item.amountIdr)}
+                detail={<>{item.buyerName} ke {item.vendorName} · {item.releasedAt ? "Dicairkan " + dateLabel(item.releasedAt) : "Dibuat " + dateLabel(item.createdAt)}</>}
+                status={<StatusPill label={item.status === "released" ? "Dana disalurkan" : item.status === "refunded" ? "Dikembalikan" : "Dana ditahan"} tone={item.status === "released" ? "success" : item.status === "refunded" ? "danger" : "info"} />} />
               ))}</ul>
             )}
           </MarketSection>

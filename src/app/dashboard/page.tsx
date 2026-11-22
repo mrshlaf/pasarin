@@ -71,7 +71,7 @@ function DashboardContent() {
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div className="min-w-0 max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-widest text-sage-soft">Pasar Induk Kramat Jati · Ruang Kerja {ROLE_LABELS[role]}</p>
-              <h1 id="workspace-role-title" className="mt-2 font-serif text-3xl font-bold tracking-tight text-cream sm:text-4xl lg:text-[2.85rem] leading-[1.12]">{friendlyRoleCopy[role].greeting}</h1>
+              <h1 id="workspace-role-title" className="mt-2 font-serif text-3xl font-semibold tracking-tight text-cream sm:text-4xl lg:text-[2.85rem] leading-[1.12]">{friendlyRoleCopy[role].greeting}</h1>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-sage-soft/95 sm:text-base">{friendlyRoleCopy[role].description}</p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <span className="inline-flex min-h-11 items-center rounded-xl border border-white/20 bg-black/20 px-3.5 py-1.5 text-xs font-medium text-cream backdrop-blur-md">
