@@ -95,7 +95,7 @@ export interface WeatherTelemetryData {
     longitude: number;
     locationName: string;
   };
-  source: "CACHE" | "LIVE_API" | "FALLBACK" | "cache" | "live_api" | "fallback_offline";
+  source: "CACHE" | "LIVE_API" | "OPEN_METEO" | "FALLBACK" | "cache" | "live_api" | "open_meteo" | "fallback_offline";
   isEstimated?: boolean;
   recordedAt: string;
   cacheExpiresAt: string;

@@ -27,6 +27,8 @@ function assert(condition: boolean, testName: string, detail?: string) {
 // Menjalankan rangkaian pengujian integrasi telemetri cuaca PSR-5 secara sekuensial.
 async function runWeatherTests() {
   console.log("\nPASARIN PSR-5 Weather Telemetry Test Suite");
+  // Open-Meteo dimatikan di uji awal agar tidak memanggil jaringan sungguhan; uji 5 menyalakannya dengan fetch tiruan.
+  process.env.PASARIN_WEATHER_OPEN_METEO = "0";
 
   // Membersihkan cache awal untuk memastikan pembacaan jaringan yang segar
   weatherAgent.clearCache();
@@ -143,6 +145,57 @@ async function runWeatherTests() {
       "Price floor modal pedagang terlindungi pada harga salvaging",
       `Harga: Rp ${evalResult.decay.estimatedSalvagePrice}/kg (Price Floor: Rp ${kangkung.minimumSalvagePricePerKg}/kg)`
     );
+  }
+
+  // Uji 5: Sumber cadangan Open-Meteo dengan fetch tiruan
+  console.log("\n[Test 5] Pengujian Sumber Cadangan Open-Meteo");
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENWEATHER_API_KEY;
+  delete process.env.OPENWEATHER_API_KEY;
+  const { resetEnvCache } = await import("../src/lib/env");
+  resetEnvCache();
+  let calls = 0;
+  let mode: "ok" | "error" | "broken" = "ok";
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls++;
+    if (!String(input).includes("api.open-meteo.com")) throw new Error("hanya Open-Meteo yang boleh dipanggil");
+    if (mode === "error") return Response.json({ reason: "server error" }, { status: 500 });
+    if (mode === "broken") return Response.json({ current: { temperature_2m: 30, relative_humidity_2m: 150, precipitation: 0, weather_code: 1 } });
+    return Response.json({ current: { temperature_2m: 30.44, relative_humidity_2m: 82.2, precipitation: 1.2, weather_code: 61 } });
+  }) as typeof fetch;
+  try {
+    process.env.PASARIN_WEATHER_OPEN_METEO = "1";
+    weatherAgent.clearCache();
+    const live = await weatherAgent.getMarketWeather({ forceRefresh: true });
+    assert(live.source === "open_meteo" && live.isEstimated === false, "tanpa kunci OpenWeather, Open-Meteo dipakai dan tidak ditandai estimasi", `source: '${live.source}'`);
+    assert(live.temperatureCelsius === 30.4 && live.relativeHumidityPercent === 82 && live.rainfallMm === 1.2, "suhu, kelembapan, dan hujan dibaca dan dibulatkan benar", `${live.temperatureCelsius}°C, ${live.relativeHumidityPercent}%, ${live.rainfallMm} mm`);
+    assert(live.weatherCondition === "Rain" && live.isRaining, "kode cuaca 61 dikenali sebagai hujan");
+    const callsBefore = calls;
+    const cached = await weatherAgent.getMarketWeather();
+    assert(cached.source === "cache" && calls === callsBefore, "pembacaan kedua dilayani dari cache tanpa panggilan jaringan");
+
+    weatherAgent.clearCache();
+    mode = "error";
+    const failed = await weatherAgent.getMarketWeather({ forceRefresh: true });
+    assert(failed.source === "fallback_offline" && failed.isEstimated === true && failed.temperatureCelsius === 32.0, "galat Open-Meteo jatuh ke profil cadangan dan ditandai estimasi");
+
+    weatherAgent.clearCache();
+    mode = "broken";
+    const broken = await weatherAgent.getMarketWeather({ forceRefresh: true });
+    assert(broken.source === "fallback_offline" && broken.relativeHumidityPercent === 75, "data di luar rentang fisik (kelembapan 150 persen) ditolak");
+
+    weatherAgent.clearCache();
+    mode = "ok";
+    process.env.PASARIN_WEATHER_OPEN_METEO = "0";
+    const before = calls;
+    const disabled = await weatherAgent.getMarketWeather({ forceRefresh: true });
+    assert(disabled.source === "fallback_offline" && calls === before, "bendera PASARIN_WEATHER_OPEN_METEO=0 mematikan sumber cadangan tanpa panggilan jaringan");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENWEATHER_API_KEY; else process.env.OPENWEATHER_API_KEY = originalKey;
+    delete process.env.PASARIN_WEATHER_OPEN_METEO;
+    resetEnvCache();
+    weatherAgent.clearCache();
   }
 
   // Rekapitulasi hasil pengujian

@@ -53,7 +53,78 @@ interface CachedWeatherEntry {
 // Cache cuaca per proses; profil cadangan juga di-cache agar API yang gagal tidak dipanggil ulang tiap permintaan.
 let memoryCache: CachedWeatherEntry | null = null;
 
-// Mengambil telemetri cuaca pasar terkini dari OpenWeatherMap atau cache in-memory.
+// Open-Meteo: sumber cuaca kedua tanpa kunci API, dipakai bila OpenWeather tidak ada atau gagal.
+// Aktif otomatis di produksi; di pengembangan dan pengujian hanya bila PASARIN_WEATHER_OPEN_METEO=1.
+// Matikan dengan PASARIN_WEATHER_OPEN_METEO=0. Catatan lisensi: Open-Meteo gratis hanya untuk penggunaan non-komersial.
+function openMeteoEnabled() {
+  const flag = process.env.PASARIN_WEATHER_OPEN_METEO;
+  if (flag === "0") return false;
+  return flag === "1" || process.env.NODE_ENV === "production";
+}
+
+// Kondisi cuaca (bahasa OpenWeather) dari kode cuaca WMO yang dipakai Open-Meteo.
+function conditionFromWmoCode(code: number) {
+  if (code === 0) return "Clear";
+  if (code >= 1 && code <= 3) return "Clouds";
+  if (code === 45 || code === 48) return "Fog";
+  if (code >= 51 && code <= 57) return "Drizzle";
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return "Rain";
+  if (code >= 95 && code <= 99) return "Thunderstorm";
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return "Snow";
+  return "Clouds";
+}
+
+// Membaca cuaca terkini dari Open-Meteo. Mengembalikan null bila dimatikan, gagal, atau datanya tidak masuk akal,
+// supaya pemanggil jatuh ke profil cadangan alih-alih memakai angka yang rusak.
+async function fetchOpenMeteo(now: number): Promise<WeatherTelemetryData | null> {
+  if (!openMeteoEnabled()) return null;
+  const { latitude, longitude, locationName } = KRAMAT_JATI_COORDINATES;
+  const url = "https://api.open-meteo.com/v1/forecast?latitude=" + latitude + "&longitude=" + longitude +
+    "&current=temperature_2m,relative_humidity_2m,precipitation,weather_code&timezone=Asia%2FJakarta";
+  try {
+    const response = await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(6000) });
+    if (!response.ok) return null;
+    const current = (await response.json())?.current;
+    const temperatureC = Number(current?.temperature_2m);
+    const humidityPercent = Number(current?.relative_humidity_2m);
+    const rainfallMm = Number(current?.precipitation ?? 0);
+    const code = Number(current?.weather_code ?? 3);
+    // Nilai di luar rentang fisik dianggap data rusak.
+    if (!Number.isFinite(temperatureC) || temperatureC < -10 || temperatureC > 60) return null;
+    if (!Number.isFinite(humidityPercent) || humidityPercent < 0 || humidityPercent > 100) return null;
+    if (!Number.isFinite(rainfallMm) || rainfallMm < 0) return null;
+    const weatherCondition = conditionFromWmoCode(Number.isFinite(code) ? code : 3);
+    const roundedTemperature = Math.round(temperatureC * 10) / 10;
+    const roundedHumidity = Math.round(humidityPercent);
+    return {
+      temperatureC: roundedTemperature,
+      humidityPercent: roundedHumidity,
+      rainfallMm,
+      weatherCondition,
+      isRaining: rainfallMm > 0 || weatherCondition === "Rain" || weatherCondition === "Drizzle" || weatherCondition === "Thunderstorm",
+      coordinates: { latitude, longitude, locationName },
+      source: "OPEN_METEO",
+      isEstimated: false,
+      recordedAt: new Date(now).toISOString(),
+      cacheExpiresAt: new Date(now + WEATHER_CACHE_TTL_MS).toISOString(),
+      temperatureCelsius: roundedTemperature,
+      relativeHumidityPercent: roundedHumidity,
+      location: { latitude, longitude, name: locationName },
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Mencoba Open-Meteo, lalu jatuh ke profil cadangan. Hasil Open-Meteo juga disimpan di cache 15 menit.
+async function secondarySourceOrFallback(now: number): Promise<WeatherTelemetryData> {
+  const data = await fetchOpenMeteo(now);
+  if (!data) return returnFallbackProfile(now, "FALLBACK");
+  memoryCache = { data, expiresAtTimestamp: now + WEATHER_CACHE_TTL_MS };
+  return data;
+}
+
+// Mengambil telemetri cuaca pasar terkini dari OpenWeatherMap, lalu Open-Meteo, atau cache in-memory.
 // Mengimplementasikan mekanisme fail-safe: beralih ke profil cadangan saat terjadi galat jaringan.
 export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<WeatherTelemetryData> {
   // Cache segar dipakai lebih dulu supaya kuota API gratis aman; label sumbernya diganti CACHE.
@@ -73,7 +144,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
 
   // Kunci contoh dari .env.example diperlakukan sama dengan kunci kosong.
   if (!apiKey || apiKey.includes("your-openweather") || apiKey.trim().length === 0) {
-    return returnFallbackProfile(now, "FALLBACK");
+    return secondarySourceOrFallback(now);
   }
 
   const { latitude, longitude, locationName } = KRAMAT_JATI_COORDINATES;
@@ -90,8 +161,8 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
 
     // Respons non-200 (kuota habis, kunci salah) dianggap kegagalan dan jatuh ke profil cadangan.
     if (!response.ok) {
-      console.warn(`[WeatherAgent] OpenWeather error ${response.status}, beralih ke fallback.`);
-      return returnFallbackProfile(now, "FALLBACK");
+      console.warn(`[WeatherAgent] OpenWeather error ${response.status}, beralih ke sumber cadangan.`);
+      return secondarySourceOrFallback(now);
     }
 
     const payload = await response.json();
@@ -138,7 +209,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
   // Jaringan gagal: pakai profil cadangan alih-alih membiarkan halaman error.
   } catch (networkError) {
     console.warn("[WeatherAgent] Gagal terhubung ke OpenWeatherMap:", networkError);
-    return returnFallbackProfile(now, "FALLBACK");
+    return secondarySourceOrFallback(now);
   }
 }
 
@@ -193,7 +264,7 @@ export const weatherAgent = {
     const res = await getHyperlocalMarketWeather(options?.forceRefresh ?? false);
     // Label sumber dinormalkan ke huruf kecil untuk antarmuka.
     const normalizedSource =
-      res.source === "CACHE" ? "cache" : res.source === "LIVE_API" ? "live_api" : "fallback_offline";
+      res.source === "CACHE" ? "cache" : res.source === "LIVE_API" ? "live_api" : res.source === "OPEN_METEO" ? "open_meteo" : "fallback_offline";
     return {
       ...res,
       source: normalizedSource,
