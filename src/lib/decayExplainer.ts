@@ -43,32 +43,35 @@ function shelfLife(b: DecayBreakdown) {
   return `sekitar ${num(b.hoursRemaining, 1)} jam lagi`;
 }
 
+// Kalimat kecepatan peluruhan dibanding kondisi acuan (32,5 °C dan 75%).
+function speedSentence(b: DecayBreakdown) {
+  if (b.relativeSpeed >= 1.05) return `${num(b.relativeSpeed)}× lebih cepat dari kondisi acuan 32,5 °C dan 75%.`;
+  if (b.relativeSpeed <= 0.95) return `${num(b.relativeSpeed)}× dari kecepatan acuan, jadi lebih lambat karena lebih sejuk atau kelembapannya lebih baik.`;
+  return "sama dengan kondisi acuan 32,5 °C dan 75%, jadi tidak mempercepat atau memperlambat.";
+}
+
 // Langkah perhitungan berurutan, dari lama pajang sampai skor akhir.
 export function decayExplanationSteps(b: DecayBreakdown): DecayStep[] {
-  const steps: DecayStep[] = [
+  return [
     {
       label: "Lama dipajang",
       value: `${num(b.hoursElapsed, 1)} jam`,
-      note: `Batas sampai tidak layak pada suhu baku ${num(b.horizonHours, 0)} jam, jadi paparan ${num(b.exposure * 100, 0)}% dari batas.`,
+      note: `Batas sampai tidak layak pada kondisi acuan ${num(b.horizonHours, 0)} jam, jadi paparan ${num(b.exposure * 100, 0)}% dari batas.`,
     },
     {
       label: "Suhu dan kelembapan",
       value: `${num(b.temperatureCelsius, 1)} °C, ${num(b.relativeHumidityPercent, 0)}%`,
-      note: `Peluruhan ${num(b.accelerationRatio)}× laju pada 20 °C. Makin panas dan lembap, makin cepat layu.`,
+      note: `Peluruhan ${speedSentence(b)}`,
     },
-  ];
-  if (b.thermalScaling > 1.001) {
-    steps.push({
-      label: "Tambahan karena panas",
-      value: `×${num(b.thermalScaling)}`,
-      note: "Berlaku bila peluruhan lebih dari 2,2× laju dasar (sekitar di atas 33 °C).",
-    });
-  }
-  steps.push(
+    {
+      label: "Lama pajang setara",
+      value: `${num(b.hoursElapsed * b.relativeSpeed, 1)} jam`,
+      note: `Lama pajang × kecepatan relatif = setara berapa jam pada kondisi acuan, dibanding batas ${num(b.horizonHours, 0)} jam.`,
+    },
     {
       label: "Skor sebelum dibatasi",
       value: num(b.rawScore, 3),
-      note: `(paparan ${num(b.exposure, 3)})^1,15 × 0,82${b.thermalScaling > 1.001 ? ` × ${num(b.thermalScaling)}` : ""}.`,
+      note: `(paparan × kecepatan = ${num(b.exposure * b.relativeSpeed, 3)})^1,15 × 0,82.`,
     },
     {
       label: "Skor susut",
@@ -80,17 +83,14 @@ export function decayExplanationSteps(b: DecayBreakdown): DecayStep[] {
       value: b.decayScore >= 0.85 ? "habis" : shelfLife(b).replace(" lagi", ""),
       note: "Jam sampai skor mencapai 85, yaitu batas konsumsi manusia.",
     },
-  );
-  return steps;
+  ];
 }
 
 // Kalimat penjelasan dari template, dipakai sebagai cadangan tanpa AI.
 export function ruleExplanation(b: DecayBreakdown) {
   const parts = [
     `${b.commodityName} sudah dipajang ${num(b.hoursElapsed, 1)} jam dari batas ${num(b.horizonHours, 0)} jam (${num(b.exposure * 100, 0)}% dari umur simpan).`,
-    b.accelerationRatio >= 1.05
-      ? `Suhu ${num(b.temperatureCelsius, 1)} °C dan kelembapan ${num(b.relativeHumidityPercent, 0)}% membuat peluruhan ${num(b.accelerationRatio)}× lebih cepat dibanding kondisi 20 °C.`
-      : `Suhu ${num(b.temperatureCelsius, 1)} °C dan kelembapan ${num(b.relativeHumidityPercent, 0)}% mendekati kondisi baku, jadi tidak mempercepat peluruhan.`,
+    `Suhu ${num(b.temperatureCelsius, 1)} °C dan kelembapan ${num(b.relativeHumidityPercent, 0)}%: peluruhan ${speedSentence(b)}`,
     `Skor susutnya ${Math.round(b.decayScore * 100)}/100, kategori ${CONDITION[b.condition]}, sehingga cocok untuk ${b.tierLabel}.`,
     b.decayScore >= 0.85 ? "Lot ini sudah melewati batas konsumsi manusia." : `Perkiraan sisa simpan ${shelfLife(b)}.`,
     "Skor ini estimasi dari model, bukan pemeriksaan fisik.",
@@ -134,7 +134,7 @@ export async function explainDecay(b: DecayBreakdown, forceHeuristic = false): P
         batasJamTidakLayak: b.horizonHours,
         suhuC: Number(b.temperatureCelsius.toFixed(1)),
         kelembapanPersen: Math.round(b.relativeHumidityPercent),
-        kelipatanLajuDibanding20C: Number(b.accelerationRatio.toFixed(2)),
+        kecepatanPeluruhanDibandingKondisiAcuan32_5C_75persen: Number(b.relativeSpeed.toFixed(2)),
         skorSusutDari100: Math.round(b.decayScore * 100),
         kategori: CONDITION[b.condition],
         tujuan: b.tierLabel,

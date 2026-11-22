@@ -11,6 +11,8 @@ import { COMMODITIES } from "@/data/commodities";
 import { weatherAgent } from "@/lib/weatherAgent";
 import { qualityGateAgent } from "@/lib/qualityGateAgent";
 import {
+  FOOD_WASTE_CO2E_KG_PER_KG,
+  FOOD_WASTE_METHANE_KG_PER_KG,
   evaluateArrheniusDecay,
   calculateRainFootfallAttenuation,
   calculateInverseSurgePricing,
@@ -336,9 +338,9 @@ export async function executeRegisteredTool(
       // Faktor emisi mengikuti IPCC 2006 per kg limbah pangan.
       case "calculateMethaneAvoidance": {
         const divertedKg = Number(args.divertedKg ?? 1000.0);
-        // Parameter IPCC 2006: 0.038 kg CH4 dan 0.48 kg CO2e per kg limbah pangan terhindar
-        const methanePreventedKg = Number((divertedKg * 0.038).toFixed(2));
-        const carbonOffsetCo2eKg = Number((divertedKg * 0.48).toFixed(2));
+        // Faktor dari pasarinCore: 0,038 kg CH4 per kg dan CO2e = CH4 x GWP 21 (IPCC 2006).
+        const methanePreventedKg = Number((divertedKg * FOOD_WASTE_METHANE_KG_PER_KG).toFixed(2));
+        const carbonOffsetCo2eKg = Number((divertedKg * FOOD_WASTE_CO2E_KG_PER_KG).toFixed(2));
 
         return {
           toolName,

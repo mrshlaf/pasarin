@@ -4,6 +4,7 @@
 // 2. Isolasi Peran 3-Tier (Tier 1: Warteg/UMKM, Tier 2: Dapur Sosial/Panti, Tier 3: Sentra Maggot BSF).
 // 3. Proteksi Kuota Serap Harian (Capacity Overload Guard) dan pemeringkatan berbasis fungsi objektif terbobot.
 
+import { URBAN_AVERAGE_SPEED_KMH } from "@/lib/fleetCargoCalculator";
 import {
   CircularBuyer,
   CIRCULAR_BUYERS,
@@ -197,9 +198,8 @@ export function findMatchesForOffer(
       ? Number(Math.min(1.0, compositeScore).toFixed(4))
       : 0.0;
 
-    // Estimasi Waktu Angkut Kurir (asumsi kecepatan padat perkotaan Jakarta 15 km/jam + 5 menit muat)
-    // Waktu angkut = 4 menit per km (kira-kira 15 km/jam di lalu lintas Jakarta) + 5 menit muat. Contoh: 2,2 km = 9 + 5 = 14 menit.
-    const estimatedTransitMinutes = Math.round(distanceKm * 4.0 + 5.0);
+    // Waktu angkut = jarak / kecepatan rata-rata x 60 menit + 5 menit muat (kecepatan sama dengan kalkulator armada). Contoh: 2,2 km pada 20 km/jam = 6,6 + 5 = sekitar 12 menit.
+    const estimatedTransitMinutes = Math.round((distanceKm / URBAN_AVERAGE_SPEED_KMH) * 60 + 5.0);
 
     matchScores.push({
       buyerId: buyer.id,

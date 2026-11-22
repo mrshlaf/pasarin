@@ -9,7 +9,7 @@
 // dikunci selama 30 menit khusus untuk dapur sosial sebelum dapat diakses pihak lain.
 
 import { COMMODITIES, Commodity } from "@/data/commodities";
-import { calculateDecayScore, classifyProduceCondition } from "@/lib/pasarinCore";
+import { classifyProduceCondition, evaluateArrheniusDecay } from "@/lib/pasarinCore";
 import { recordAuditLog } from "@/lib/audit";
 import {
   QualityGateEvaluationResult,
@@ -71,15 +71,8 @@ export async function verifyHumanGradeIntegrity(
   }
 
   // Evaluasi skor peluruhan biologis menggunakan mikroklimat los pasar
-  // Skor peluruhan dari kinetika biologis dengan suhu dan kelembapan los.
-  const { decayScore } = calculateDecayScore(
-    commodity,
-    temperatureC,
-    humidityPercent,
-    hoursOnDisplay
-  );
-
-  const { condition, recommendedTier } = classifyProduceCondition(decayScore);
+  // Memakai model yang sama dengan dasbor (evaluateArrheniusDecay) agar keputusan gerbang mutu tidak bertentangan dengan skor di layar.
+  const { decayScore, condition, recommendedTier } = evaluateArrheniusDecay(commodity, temperatureC, humidityPercent, hoursOnDisplay);
   // Layak konsumsi manusia bila skor di bawah 0,85.
   const isHumanConsumable = decayScore < HUMAN_CONSUMABLE_DECAY_THRESHOLD;
 

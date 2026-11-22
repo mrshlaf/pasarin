@@ -10,6 +10,8 @@ import { KIOSKS } from "@/data/kiosks";
 import { COMMODITIES } from "@/data/commodities";
 import { calculateDecay } from "@/lib/decayEngine";
 import {
+  FOOD_WASTE_CO2E_KG_PER_KG,
+  FOOD_WASTE_METHANE_KG_PER_KG,
   calculateInverseSurgePricing,
   calculateRainFootfallAttenuation,
 } from "@/lib/pasarinCore";
@@ -256,9 +258,9 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   const wasteDiversionEfficiencyPct = Number(((totalRescuedKg / projectedSurplusKg) * 100).toFixed(1));
   const meetsDlhThreshold = wasteDiversionEfficiencyPct >= 90.0;
 
-  // Akuntansi IPCC 2006: 0.038 kg CH4 dan 0.48 kg CO2e per kg limbah terhindar
-  const methaneAvoidedKg = Number((totalRescuedKg * 0.038).toFixed(2));
-  const carbonOffsetCo2eKg = Number((totalRescuedKg * 0.48).toFixed(1));
+  // Faktor dari pasarinCore: 0,038 kg CH4 per kg limbah dan CO2e = CH4 x GWP 21 (IPCC 2006).
+  const methaneAvoidedKg = Number((totalRescuedKg * FOOD_WASTE_METHANE_KG_PER_KG).toFixed(2));
+  const carbonOffsetCo2eKg = Number((totalRescuedKg * FOOD_WASTE_CO2E_KG_PER_KG).toFixed(1));
 
   const durationMs = Date.now() - trialStartTime;
 

@@ -28,102 +28,36 @@ export const CRITICAL_RELATIVE_HUMIDITY_PERCENT = 80.0; // Ambang batas kelembap
 // Koefisien penalti degradasi kelembapan udara (PSR-14).
 export const HUMIDITY_PENALTY_COEFFICIENT = 0.015;
 
-// Menghitung laju degradasi respirasi k(T, RH) dan faktor percepatan relatif terhadap suhu acuan 25°C.
-// Mengintegrasikan koefisien kelipatan termal biologis Q10 serta koreksi sensitivitas kelembapan relatif.
-export function calculateArrheniusDecayRate(
-  temperatureC: number,
-  humidityPercent: number,
-  q10Coefficient: number,
-  humiditySensitivity = 1.9
-): { kRatePerHour: number; accelerationFactor: number } {
-  // Kelipatan termal biologis Q10 (berlipat ganda per kenaikan 10°C)
-  const temperatureDelta = (temperatureC - BASELINE_STORAGE_TEMP_C) / 10.0;
-  // Q10 adalah kelipatan laju peluruhan setiap kenaikan suhu 10 C. Contoh: Q10 2,5 pada 35 C menghasilkan 2,5^((35-25)/10) = 2,5 kali lebih cepat daripada pada 25 C.
-  const q10Multiplier = Math.pow(q10Coefficient, temperatureDelta);
+// Kondisi acuan: jam batas layu pada data komoditas (decayLayuRinganHour, decayLayuSedangHour, decayTidakLayakHour)
+// berlaku pada suhu los pasar Jakarta 32,5 C dan kelembapan 75 persen. Ini asumsi awal yang belum dikalibrasi lapangan.
+export const REFERENCE_TEMPERATURE_C = 32.5;
+export const REFERENCE_HUMIDITY_PERCENT = 75.0;
+// Kecepatan relatif dibatasi agar suhu ekstrem tidak menghasilkan skor yang tidak masuk akal.
+const MIN_RELATIVE_SPEED = 0.2;
+const MAX_RELATIVE_SPEED = 5.0;
 
-  // Koreksi kelembapan: defisit < 80% picu dehidrasi, kelembapan jenuh > 85% picu bakteri
-  let rhFactor = 1.0;
-  if (humidityPercent < CRITICAL_RELATIVE_HUMIDITY_PERCENT) {
-    const deficitFraction = (CRITICAL_RELATIVE_HUMIDITY_PERCENT - humidityPercent) / 100.0;
-    // Udara terlalu kering menambah laju: tambahan = (80 - RH)/100 x (sensitivitas x 0,15). Contoh: RH 60 dan sensitivitas 1,9 menambah 0,2 x 0,285 = 0,057.
-    rhFactor += deficitFraction * (humiditySensitivity * 0.15);
-  } else if (humidityPercent > 85.0) {
-    const excessFraction = (humidityPercent - 85.0) / 100.0;
-    // Udara terlalu lembap (di atas 85 persen) memicu bakteri: tambahan = (RH - 85)/100 x (0,015 x 10).
-    rhFactor += excessFraction * (HUMIDITY_PENALTY_COEFFICIENT * 10.0);
+// Pengali laju akibat kelembapan: udara terlalu kering mempercepat kehilangan air, udara jenuh (di atas 85 persen) memicu bakteri.
+// Kering: 1 + (80 - RH)/100 x (sensitivitas x 0,15). Lembap: 1 + (RH - 85)/100 x (0,015 x 10). Di antara 80 dan 85 persen: 1.
+function humidityRateFactor(relativeHumidityPercent: number, sensitivity: number) {
+  if (relativeHumidityPercent < CRITICAL_RELATIVE_HUMIDITY_PERCENT) {
+    return 1.0 + ((CRITICAL_RELATIVE_HUMIDITY_PERCENT - relativeHumidityPercent) / 100.0) * (sensitivity * 0.15);
   }
-
-  // Akselerasi dibatasi minimal 0,1 agar suhu sangat dingin tidak menghentikan peluruhan; 0,035/jam adalah laju dasar pada 25°C.
-  const accelerationFactor = Math.max(0.1, Number((q10Multiplier * rhFactor).toFixed(3)));
-  // Laju per jam = 0,035 x faktor akselerasi; 0,035 adalah laju dasar pada 25 C.
-  const kRatePerHour = Number((0.035 * accelerationFactor).toFixed(6));
-
-  return {
-    kRatePerHour,
-    accelerationFactor,
-  };
+  if (relativeHumidityPercent > 85.0) {
+    return 1.0 + ((relativeHumidityPercent - 85.0) / 100.0) * (HUMIDITY_PENALTY_COEFFICIENT * 10.0);
+  }
+  return 1.0;
 }
 
-// Menghitung akumulasi skor kebusukan biologis (decayScore 0.0000 - 1.0000) dan estimasi sisa jam simpan aman.
-// Menghubungkan durasi pajang fisik dengan jam ekuivalen Arrhenius berdasarkan akselerasi suhu los pasar.
-export function calculateDecayScore(
-  commodity: Commodity,
-  temperatureC: number,
-  humidityPercent: number,
-  hoursElapsed: number
-): { decayScore: number; accelerationFactor: number; hoursRemaining: number } {
-  const { accelerationFactor } = calculateArrheniusDecayRate(
-    temperatureC,
-    humidityPercent,
-    commodity.q10Coefficient,
-    commodity.humiditySensitivityFactor
-  );
-
-  // Jam pajang dikonversi ke jam ekuivalen pada 25°C, lalu dipetakan linear per fase layu komoditas.
-  // Jam ekuivalen = jam pajang x faktor akselerasi, yaitu lama pajang bila suhu tetap 25 C. Contoh: 5 jam pada akselerasi 2 sama dengan 10 jam ekuivalen.
-  const equivalentHours = hoursElapsed * accelerationFactor;
-  const lr = commodity.decayLayuRinganHour;
-  const ls = commodity.decayLayuSedangHour;
-  const tl = commodity.decayTidakLayakHour;
-
-  let decayScore = 0.0;
-
-  if (equivalentHours <= 0) {
-    decayScore = 0.0;
-  } else if (equivalentHours < lr) {
-    // Segar prima (0.00 - 0.35)
-    // Fase segar: skor naik linear dari 0 ke 0,35 selama lr jam ekuivalen. Contoh: lr 7 jam, pada 3,5 jam skor 0,175.
-    decayScore = (equivalentHours / lr) * 0.35;
-  } else if (equivalentHours < ls) {
-    // Layu ringan: Tier 1 Warteg (0.35 - 0.65)
-    // Posisi di dalam fase (0 di awal, 1 di akhir) dikali lebar skor fase. Layu ringan melebar dari 0,35 ke 0,65, jadi skor = 0,35 + posisi x 0,30.
-    const step = (equivalentHours - lr) / Math.max(0.1, ls - lr);
-    decayScore = 0.35 + step * 0.3;
-  } else if (equivalentHours < tl) {
-    // Layu sedang: Tier 2 Dapur Sosial (0.65 - 0.85)
-    // Layu sedang melebar dari 0,65 ke 0,85: skor = 0,65 + posisi x 0,20.
-    const step = (equivalentHours - ls) / Math.max(0.1, tl - ls);
-    decayScore = 0.65 + step * 0.2;
-  } else {
-    // Tidak layak: Tier 3 Maggot (0.85 - 1.00)
-    // Setelah batas tidak layak, skor naik dari 0,85 ke 1,00 selama 10 jam tambahan (dibatasi 10 jam).
-    const extraHours = Math.min(10.0, equivalentHours - tl);
-    decayScore = 0.85 + (extraHours / 10.0) * 0.15;
-  }
-
-  const normalizedDecayScore = Math.min(1.0, Math.max(0.0, Number(decayScore.toFixed(4))));
-
-  // Sisa jam simpan aman sebelum rusak total
-  // Sisa jam ekuivalen sampai batas tidak layak dibagi akselerasi agar kembali menjadi jam nyata di los.
-  const remainingEquivalent = Math.max(0.0, tl - equivalentHours);
-  const rawHoursRemaining = remainingEquivalent / Math.max(0.1, accelerationFactor);
-  const hoursRemaining = Math.max(0.0, Number(rawHoursRemaining.toFixed(4)));
-
-  return {
-    decayScore: normalizedDecayScore,
-    accelerationFactor,
-    hoursRemaining,
-  };
+// Kecepatan peluruhan relatif terhadap kondisi acuan (32,5 C, 75 persen). Bernilai 1 pada kondisi acuan,
+// di atas 1 bila lebih panas atau lebih ekstrem kelembapannya, di bawah 1 bila lebih sejuk.
+// Rumus: Q10^((T - 32,5)/10) x faktorKelembapan(RH) / faktorKelembapan(75). Q10 dan sensitivitas kelembapan diambil dari data komoditas.
+// Contoh: Q10 2,5 pada 27 C: 2,5^(-0,55) = 0,60, jadi peluruhan 40 persen lebih lambat dan umur simpan sekitar 1,7 kali lebih panjang.
+export function relativeDecaySpeed(commodity: Commodity, temperatureCelsius: number, relativeHumidityPercent: number) {
+  const q10 = commodity.q10Coefficient > 0 ? commodity.q10Coefficient : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
+  const thermal = Math.pow(q10, (temperatureCelsius - REFERENCE_TEMPERATURE_C) / 10.0);
+  const sensitivity = commodity.humiditySensitivityFactor;
+  const humidity = humidityRateFactor(relativeHumidityPercent, sensitivity) / humidityRateFactor(REFERENCE_HUMIDITY_PERCENT, sensitivity);
+  return Math.min(MAX_RELATIVE_SPEED, Math.max(MIN_RELATIVE_SPEED, thermal * humidity));
 }
 
 // Menetapkan klasifikasi mutu fisik dan alokasi penyelamatan sirkular 3-Tier berdasarkan DecayScore.
@@ -270,12 +204,21 @@ export const ARRHENIUS_CONSTANTS = {
   GAS_CONSTANT_R: UNIVERSAL_GAS_CONSTANT_R,
   ACTIVATION_ENERGY_EA: ACTIVATION_ENERGY_EA_J_MOL,
   FREQUENCY_FACTOR_A: ARRHENIUS_FREQUENCY_FACTOR_A,
-  // Acuan model k(T, RH) adalah 20°C, berbeda dari BASELINE_STORAGE_TEMP_C (25°C) milik calculateArrheniusDecayRate.
+  // Acuan laju dasar k(T, RH) adalah 20°C. BASELINE_STORAGE_TEMP_C (25°C) hanya konstanta rujukan penyimpanan dan tidak dipakai rumus skor.
   BASELINE_TEMP_CELSIUS: 20.0,
   THERMAL_QUOTIENT_Q10: 2.0,
   CRITICAL_HUMIDITY_PERCENT: CRITICAL_RELATIVE_HUMIDITY_PERCENT,
   BETA_HUMIDITY_COEFFICIENT: HUMIDITY_PENALTY_COEFFICIENT,
 } as const;
+
+// Faktor emisi limbah makanan yang tidak masuk TPA (asumsi awal, belum dikalibrasi untuk Bantar Gebang).
+// Metana per kg limbah mengikuti rumus IPCC 2006: DOC x DOCf x MCF x F x 16/12. Dengan DOC 0,15, DOCf 0,5, F 0,5,
+// dan MCF sekitar 0,8 hasilnya sekitar 0,04 kg CH4; angka yang dipakai 0,038. Nilai DOC dan MCF belum diverifikasi ke dokumen sumber.
+export const FOOD_WASTE_METHANE_KG_PER_KG = 0.038;
+// Potensi pemanasan global CH4 dalam 100 tahun. IPCC 2006 memakai 21; laporan terbaru memakai 28-30, jadi hasil CO2e di sini batas bawah.
+export const METHANE_GWP_100 = 21;
+// CO2e per kg limbah = metana x GWP. 0,038 x 21 = 0,798.
+export const FOOD_WASTE_CO2E_KG_PER_KG = FOOD_WASTE_METHANE_KG_PER_KG * METHANE_GWP_100;
 
 // Alias tingkatan alokasi sirkular penyelamatan pangan (PSR-14 / PSR-21).
 export type RescueTier = CircularRescueTier;
@@ -298,7 +241,9 @@ export interface ArrheniusDecayResult {
   isEdibleForHumans: boolean;
 }
 
-// Menghitung konstanta laju peluruhan k(T, RH) dengan akselerasi Q10 (~2.2x pada 33°C vs 20°C) (PSR-14).
+// Menghitung konstanta laju dasar k(T, RH) sesuai spesifikasi PSR-14: akselerasi tetap 2,2x pada 33°C dibanding 20°C.
+// Parameter q10 hanya menentukan apakah nilai bawaan dipakai (bila nol atau negatif); sensitivitas suhu tiap komoditas
+// diterapkan terpisah oleh relativeDecaySpeed. Nilai ini dipakai untuk rateConstantK dan accelerationFactor, bukan untuk skor.
 export function calculateArrheniusRateConstant(
   temperatureCelsius: number,
   relativeHumidityPercent: number,
@@ -327,22 +272,17 @@ export function evaluateArrheniusDecay(
   const q10 = commodity.q10Coefficient || ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
   const rateK = calculateArrheniusRateConstant(temperatureCelsius, relativeHumidityPercent, q10);
 
-  const baselineRate = calculateArrheniusRateConstant(
-    ARRHENIUS_CONSTANTS.BASELINE_TEMP_CELSIUS,
-    relativeHumidityPercent,
-    q10
-  );
-  // Rasio akselerasi = laju pada kondisi sekarang dibagi laju pada 20 C dengan kelembapan yang sama.
-  const accelerationRatio = rateK / (baselineRate || 1.0);
+  // Kecepatan peluruhan relatif terhadap kondisi acuan; 1 berarti jam batas komoditas berlaku apa adanya.
+  const speed = relativeDecaySpeed(commodity, temperatureCelsius, relativeHumidityPercent);
 
   // Batas jam sampai tidak layak: dari data komoditas; jika kosong pakai umur simpan standar, dan jika kosong juga 16 jam.
   const safeHorizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
   // Paparan ternormalisasi = jam pajang dibagi batas jam; bernilai 1 saat tepat di batas.
   const normalizedExposure = hoursElapsed / safeHorizonHours;
-  // Penskalaan termal baru aktif di atas ~33°C (rasio > 2,2); eksponen 1,15 membuat peluruhan makin cepat menjelang akhir umur simpan.
-  const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
-  // Skor = paparan^1,15 x 0,82 x skala termal. Pada paparan 1 skornya 0,82 (belum 0,85); eksponen 1,15 membuat laju memburuk makin cepat. Contoh: batas 16 jam, pajang 8 jam pada suhu baku: 0,5^1,15 x 0,82 = 0,37.
-  const rawScore = Math.pow(normalizedExposure, 1.15) * 0.82 * thermalScaling;
+  // Skor = (paparan x kecepatan relatif)^1,15 x 0,82. Paparan x kecepatan adalah lama pajang setara pada kondisi acuan.
+  // Pada paparan 1 dan kecepatan 1 skornya 0,82 (belum 0,85); eksponen 1,15 membuat peluruhan makin cepat menjelang akhir.
+  // Contoh: batas 16 jam, pajang 8 jam pada kondisi acuan: 0,5^1,15 x 0,82 = 0,37. Pada suhu lebih panas dengan kecepatan 1,5: (0,75)^1,15 x 0,82 = 0,59.
+  const rawScore = Math.pow(normalizedExposure * speed, 1.15) * 0.82;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
 
   let condition: ProduceCondition;
@@ -371,8 +311,8 @@ export function evaluateArrheniusDecay(
   // Dihitung langsung dari invers kinetika Arrhenius agar selaras dengan skor peluruhan.
   let hoursRemaining = 0;
   if (decayScore < 0.85) {
-    // Membalik rumus skor untuk skor 0,85: jam batas = horizon x (0,85 / (0,82 x skala termal))^(1/1,15). Sisa jam = jam batas dikurangi jam yang sudah berlalu.
-    const targetHours = safeHorizonHours * Math.pow(0.85 / (0.82 * thermalScaling), 1 / 1.15);
+    // Membalik rumus skor untuk skor 0,85: jam batas = horizon x (0,85/0,82)^(1/1,15) / kecepatan relatif. Sisa jam = jam batas dikurangi jam yang sudah berlalu.
+    const targetHours = (safeHorizonHours * Math.pow(0.85 / 0.82, 1 / 1.15)) / speed;
     hoursRemaining = Math.max(0, Number((targetHours - hoursElapsed).toFixed(4)));
   }
 
@@ -405,10 +345,8 @@ export interface DecayBreakdown {
   horizonHours: number;
   // Jam pajang dibagi batas jam; 1 berarti tepat di batas.
   exposure: number;
-  // Laju sekarang dibagi laju pada 20 C dengan kelembapan yang sama.
-  accelerationRatio: number;
-  // Pengali tambahan bila suhu di atas sekitar 33 C; minimal 1.
-  thermalScaling: number;
+  // Kecepatan peluruhan relatif terhadap kondisi acuan (32,5 C, 75 persen); 1 berarti sama, di atas 1 lebih cepat.
+  relativeSpeed: number;
   // Skor sebelum dibulatkan dan dibatasi 0 sampai 1.
   rawScore: number;
   decayScore: number;
@@ -426,14 +364,10 @@ export function explainArrheniusDecay(
   relativeHumidityPercent: number,
   hoursElapsed: number
 ): DecayBreakdown {
-  const q10 = commodity.q10Coefficient || ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
-  const rateK = calculateArrheniusRateConstant(temperatureCelsius, relativeHumidityPercent, q10);
-  const baselineRate = calculateArrheniusRateConstant(ARRHENIUS_CONSTANTS.BASELINE_TEMP_CELSIUS, relativeHumidityPercent, q10);
-  const accelerationRatio = rateK / (baselineRate || 1.0);
+  const relativeSpeed = relativeDecaySpeed(commodity, temperatureCelsius, relativeHumidityPercent);
   const horizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
   const exposure = hoursElapsed / horizonHours;
-  const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
-  const rawScore = Math.pow(exposure, 1.15) * 0.82 * thermalScaling;
+  const rawScore = Math.pow(exposure * relativeSpeed, 1.15) * 0.82;
   const result = evaluateArrheniusDecay(commodity, temperatureCelsius, relativeHumidityPercent, hoursElapsed);
   return {
     commodityName: commodity.localName,
@@ -442,8 +376,7 @@ export function explainArrheniusDecay(
     hoursElapsed,
     horizonHours,
     exposure,
-    accelerationRatio,
-    thermalScaling,
+    relativeSpeed,
     rawScore,
     decayScore: result.decayScore,
     condition: result.condition,

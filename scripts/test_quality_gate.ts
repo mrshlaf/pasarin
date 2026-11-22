@@ -69,11 +69,11 @@ async function runQualityGateTests() {
   );
 
   // Uji 2: Penolakan sayuran layu ringan (0.35 - 0.65) ke maggot & pemindahan ke Tier 1 (Warteg)
-  console.log("\n[Test 2] Pengujian Sayuran Layu Ringan (Kangkung 4.5 jam pajang)");
-  // Mengevaluasi kangkung yang sudah dipajang 4.5 jam (layu ringan) yang diajukan ke Tier 3
+  console.log("\n[Test 2] Pengujian Sayuran Layu Ringan (Kangkung 10 jam pajang)");
+  // Mengevaluasi kangkung yang sudah dipajang 10 jam (layu ringan) yang diajukan ke Tier 3
   const lightWiltResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
-    hoursOnDisplay: 4.5,
+    hoursOnDisplay: 10.0,
     requestedTier: "tier_3",
     vendorId: "vendor_kramat_02",
   });
@@ -93,11 +93,11 @@ async function runQualityGateTests() {
   );
 
   // Uji 3: Penolakan sayuran layu sedang (0.65 - 0.85) ke maggot & aktivasi jendela reservasi 30 menit
-  console.log("\n[Test 3] Pengujian Sayuran Layu Sedang & Invarian 3 (Kangkung 6.5 jam pajang)");
-  // Mengevaluasi kangkung pajang 6.5 jam (layu sedang bernutrisi) yang diajukan ke Tier 3
+  console.log("\n[Test 3] Pengujian Sayuran Layu Sedang & Invarian 3 (Kangkung 14.5 jam pajang)");
+  // Mengevaluasi kangkung pajang 14.5 jam (layu sedang bernutrisi) yang diajukan ke Tier 3
   const mediumWiltResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
-    hoursOnDisplay: 6.5,
+    hoursOnDisplay: 14.5,
     requestedTier: "tier_3",
     vendorId: "vendor_kramat_03",
   });
@@ -124,11 +124,11 @@ async function runQualityGateTests() {
   );
 
   // Uji 4: Persetujuan komoditas afkir/rusak (decayScore >= 0.85) untuk pakan maggot
-  console.log("\n[Test 4] Pengujian Komoditas Afkir / Tidak Layak Konsumsi (Kangkung 9 jam pajang)");
-  // Mengevaluasi kangkung busuk yang telah terpapar panas 9 jam di los pasar
+  console.log("\n[Test 4] Pengujian Komoditas Afkir / Tidak Layak Konsumsi (Kangkung 18 jam pajang)");
+  // Mengevaluasi kangkung busuk yang telah terpapar panas 18 jam di los pasar
   const spoiledResult = await verifyHumanGradeIntegrity({
     commodityId: "kangkung",
-    hoursOnDisplay: 9.0,
+    hoursOnDisplay: 18.0,
     requestedTier: "tier_3",
     vendorId: "vendor_kramat_04",
   });

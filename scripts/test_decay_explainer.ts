@@ -70,9 +70,19 @@ async function run() {
     check(true, `skor rincian sama dengan evaluateArrheniusDecay untuk ${COMMODITIES.length} komoditas pada 4 kondisi`);
     const bayam = COMMODITIES.find((item) => item.id === "bayam")!;
     const hot = explainArrheniusDecay(bayam, 36, 60, 10);
-    const cool = explainArrheniusDecay(bayam, 25, 80, 4);
-    check(hot.thermalScaling > 1 && cool.thermalScaling === 1, "tambahan panas hanya muncul di suhu tinggi");
-    check(decayExplanationSteps(hot).some((step) => step.label === "Tambahan karena panas") && !decayExplanationSteps(cool).some((step) => step.label === "Tambahan karena panas"), "langkah tambahan panas hanya tampil bila berlaku");
+    const reference = explainArrheniusDecay(bayam, 32.5, 75, 10);
+    const cool = explainArrheniusDecay(bayam, 27, 75, 10);
+    check(Math.abs(reference.relativeSpeed - 1) < 1e-9, "pada kondisi acuan (32,5 C dan 75 persen) kecepatan relatif tepat 1");
+    check(hot.relativeSpeed > 1 && cool.relativeSpeed < 1, "lebih panas mempercepat dan lebih sejuk memperlambat peluruhan");
+    check(cool.decayScore < reference.decayScore && reference.decayScore < hot.decayScore, "skor lebih rendah di suhu sejuk dan lebih tinggi di suhu panas untuk jam pajang yang sama");
+    check(cool.hoursRemaining > reference.hoursRemaining && reference.hoursRemaining > hot.hoursRemaining, "sisa simpan lebih panjang di suhu sejuk");
+    const dry = explainArrheniusDecay(bayam, 32.5, 40, 10);
+    const humid = explainArrheniusDecay(bayam, 32.5, 95, 10);
+    check(dry.relativeSpeed > 1.05, "udara terlalu kering mempercepat peluruhan");
+    check(Math.abs(humid.relativeSpeed - 1) < 0.05, "kelembapan tinggi hanya berpengaruh kecil pada skor (koefisien bakteri kecil)");
+    const wortel = COMMODITIES.find((item) => item.id === "wortel")!;
+    check(explainArrheniusDecay(wortel, 40, 75, 10).relativeSpeed < explainArrheniusDecay(bayam, 40, 75, 10).relativeSpeed, "Q10 komoditas dipakai: wortel (Q10 rendah) lebih tahan panas daripada bayam");
+    check(decayExplanationSteps(hot).length === 6, "enam langkah perhitungan ditampilkan");
     check(ruleExplanation(hot).includes(`${Math.round(hot.decayScore * 100)}/100`), "kalimat template memuat skor yang sama dengan dasbor");
 
     console.log("\n[Test 2] Tanpa kunci Gemini memakai template");

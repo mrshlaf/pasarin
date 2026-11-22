@@ -7,6 +7,10 @@
 // 2. Generator Manifes Perjalanan (Delivery Manifest) dengan rute penjemputan terurut (Blok A -> B -> C).
 // 3. Estimasi konsumsi bahan bakar (BBM), jarak tempuh, dan durasi pengantaran.
 
+// Kecepatan rata-rata kendaraan di lalu lintas Jakarta Timur, km per jam. Asumsi awal yang belum diukur; dipakai bersama oleh
+// kalkulator armada dan pencocokan mitra supaya perkiraan waktu antar tidak saling bertentangan.
+export const URBAN_AVERAGE_SPEED_KMH = 20;
+
 // Klasifikasi armada logistik penyelamatan pangan pasar (PSR-27).
 // - viar_trike: Motor roda tiga kapasitas muatan ringan <= 300 kg.
 // - granmax_pickup: Mobil pikap bak kapasitas muatan menengah 301 - 1.000 kg.
@@ -221,11 +225,11 @@ export function generateDeliveryManifest(
   // Biaya BBM = liter x harga per liter. Contoh: 1,14 liter x Rp12.100 = sekitar Rp13.800.
   const estimatedFuelCostIdr = Math.round(fuelConsumptionLiters * spec.fuelPricePerLiterIdr);
 
-  // Estimasi durasi (menit): 5 menit per kios penjemputan + waktu perjalanan (kecepatan rata-rata 25 km/jam di Jakarta Timur)
+  // Estimasi durasi (menit): 5 menit per kios penjemputan + waktu perjalanan pada kecepatan rata-rata URBAN_AVERAGE_SPEED_KMH.
   // Durasi = waktu muat di tiap kios + waktu tempuh.
   const loadingTimeMinutes = stops.length * 5;
-  // Waktu tempuh = jarak / 25 km per jam x 60 menit; ditambah 5 menit muat per kios untuk durasi total.
-  const transitTimeMinutes = Math.round((totalDistanceKm / 25) * 60);
+  // Waktu tempuh = jarak / kecepatan rata-rata x 60 menit; ditambah 5 menit muat per kios untuk durasi total.
+  const transitTimeMinutes = Math.round((totalDistanceKm / URBAN_AVERAGE_SPEED_KMH) * 60);
   const estimatedDurationMinutes = loadingTimeMinutes + transitTimeMinutes;
 
   return {

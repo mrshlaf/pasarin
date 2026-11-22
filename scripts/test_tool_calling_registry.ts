@@ -187,7 +187,7 @@ async function runToolCallingRegistryTests() {
   const carbonData = carbonRes.data as { carbonOffsetCo2eKg?: number } | undefined;
   // Memvalidasi alat karbon menghitung tepat 480 kg CO2e yang terhindar untuk 1.000 kg surplus
   assert(
-    carbonRes.success && carbonData?.carbonOffsetCo2eKg === 480.0,
+    carbonRes.success && carbonData?.carbonOffsetCo2eKg === 798.0,
     "Eksekusi alat 'calculateMethaneAvoidance' menghitung 480.0 kg CO2e terhindar untuk 1.000 kg surplus",
     `CO2e Offset: ${carbonData?.carbonOffsetCo2eKg} kg`
   );
