@@ -1,8 +1,6 @@
-/**
- * Rute API Pengujian Otomatis Unit Sesi Kelas (PSR-39 / In-Class Unit Testbench API).
- * Menyediakan endpoint HTTP GET untuk memicu eksekusi 12 suite pengujian unit
- * dan mengembalikan rekapitulasi status kelulusan (DoD) dalam bentuk JSON terstruktur.
- */
+// Rute API Pengujian Otomatis Unit Sesi Kelas (PSR-39 / In-Class Unit Testbench API).
+// Menyediakan endpoint HTTP GET untuk memicu eksekusi 12 suite pengujian unit
+// dan mengembalikan rekapitulasi status kelulusan (DoD) dalam bentuk JSON terstruktur.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/apiAuth";
@@ -12,11 +10,7 @@ import { runMasterInClassTestSuite } from "@/lib/inClassTestbench";
 // Suite uji harus dijalankan pada setiap permintaan, bukan sekali saat build.
 export const dynamic = "force-dynamic";
 
-/**
- * Menjalankan rangkaian uji otomatis 12 suite dan mengembalikan metrik hasil pengujian.
- *
- * @returns Respons JSON berisi jumlah total kasus uji, jumlah lulus, dan status 100% kelulusan.
- */
+// Menjalankan rangkaian uji otomatis 12 suite dan mengembalikan metrik hasil pengujian.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const auth = await requireApiRole(req, ["admin"]);
   if (auth.response) return auth.response;
@@ -30,11 +24,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (health probe).
- *
- * @returns Respons HTTP kosong dengan status 200 OK.
- */
+// Menangani pemeriksaan ketersediaan ringan (health probe).
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

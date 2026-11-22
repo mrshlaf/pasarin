@@ -1,8 +1,6 @@
-/**
- * Dasbor Ruang Kerja Pedagang Kios Pasar Induk Kramat Jati (PSR-2).
- * Memfasilitasi pencatatan pasokan subuh, pemantauan kinetika peluruhan biologis stok kios,
- * penimbangan fisik sisa dagangan sore hari, serta konfirmasi penerbitan penawaran penyelamatan pangan.
- */
+// Dasbor Ruang Kerja Pedagang Kios Pasar Induk Kramat Jati (PSR-2).
+// Memfasilitasi pencatatan pasokan subuh, pemantauan kinetika peluruhan biologis stok kios,
+// penimbangan fisik sisa dagangan sore hari, serta konfirmasi penerbitan penawaran penyelamatan pangan.
 
 "use client";
 
@@ -18,10 +16,8 @@ import {
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskInfo, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
 } from "@/components/common/MarketWorkspace";
 
-/**
- * Komponen antarmuka dasbor operasional pedagang kios.
- * Mengelola siklus pasokan masuk, pembacaan kinetika susut, dan konfirmasi timbangan fisik penawaran.
- */
+// Komponen antarmuka dasbor operasional pedagang kios.
+// Mengelola siklus pasokan masuk, pembacaan kinetika susut, dan konfirmasi timbangan fisik penawaran.
 export function VendorDashboard() {
   const { user } = useAuth();
   const { stockItems, stockHealth, estimatedUnsoldKg, weather, offers, transactions, vendorWalletBalanceIdr, busy,
@@ -73,9 +69,7 @@ export function VendorDashboard() {
     return matchesQuery && (inventoryFilter === "all" || (inventoryFilter === "unverified" ? !item.verifiedAt && item.remainingKg > 0 : item.remainingKg > 0));
   });
 
-  /**
-   * Mencatat kedatangan pasokan fisik baru ke server dan mereset formulir timbangan jika berhasil.
-   */
+  // Mencatat kedatangan pasokan fisik baru ke server dan mereset formulir timbangan jika berhasil.
   async function recordArrival(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setArrivalFeedback(null);
@@ -84,9 +78,7 @@ export function VendorDashboard() {
     if (result.success) setWeight("");
   }
 
-  /**
-   * Membuka dialog penimbangan fisik untuk lot stok yang dipilih oleh pedagang.
-   */
+  // Membuka dialog penimbangan fisik untuk lot stok yang dipilih oleh pedagang.
   function openConfirmation(stockId: string, proposalId?: string) {
     setConfirmedKg("");
     setMode("");
@@ -94,9 +86,7 @@ export function VendorDashboard() {
     setSelection({ stockId, proposalId });
   }
 
-  /**
-   * Menerbitkan lot penawaran ke pasar sesuai bobot aktual dan pilihan saluran distribusi pedagang.
-   */
+  // Menerbitkan lot penawaran ke pasar sesuai bobot aktual dan pilihan saluran distribusi pedagang.
   async function confirmStock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selection) return;

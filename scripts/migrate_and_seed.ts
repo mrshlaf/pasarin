@@ -1,13 +1,10 @@
-/**
- * Skrip Migrasi Skema dan Penyemaian Data Basis Data PostgreSQL (PSR-2).
- * Mengeksekusi berkas migrasi SQL secara transaksional (BEGIN-COMMIT-ROLLBACK)
- * ke instance PostgreSQL target (lokal maupun Supabase Cloud).
- *
- * Cakupan:
- * 1. Skema master inisialisasi tabel, relasi, dan fungsi pemicu (trigger).
- * 2. Tabel audit log, histori status transaksi, dan state simulasi pasar.
- * 3. Penyemaian benih data katalog komoditas, direktori kios, dan akun demo.
- */
+// Skrip Migrasi Skema dan Penyemaian Data Basis Data PostgreSQL (PSR-2).
+// Mengeksekusi berkas migrasi SQL secara transaksional (BEGIN-COMMIT-ROLLBACK)
+// ke instance PostgreSQL target (lokal maupun Supabase Cloud).
+// Cakupan:
+// 1. Skema master inisialisasi tabel, relasi, dan fungsi pemicu (trigger).
+// 2. Tabel audit log, histori status transaksi, dan state simulasi pasar.
+// 3. Penyemaian benih data katalog komoditas, direktori kios, dan akun demo.
 
 import { readFileSync } from "node:fs";
 import { loadEnvFile } from "node:process";
@@ -35,9 +32,7 @@ const files = [
   "supabase/seed.sql",
 ];
 
-/**
- * Menjalankan migrasi database dalam satu blok transaksi atomik aman.
- */
+// Menjalankan migrasi database dalam satu blok transaksi atomik aman.
 async function run() {
   // Inisialisasi klien koneksi pg client dengan konfigurasi SSL untuk koneksi cloud
   const client = new Client({

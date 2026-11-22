@@ -1,13 +1,11 @@
-/**
- * Skrip Uji Integrasi Agen Gerbang Kendali Mutu & Anti-Moral Hazard (PSR-21).
- * Memverifikasi 6 kriteria penerimaan kritis (Acceptance Criteria / DoD):
- * 1. Penolakan mutlak pengalihan sayuran segar (< 0.35) ke pakan larva maggot (Invarian 1).
- * 2. Penolakan pengalihan sayuran layu ringan (0.35 - 0.65) ke pakan maggot dan pengalihan ke Tier 1.
- * 3. Penolakan sayuran layu sedang (0.65 - 0.85) ke maggot, dialihkan ke Tier 2 + jendela kunci 30m.
- * 4. Persetujuan komoditas afkir/rusak (>= 0.85) untuk diproses ke sentra maggot BSF (Tier 3).
- * 5. Perekaman otomatis insiden moral hazard ke tabel jejak audit sistem (system_audit_trail).
- * 6. Kompatibilitas fasad objek tool calling ReAct orchestrator.
- */
+// Skrip Uji Integrasi Agen Gerbang Kendali Mutu & Anti-Moral Hazard (PSR-21).
+// Memverifikasi 6 kriteria penerimaan kritis (Acceptance Criteria / DoD):
+// 1. Penolakan mutlak pengalihan sayuran segar (< 0.35) ke pakan larva maggot (Invarian 1).
+// 2. Penolakan pengalihan sayuran layu ringan (0.35 - 0.65) ke pakan maggot dan pengalihan ke Tier 1.
+// 3. Penolakan sayuran layu sedang (0.65 - 0.85) ke maggot, dialihkan ke Tier 2 + jendela kunci 30m.
+// 4. Persetujuan komoditas afkir/rusak (>= 0.85) untuk diproses ke sentra maggot BSF (Tier 3).
+// 5. Perekaman otomatis insiden moral hazard ke tabel jejak audit sistem (system_audit_trail).
+// 6. Kompatibilitas fasad objek tool calling ReAct orchestrator.
 
 import { qualityGateAgent, verifyHumanGradeIntegrity } from "../src/lib/qualityGateAgent";
 import { getRecentAuditLogs } from "../src/lib/audit";
@@ -17,13 +15,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Memeriksa kondisi boolean dan mencetak status uji ke konsol.
- *
- * @param condition - Kondisi kebenaran yang diuji.
- * @param testName - Nama skenario pengujian.
- * @param detail - Informasi rincian nilai hasil observasi.
- */
+// Memeriksa kondisi boolean dan mencetak status uji ke konsol.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -34,9 +26,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Menjalankan seluruh skenario pengujian gerbang kendali mutu etis PSR-21.
- */
+// Menjalankan seluruh skenario pengujian gerbang kendali mutu etis PSR-21.
 async function runQualityGateTests() {
   console.log("\nPASARIN PSR-21 Quality Gate & Anti-Moral Hazard Test Suite");
 

@@ -1,8 +1,6 @@
-/**
- * Tata Letak Akar Aplikasi PASARIN (Root Layout).
- * Mengonfigurasi metadata SEO, font tipografi Geist, pembungkus AuthProvider,
- * dan penyedia state simulasi pasar (SimulationProvider).
- */
+// Tata Letak Akar Aplikasi PASARIN (Root Layout).
+// Mengonfigurasi metadata SEO, font tipografi Geist, pembungkus AuthProvider,
+// dan penyedia state simulasi pasar (SimulationProvider).
 
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -35,10 +33,8 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Komponen pembungkus tata letak utama aplikasi.
- * SimulationProvider ada di dalam AuthProvider karena state pasar bergantung pada akun yang masuk.
- */
+// Komponen pembungkus tata letak utama aplikasi.
+// SimulationProvider ada di dalam AuthProvider karena state pasar bergantung pada akun yang masuk.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html

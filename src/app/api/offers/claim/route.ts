@@ -1,8 +1,6 @@
-/**
- * Rute API Klaim dan Pembacaan Katalog Lot Penawaran Mitra Pembeli (PSR-26).
- * Memproses permintaan klaim instan (fast claim) oleh mitra pembeli sirkular
- * dengan proteksi idempoten (requestId) dan penegakan batasan peran (RBAC).
- */
+// Rute API Klaim dan Pembacaan Katalog Lot Penawaran Mitra Pembeli (PSR-26).
+// Memproses permintaan klaim instan (fast claim) oleh mitra pembeli sirkular
+// dengan proteksi idempoten (requestId) dan penegakan batasan peran (RBAC).
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
@@ -19,12 +17,7 @@ const claim = z.strictObject({
   requestId: z.string().trim().min(1).max(100).optional(),
 });
 
-/**
- * Menangani reservasi lot penawaran khusus untuk mitra pembeli yang terotentikasi.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Respons API hasil klaim lot penawaran.
- */
+// Menangani reservasi lot penawaran khusus untuk mitra pembeli yang terotentikasi.
 export async function POST(req: NextRequest) {
   const auth = await requireApiRole(req, buyerRoles);
   if (auth.response) return auth.response;
@@ -45,12 +38,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Mengambil katalog penawaran aktif yang memenuhi syarat kelayakan bagi peran pembeli yang bersangkutan.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Respons API berisi array lot penawaran yang tersedia.
- */
+// Mengambil katalog penawaran aktif yang memenuhi syarat kelayakan bagi peran pembeli yang bersangkutan.
 export async function GET(req: NextRequest) {
   const auth = await requireApiRole(req, buyerRoles);
   if (auth.response) return auth.response;

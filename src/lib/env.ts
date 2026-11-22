@@ -1,14 +1,10 @@
-/**
- * Modul Validasi Variabel Lingkungan Runtime (PSR-3).
- * Memvalidasi kredensial Supabase, kunci API eksternal (OpenWeather, Gemini, Telegram),
- * dan token rahasia pemicu cron melalui skema Zod dengan mekanisme fallback aman saat tahap build.
- */
+// Modul Validasi Variabel Lingkungan Runtime (PSR-3).
+// Memvalidasi kredensial Supabase, kunci API eksternal (OpenWeather, Gemini, Telegram),
+// dan token rahasia pemicu cron melalui skema Zod dengan mekanisme fallback aman saat tahap build.
 
 import { z } from "zod";
 
-/**
- * Skema validasi Zod untuk seluruh variabel lingkungan yang dibutuhkan sistem PASARIN.
- */
+// Skema validasi Zod untuk seluruh variabel lingkungan yang dibutuhkan sistem PASARIN.
 export const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
@@ -42,20 +38,14 @@ export const envSchema = z.object({
     .default("development"),
 });
 
-/**
- * Tipe inferensi TypeScript dari skema validasi variabel lingkungan Zod (PSR-3).
- */
+// Tipe inferensi TypeScript dari skema validasi variabel lingkungan Zod (PSR-3).
 export type Env = z.infer<typeof envSchema>;
 
 // Hasil validasi env yang di-cache selama proses berjalan; dikosongkan lewat resetEnvCache.
 let cachedEnv: Env | null = null;
 
-/**
- * Membaca, memvalidasi, dan menyimpan variabel lingkungan ke dalam cache memori lokal.
- * Mencegah kegagalan fatal saat proses build Next.js dengan menyediakan nilai default fallback yang aman.
- *
- * @returns Objek konfigurasi lingkungan runtime Env yang telah divalidasi.
- */
+// Membaca, memvalidasi, dan menyimpan variabel lingkungan ke dalam cache memori lokal.
+// Mencegah kegagalan fatal saat proses build Next.js dengan menyediakan nilai default fallback yang aman.
 export function getEnv(): Env {
   if (cachedEnv) {
     return cachedEnv;
@@ -93,10 +83,8 @@ export function getEnv(): Env {
   return cachedEnv;
 }
 
-/**
- * Mengosongkan cache variabel lingkungan lokal.
- * Digunakan pada pengujian unit terisolasi saat menyimulasikan pergantian variabel environment.
- */
+// Mengosongkan cache variabel lingkungan lokal.
+// Digunakan pada pengujian unit terisolasi saat menyimulasikan pergantian variabel environment.
 export function resetEnvCache(): void {
   cachedEnv = null;
 }

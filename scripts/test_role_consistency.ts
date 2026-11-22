@@ -1,9 +1,7 @@
-/**
- * Uji Konsistensi Lintas Peran dan Asisten Chatbot.
- * Memastikan angka yang dijawab asisten sama dengan angka yang dihitung dashboard tiap peran,
- * tombol saran asisten selalu terjawab, dan alur jual-bayar-antar menjaga invarian buku besar
- * (status pembayaran pesanan selaras dengan catatan escrow) dari sudut pandang setiap peran.
- */
+// Uji Konsistensi Lintas Peran dan Asisten Chatbot.
+// Memastikan angka yang dijawab asisten sama dengan angka yang dihitung dashboard tiap peran,
+// tombol saran asisten selalu terjawab, dan alur jual-bayar-antar menjaga invarian buku besar
+// (status pembayaran pesanan selaras dengan catatan escrow) dari sudut pandang setiap peran.
 
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";

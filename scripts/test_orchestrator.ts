@@ -1,14 +1,12 @@
-/**
- * Skrip Uji Otomatis Agen Pengorkestrasi Pusat ReAct (PSR-17 / Agent 1).
- * Memvalidasi 7 kriteria penerimaan kritis (Acceptance Criteria / DoD):
- * 1. Eksekusi mandiri siklus otonom sapuan 14:30 WIB dari telemetri cuaca hingga alokasi armada.
- * 2. Pemindaian lengkap 30 kios pasar tradisional Kramat Jati dan agregasi surplus kuantitatif.
- * 3. Pembatasan siklus penalaran ReAct maksimal 5 putaran (MAX_REACT_TURNS = 5).
- * 4. Penegakan gerbang kendali mutu etis (Invarian 1) dalam alur orkestrasi.
- * 5. Dekomposisi kueri bahasa alami manajerial armada logistik ("Lusa perlu berapa mobil?").
- * 6. Dekomposisi kueri mikroklimat cuaca dan laju degradasi termal sayuran daun.
- * 7. Perekaman komprehensif alur penalaran dan ringkasan eksekutif ke tabel jejak audit (system_audit_trail).
- */
+// Skrip Uji Otomatis Agen Pengorkestrasi Pusat ReAct (PSR-17 / Agent 1).
+// Memvalidasi 7 kriteria penerimaan kritis (Acceptance Criteria / DoD):
+// 1. Eksekusi mandiri siklus otonom sapuan 14:30 WIB dari telemetri cuaca hingga alokasi armada.
+// 2. Pemindaian lengkap 30 kios pasar tradisional Kramat Jati dan agregasi surplus kuantitatif.
+// 3. Pembatasan siklus penalaran ReAct maksimal 5 putaran (MAX_REACT_TURNS = 5).
+// 4. Penegakan gerbang kendali mutu etis (Invarian 1) dalam alur orkestrasi.
+// 5. Dekomposisi kueri bahasa alami manajerial armada logistik ("Lusa perlu berapa mobil?").
+// 6. Dekomposisi kueri mikroklimat cuaca dan laju degradasi termal sayuran daun.
+// 7. Perekaman komprehensif alur penalaran dan ringkasan eksekutif ke tabel jejak audit (system_audit_trail).
 
 import {
   geminiOrchestrator,
@@ -23,13 +21,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Memeriksa kondisi boolean dan mencetak log hasil ke konsol.
- *
- * @param condition - Kondisi kebenaran yang diuji.
- * @param testName - Nama skenario pengujian.
- * @param detail - Informasi rincian nilai hasil observasi.
- */
+// Memeriksa kondisi boolean dan mencetak log hasil ke konsol.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -40,9 +32,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Menjalankan rangkaian pengujian integrasi ReAct Orchestrator PSR-17.
- */
+// Menjalankan rangkaian pengujian integrasi ReAct Orchestrator PSR-17.
 async function runOrchestratorTests() {
   console.log("\nPASARIN PSR-17 Gemini 2.0 Flash ReAct Orchestrator Test Suite");
 

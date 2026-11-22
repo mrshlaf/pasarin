@@ -1,9 +1,7 @@
 "use client";
 
-/**
- * Dashboard publik landing page: ringkasan pasokan per tujuan, komoditas tersedia, dan estimasi armada.
- * Hanya memakai /api/market/overview yang tidak memuat data akun.
- */
+// Dashboard publik landing page: ringkasan pasokan per tujuan, komoditas tersedia, dan estimasi armada.
+// Hanya memakai /api/market/overview yang tidak memuat data akun.
 
 import { useEffect, useState } from "react";
 import Link from "next/link";

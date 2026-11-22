@@ -1,8 +1,6 @@
-/**
- * Halaman Ruang Kerja Dasbor Peran Pengguna (Role Workspace Dashboard) (PSR-2).
- * Menyediakan kerangka navigasi terpadu untuk merender komponen dasbor sesuai peran pengguna aktif
- * (Pedagang, Warteg, Dapur Sosial, Sentra Maggot, Kurir, Pengelola Pasar, dan Administrator).
- */
+// Halaman Ruang Kerja Dasbor Peran Pengguna (Role Workspace Dashboard) (PSR-2).
+// Menyediakan kerangka navigasi terpadu untuk merender komponen dasbor sesuai peran pengguna aktif
+// (Pedagang, Warteg, Dapur Sosial, Sentra Maggot, Kurir, Pengelola Pasar, dan Administrator).
 
 "use client";
 
@@ -53,9 +51,7 @@ const friendlyRoleCopy: Record<AppRole, { greeting: string; description: string 
     description: "Kelola ekosistem pasar, jalankan evaluasi mutu stok los, dan pastikan seluruh aliran redistribusi surplus berjalan optimal!",
   },
 };
-/**
- * Komponen konten dasbor yang merender tampilan ruang kerja sesuai peran terotorisasi.
- */
+// Komponen konten dasbor yang merender tampilan ruang kerja sesuai peran terotorisasi.
 function DashboardContent() {
   const { user } = useAuth();
   const { role, busy, stateReady, syncError, isSyncing, feedback, clearFeedback, refreshMarket } = useMarketSimulation();
@@ -150,9 +146,7 @@ function DashboardContent() {
   );
 }
 
-/**
- * Halaman utama ruang kerja privat yang mengarahkan pengunjung tanpa sesi kembali ke halaman publik.
- */
+// Halaman utama ruang kerja privat yang mengarahkan pengunjung tanpa sesi kembali ke halaman publik.
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();

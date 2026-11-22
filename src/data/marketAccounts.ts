@@ -1,16 +1,12 @@
-/**
- * Direktori Identitas Akun dan Kredensial Pengguna Pasar (PSR-2).
- * Menyediakan pemetaan terpadu untuk autentikasi sesi lokal maupun seeding akun Supabase Auth Cloud.
- * Mencakup 30 pedagang kios, 100 mitra warteg, 3 dapur sosial, 2 sentra maggot, 5 armada kurir, pengelola, dan admin.
- */
+// Direktori Identitas Akun dan Kredensial Pengguna Pasar (PSR-2).
+// Menyediakan pemetaan terpadu untuk autentikasi sesi lokal maupun seeding akun Supabase Auth Cloud.
+// Mencakup 30 pedagang kios, 100 mitra warteg, 3 dapur sosial, 2 sentra maggot, 5 armada kurir, pengelola, dan admin.
 
 import type { AppRole } from "@/data/accounts";
 import { CIRCULAR_BUYERS } from "@/data/buyers";
 import { KIOSKS } from "@/data/kiosks";
 
-/**
- * Entitas profil akun pasar yang digunakan bersama oleh direktori login dan seeder akun cloud.
- */
+// Entitas profil akun pasar yang digunakan bersama oleh direktori login dan seeder akun cloud.
 export interface MarketAccount {
   username: string;
   password: string;
@@ -85,10 +81,8 @@ const courierAccounts: MarketAccount[] = Array.from({ length: 5 }, (_, index) =>
   };
 });
 
-/**
- * Kompilasi master seluruh akun pengguna pasar:
- * 30 kios pasar, 100 warteg/UMKM, 3 dapur sosial, 2 sentra maggot, 5 kurir logistik, 1 pengelola UPB, 1 admin sistem.
- */
+// Kompilasi master seluruh akun pengguna pasar:
+// 30 kios pasar, 100 warteg/UMKM, 3 dapur sosial, 2 sentra maggot, 5 kurir logistik, 1 pengelola UPB, 1 admin sistem.
 export const MARKET_ACCOUNTS: MarketAccount[] = [
   ...vendorAccounts,
   ...buyerAccounts("tier_1", "warteg", "warteg"),
@@ -107,22 +101,12 @@ export const MARKET_ACCOUNT_BY_VENDOR_ID = new Map(
   MARKET_ACCOUNTS.filter((account) => account.vendorId).map((account) => [account.vendorId as string, account]),
 );
 
-/**
- * Menghasilkan identifier aktor sesi simulasi lokal dengan awalan stabil agar klaim terisolasi per akun.
- *
- * @param username - Nama pengguna akun pasar (misal: "pasar1", "warteg1").
- * @returns String ID aktor dengan format "local:<username>".
- */
+// Menghasilkan identifier aktor sesi simulasi lokal dengan awalan stabil agar klaim terisolasi per akun.
 export function localActorId(username: string) {
   return `local:${username}`;
 }
 
-/**
- * Mengonversi username akun pasar menjadi alamat email standar untuk Supabase Auth Cloud.
- *
- * @param username - Nama pengguna akun pasar.
- * @returns Alamat email terformat "@pasarin.id".
- */
+// Mengonversi username akun pasar menjadi alamat email standar untuk Supabase Auth Cloud.
 export function accountEmail(username: string) {
   return `${username}@pasarin.id`;
 }

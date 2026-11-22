@@ -1,8 +1,6 @@
-/**
- * Automated Test Suite untuk Validasi Mesin Pencocokan Sirkular 3-Tier (PSR-22).
- * Menguji akurasi formula Haversine, pemeringkatan prioritas jarak, proteksi kapasitas,
- * dan batas waktu eksekusi SLA (< 100 ms).
- */
+// Automated Test Suite untuk Validasi Mesin Pencocokan Sirkular 3-Tier (PSR-22).
+// Menguji akurasi formula Haversine, pemeringkatan prioritas jarak, proteksi kapasitas,
+// dan batas waktu eksekusi SLA (< 100 ms).
 
 import {
   haversineDistanceKm,
@@ -23,14 +21,7 @@ let passedTests = 0;
 // Jumlah asersi gagal; bila lebih dari nol, proses dihentikan dengan kode 1.
 let failedTests = 0;
 
-/**
- * Fungsi asersi pengujian untuk memverifikasi kebenaran logika matchmaking.
- *
- * @param condition - Kondisi kebenaran ekspresi logika (wajib bernilai true).
- * @param testId - ID unik kasus uji (misal: TC-MM01).
- * @param testName - Deskripsi tujuan pengujian.
- * @param detail - Detail informasi nilai hasil pengujian aktual.
- */
+// Fungsi asersi pengujian untuk memverifikasi kebenaran logika matchmaking.
 function assert(condition: boolean, testId: string, testName: string, detail?: string) {
   totalTests++;
   if (condition) {
@@ -42,9 +33,7 @@ function assert(condition: boolean, testId: string, testName: string, detail?: s
   }
 }
 
-/**
- * Runner utama untuk mengeksekusi seluruh skenario uji mesin pencocokan 3-tier PSR-22.
- */
+// Runner utama untuk mengeksekusi seluruh skenario uji mesin pencocokan 3-tier PSR-22.
 async function runMatchmakingTestSuite() {
   console.log("\nPASARIN PSR-22 Circular 3-Tier Matchmaking Engine Test Suite");
   console.log("Mata Kuliah : Rekayasa Perangkat Lunak - Fakultas Teknik Universitas Indonesia");

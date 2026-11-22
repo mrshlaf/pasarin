@@ -1,8 +1,6 @@
-/**
- * Normalisasi bahasa untuk Asisten PASARIN.
- * Mengubah tulisan santai, singkatan, akhiran kepemilikan, dan salah ketik ringan menjadi bentuk baku
- * agar pertanyaan seperti "brp keuntunganku" atau "sayutrku bisa dijual dmn" dikenali.
- */
+// Normalisasi bahasa untuk Asisten PASARIN.
+// Mengubah tulisan santai, singkatan, akhiran kepemilikan, dan salah ketik ringan menjadi bentuk baku
+// agar pertanyaan seperti "brp keuntunganku" atau "sayutrku bisa dijual dmn" dikenali.
 
 import { COMMODITIES, type Commodity } from "@/data/commodities";
 
@@ -151,10 +149,8 @@ function resolveWord(word: string): string[] {
   return [corrected ?? word];
 }
 
-/**
- * Menormalkan pertanyaan: huruf kecil, tanpa tanda baca, singkatan diperluas, dan salah ketik ringan dikoreksi.
- * Contoh: "cek sayutrku bisa dijual dimana?" -> "cek sayur saya bisa dijual dimana".
- */
+// Menormalkan pertanyaan: huruf kecil, tanpa tanda baca, singkatan diperluas, dan salah ketik ringan dikoreksi.
+// Contoh: "cek sayutrku bisa dijual dimana?" -> "cek sayur saya bisa dijual dimana".
 export function normalizeQuestion(question: string) {
   const words = question.toLowerCase()
     .replace(/[’']/g, "")

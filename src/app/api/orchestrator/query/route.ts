@@ -1,7 +1,5 @@
-/**
- * Rute API Asisten Dashboard.
- * POST menjawab pertanyaan akun yang sedang masuk; GET memberi metrik operasional untuk pengelola dan admin.
- */
+// Rute API Asisten Dashboard.
+// POST menjawab pertanyaan akun yang sedang masuk; GET memberi metrik operasional untuk pengelola dan admin.
 
 import { NextRequest } from "next/server";
 import { z } from "zod";

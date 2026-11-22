@@ -1,8 +1,6 @@
-/**
- * Modul Penyedia State Simulasi Pasar Sisi Klien (Client-Side Simulation Provider) (PSR-4 / PSR-37).
- * Menyinkronkan snapshot state pasar secara periodik dengan server, menghitung peluruhan kinetika
- * secara real-time pada detik jam fisik peramban, serta mengelola aksi mutasi terisolasi per peran pengguna.
- */
+// Modul Penyedia State Simulasi Pasar Sisi Klien (Client-Side Simulation Provider) (PSR-4 / PSR-37).
+// Menyinkronkan snapshot state pasar secara periodik dengan server, menghitung peluruhan kinetika
+// secara real-time pada detik jam fisik peramban, serta mengelola aksi mutasi terisolasi per peran pengguna.
 
 "use client";
 
@@ -18,9 +16,7 @@ export type { AppRole, EscrowTransaction, RescueOffer, StockItem };
 // Snapshot pasar dari server menurut peran akun.
 type ServerState = Awaited<ReturnType<typeof readMarketSnapshot>>;
 
-/**
- * Kontrak konteks status dan aksi operasional simulasi pasar sisi klien (PSR-4 / PSR-37).
- */
+// Kontrak konteks status dan aksi operasional simulasi pasar sisi klien (PSR-4 / PSR-37).
 export interface SimulationContextType {
   role: AppRole;
   setRole: (role: AppRole) => void;
@@ -51,19 +47,13 @@ export interface SimulationContextType {
 // Konteks state pasar; undefined bila dipakai di luar SimulationProvider.
 const SimulationContext = createContext<SimulationContextType | undefined>(undefined);
 
-/**
- * Hasil aksi operasional pasar sisi klien (pesan status dan objek penawaran).
- */
+// Hasil aksi operasional pasar sisi klien (pesan status dan objek penawaran).
 type MarketActionResult = { success: boolean; message: string; offer?: RescueOffer };
 
-/**
- * Rekaman snapshot pasar tersinkronisasi per identitas pengguna.
- */
+// Rekaman snapshot pasar tersinkronisasi per identitas pengguna.
 type MarketSnapshot = { userId: string; state: ServerState; syncedAt: number };
 
-/**
- * Komponen penyedia state simulasi pasar yang menyinkronkan data antar-sesi pengguna secara berkala.
- */
+// Komponen penyedia state simulasi pasar yang menyinkronkan data antar-sesi pengguna secara berkala.
 export function SimulationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -160,13 +150,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, refreshTick]);
 
-  /**
-   * Mengalirkan aksi mutasi peran ke endpoint API server dan memperbarui snapshot pasar secara atomik.
-   *
-   * @param body - Muatan data mutasi yang dikirimkan.
-   * @param endpoint - URL endpoint target (default: "/api/simulation/state").
-   * @returns Hasil aksi operasional pasar bertipe MarketActionResult.
-   */
+  // Mengalirkan aksi mutasi peran ke endpoint API server dan memperbarui snapshot pasar secara atomik.
   async function mutate(body: Record<string, unknown>, endpoint = "/api/simulation/state"): Promise<MarketActionResult> {
     if (!userId || changing.current) return { success: false, message: "Tunggu tindakan sebelumnya selesai." };
     changing.current = true;
@@ -249,12 +233,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Kaitan React kustom (custom hook) untuk mengakses konteks simulasi pasar.
- *
- * @throws Error jika hook dipanggil di luar cakupan komponen SimulationProvider.
- * @returns Objek konteks simulasi pasar bertipe SimulationContextType.
- */
+// Kaitan React kustom (custom hook) untuk mengakses konteks simulasi pasar.
 export function useMarketSimulation() {
   const context = useContext(SimulationContext);
   if (!context) {

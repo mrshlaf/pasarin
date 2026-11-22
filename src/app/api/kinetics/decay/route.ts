@@ -1,8 +1,6 @@
-/**
- * Rute API Evaluasi Kinetika Peluruhan Biologis Hortikultura (PSR-14).
- * Menyediakan endpoint HTTP GET (evaluasi tunggal/katalog lengkap via query params)
- * dan POST (evaluasi muatan inventaris kustom kios pedagang).
- */
+// Rute API Evaluasi Kinetika Peluruhan Biologis Hortikultura (PSR-14).
+// Menyediakan endpoint HTTP GET (evaluasi tunggal/katalog lengkap via query params)
+// dan POST (evaluasi muatan inventaris kustom kios pedagang).
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -32,14 +30,9 @@ const batch = conditions.extend({
   ])).min(1).max(200),
 });
 
-/**
- * Menangani evaluasi peluruhan komoditas melalui parameter kueri URL.
- * Jika parameter `commodityId` disertakan, sistem mengembalikan evaluasi tunggal komoditas tersebut.
- * Jika tanpa `commodityId`, sistem mengevaluasi seluruh 30 komoditas katalog pasar secara serentak.
- *
- * @param req - Objek NextRequest pembawa parameter kueri (commodityId, hoursElapsed, temperatureC, humidityPercent).
- * @returns Respons JSON berisi hasil evaluasi kinetika peluruhan atau pesan kesalahan validasi.
- */
+// Menangani evaluasi peluruhan komoditas melalui parameter kueri URL.
+// Jika parameter `commodityId` disertakan, sistem mengembalikan evaluasi tunggal komoditas tersebut.
+// Jika tanpa `commodityId`, sistem mengevaluasi seluruh 30 komoditas katalog pasar secara serentak.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -87,13 +80,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani evaluasi peluruhan biologis untuk daftar inventaris komoditas kustom berbasis muatan JSON.
- * Memproses setiap entri dalam larik `items` dengan jam pajang dan kondisi mikroklimat spesifik.
- *
- * @param req - Objek NextRequest pembawa body JSON dengan struktur { items, hoursElapsed, temperatureC, humidityPercent }.
- * @returns Respons JSON berisi ringkasan kuantitatif dan rincian evaluasi per komoditas.
- */
+// Menangani evaluasi peluruhan biologis untuk daftar inventaris komoditas kustom berbasis muatan JSON.
+// Memproses setiap entri dalam larik `items` dengan jam pajang dan kondisi mikroklimat spesifik.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const input = await validateJsonBody(req, batch);
@@ -132,11 +120,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (health probe) endpoint kinetika peluruhan.
- *
- * @returns Respons HTTP kosong dengan status 200 OK.
- */
+// Menangani pemeriksaan ketersediaan ringan (health probe) endpoint kinetika peluruhan.
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

@@ -1,8 +1,6 @@
-/**
- * Rute API Telemetri Cuaca Mikro Kramat Jati (PSR-5).
- * Menyediakan endpoint HTTP GET untuk membaca suhu, kelembapan, dan curah hujan aktual
- * dari stasiun mikro Pasar Induk Kramat Jati, serta HEAD probe untuk monitoring ketersediaan.
- */
+// Rute API Telemetri Cuaca Mikro Kramat Jati (PSR-5).
+// Menyediakan endpoint HTTP GET untuk membaca suhu, kelembapan, dan curah hujan aktual
+// dari stasiun mikro Pasar Induk Kramat Jati, serta HEAD probe untuk monitoring ketersediaan.
 
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
@@ -13,13 +11,8 @@ import { WeatherTelemetryData } from "@/types/api";
 // Data cuaca berubah sepanjang hari, jadi rute tidak boleh dirender statis saat build.
 export const dynamic = "force-dynamic";
 
-/**
- * Menangani permintaan GET untuk membaca data telemetri cuaca mikro pasar terkini.
- * Mendukung parameter kueri `refresh=true` untuk memotong in-memory cache dan membaca API hulu secara langsung.
- *
- * @param req - Objek permintaan NextRequest pembawa parameter kueri.
- * @returns Respons JSON berisi data telemetri cuaca (status 200) atau pesan kegagalan (status 500).
- */
+// Menangani permintaan GET untuk membaca data telemetri cuaca mikro pasar terkini.
+// Mendukung parameter kueri `refresh=true` untuk memotong in-memory cache dan membaca API hulu secara langsung.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const forceRefresh = req.nextUrl.searchParams.get("refresh") === "true";
@@ -38,12 +31,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (health probe) tanpa mengirim muatan body.
- * Digunakan oleh sistem pemantau uptime dan reverse proxy.
- *
- * @returns Respons HTTP kosong dengan kode status 200 OK.
- */
+// Menangani pemeriksaan ketersediaan ringan (health probe) tanpa mengirim muatan body.
+// Digunakan oleh sistem pemantau uptime dan reverse proxy.
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

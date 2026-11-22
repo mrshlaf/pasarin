@@ -1,11 +1,9 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-37 (Bank Indonesia Dynamic QRIS Escrow Payment Gateway).
- * Memverifikasi:
- * 1. Pembangkitan string payload QRIS Dinamis EMVCo TLV dengan checksum CRC16-CCITT (0x1021).
- * 2. Validasi struktur QRIS dan pendeteksian payload cacat/manipulatif.
- * 3. Mesin Transisi Status Rekening Escrow (unpaid -> held_in_escrow -> released_to_vendor).
- * 4. Pelepasan dana otomatis ke dompet pedagang saat konfirmasi serah terima terpenuhi.
- */
+// Skrip Pengujian Unit Mandiri: PSR-37 (Bank Indonesia Dynamic QRIS Escrow Payment Gateway).
+// Memverifikasi:
+// 1. Pembangkitan string payload QRIS Dinamis EMVCo TLV dengan checksum CRC16-CCITT (0x1021).
+// 2. Validasi struktur QRIS dan pendeteksian payload cacat/manipulatif.
+// 3. Mesin Transisi Status Rekening Escrow (unpaid -> held_in_escrow -> released_to_vendor).
+// 4. Pelepasan dana otomatis ke dompet pedagang saat konfirmasi serah terima terpenuhi.
 
 import {
   generateBankIndonesiaQrisPayload,
@@ -19,13 +17,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Fungsi helper untuk mengevaluasi kebenaran kondisi asersi uji QRIS Escrow.
- *
- * @param condition - Hasil evaluasi boolean.
- * @param testName - Label nama pengujian.
- * @param detail - Detail observasi pengujian.
- */
+// Fungsi helper untuk mengevaluasi kebenaran kondisi asersi uji QRIS Escrow.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -36,9 +28,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Runner utama pengujian gerbang pembayaran QRIS Dinamis dan Rekening Escrow PSR-37.
- */
+// Runner utama pengujian gerbang pembayaran QRIS Dinamis dan Rekening Escrow PSR-37.
 async function runQrisEscrowTests() {
   console.log("\nPengujian Unit Mandiri: PSR-37 (Dynamic QRIS Escrow Payment Gateway)");
   console.log("Fokus: Format EMVCo TLV, Checksum CRC16, dan Pelepasan Dana Escrow\n");

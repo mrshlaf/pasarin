@@ -1,8 +1,6 @@
-/**
- * Endpoint Layanan Pembayaran QRIS Dinamis & Escrow Bank Indonesia (PSR-37).
- * POST: Menghasilkan string payload QRIS dinamis berstandar EMVCo TLV dengan CRC16.
- * PUT: Memproses simulasi pelunasan pembayaran ke escrow atau pelepasan dana PoD kurir.
- */
+// Endpoint Layanan Pembayaran QRIS Dinamis & Escrow Bank Indonesia (PSR-37).
+// POST: Menghasilkan string payload QRIS dinamis berstandar EMVCo TLV dengan CRC16.
+// PUT: Memproses simulasi pelunasan pembayaran ke escrow atau pelepasan dana PoD kurir.
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/apiAuth";
@@ -14,11 +12,7 @@ import {
   EscrowPaymentStatus,
 } from "@/lib/qrisEscrowGateway";
 
-/**
- * Memeriksa status operasional modul gateway escrow QRIS dinamis.
- *
- * @returns Respons JSON spesifikasi gateway dan standar kepatuhan Bank Indonesia.
- */
+// Memeriksa status operasional modul gateway escrow QRIS dinamis.
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -31,12 +25,7 @@ export async function GET() {
   });
 }
 
-/**
- * Membangkitkan string payload QRIS Dinamis standar EMVCo TLV ber-CRC16.
- *
- * @param req - Objek NextRequest masuk berisi detail nominal tagihan dan referensi faktur.
- * @returns Respons JSON string payload QRIS dan status awal escrow 'unpaid'.
- */
+// Membangkitkan string payload QRIS Dinamis standar EMVCo TLV ber-CRC16.
 export async function POST(req: NextRequest) {
   // Hanya pembeli (warteg) dan admin yang boleh membuat tagihan QRIS.
   const auth = await requireApiRole(req, ["warteg", "admin"]);
@@ -77,12 +66,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Memproses simulasi pelunasan pembayaran ke rekening escrow atau pelepasan dana akhir ke rekening pedagang (settlement PoD).
- *
- * @param req - Objek NextRequest masuk berisi tipe aksi dan status transisi escrow.
- * @returns Respons JSON status transisi mutasi escrow baru.
- */
+// Memproses simulasi pelunasan pembayaran ke rekening escrow atau pelepasan dana akhir ke rekening pedagang (settlement PoD).
 export async function PUT(req: NextRequest) {
   // Pelunasan, pelepasan dana, dan refund mengubah status uang, jadi dibatasi untuk admin.
   const auth = await requireApiRole(req, ["admin"]);

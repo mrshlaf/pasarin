@@ -1,24 +1,17 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-40 (Supabase Role Authentication & Role Isolation).
- * Memverifikasi:
- * 1. Seluruh 7 peran resmi terdaftar dan tervalidasi oleh guard isAppRole.
- * 2. Pemetaan profil akun mengambil peran dari app_metadata (bukan user_metadata yang rentan dimanipulasi).
- * 3. Identifikasi vendorId otomatis terekstraksi untuk peran vendor.
- * 4. Penolakan peran fiktif / akun tanpa metadata peran resmi.
- * 5. Resolusi format email login: username pendek (@pasarin.id) vs email lengkap kustom.
- */
+// Skrip Pengujian Unit Mandiri: PSR-40 (Supabase Role Authentication & Role Isolation).
+// Memverifikasi:
+// 1. Seluruh 7 peran resmi terdaftar dan tervalidasi oleh guard isAppRole.
+// 2. Pemetaan profil akun mengambil peran dari app_metadata (bukan user_metadata yang rentan dimanipulasi).
+// 3. Identifikasi vendorId otomatis terekstraksi untuk peran vendor.
+// 4. Penolakan peran fiktif / akun tanpa metadata peran resmi.
+// 5. Resolusi format email login: username pendek (@pasarin.id) vs email lengkap kustom.
 
 import assert from "node:assert/strict";
 import type { User } from "@supabase/supabase-js";
 import { APP_ROLES, accountProfile, isAppRole, resolveLoginEmail } from "../src/data/accounts";
 
-/**
- * Menghasilkan entitas objek User tiruan Supabase Auth dengan metadata peran terisolasi.
- * Memisahkan app_metadata (aman, hanya diatur server) dengan user_metadata (dapat diubah pengguna).
- *
- * @param role - Nama peran pengguna yang disimulasikan.
- * @returns Objek User Supabase lengkap dengan token dan metadata.
- */
+// Menghasilkan entitas objek User tiruan Supabase Auth dengan metadata peran terisolasi.
+// Memisahkan app_metadata (aman, hanya diatur server) dengan user_metadata (dapat diubah pengguna).
 function account(role?: string): User {
   return {
     id: "account-test",

@@ -1,10 +1,8 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-23 (Priority Time-Window Dispatcher Tier 2).
- * Memverifikasi:
- * 1. Penghitung waktu mundur 30 menit aktif segera setelah penawaran Tier 2 diterbitkan.
- * 2. Pihak budidaya maggot diblokir dari melakukan klaim selama masa reservasi sosial masih berlangsung.
- * 3. Pengalihan otomatis ke pakan biomassa maggot (Tier 3) berjalan mandiri jika jendela waktu berakhir tanpa klaim sosial.
- */
+// Skrip Pengujian Unit Mandiri: PSR-23 (Priority Time-Window Dispatcher Tier 2).
+// Memverifikasi:
+// 1. Penghitung waktu mundur 30 menit aktif segera setelah penawaran Tier 2 diterbitkan.
+// 2. Pihak budidaya maggot diblokir dari melakukan klaim selama masa reservasi sosial masih berlangsung.
+// 3. Pengalihan otomatis ke pakan biomassa maggot (Tier 3) berjalan mandiri jika jendela waktu berakhir tanpa klaim sosial.
 
 import {
   evaluateTier2PriorityWindow,
@@ -18,13 +16,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Fungsi pembantu pengecekan asersi uji jendela prioritas 30 menit.
- *
- * @param condition - Ekspresi boolean yang diverifikasi.
- * @param testName - Judul kasus pengujian.
- * @param detail - Detail nilai observasi.
- */
+// Fungsi pembantu pengecekan asersi uji jendela prioritas 30 menit.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -35,9 +27,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Runner utama pengujian jendela waktu prioritas Tier 2 (PSR-23).
- */
+// Runner utama pengujian jendela waktu prioritas Tier 2 (PSR-23).
 async function runPriorityWindowTests() {
   console.log("\nPengujian Unit Mandiri: PSR-23 (Priority Time-Window Dispatcher Tier 2)");
   console.log("Fokus: Invarian 3 (30-Minute Social Reservation Window & Auto-Downgrade)\n");

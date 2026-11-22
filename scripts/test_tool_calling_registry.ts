@@ -1,14 +1,12 @@
-/**
- * Skrip Uji Otomatis Registri Pemanggilan Alat Sub-Agen & Dekomposisi Kueri (PSR-18).
- * Memvalidasi 7 kriteria penerimaan kritis (Acceptance Criteria / DoD):
- * 1. Pendaftaran lengkap spesifikasi skema alat fungsi (PASARIN_TOOL_DECLARATIONS) sesuai standar Gemini.
- * 2. Dekomposisi kueri manajerial armada lusa ("Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?").
- * 3. Eksekusi alat berjalan secara tepat urutan tanpa memanggil modul yang tidak dibutuhkan.
- * 4. Keluaran akhir menyajikan rincian tonase surplus dan rekomendasi jenis kendaraan angkut secara padat.
- * 5. Pengujian eksekusi nyata setiap alat fungsi terdaftar (Weather, Decay, Pricing, QualityGate, Fleet, Units, Carbon).
- * 6. Kecepatan pemrosesan kueri kompleks diuji di bawah 2.000 ms (target ideal 1.500 ms).
- * 7. Penanganan galat jika dipanggil alat yang tidak terdaftar dalam registri.
- */
+// Skrip Uji Otomatis Registri Pemanggilan Alat Sub-Agen & Dekomposisi Kueri (PSR-18).
+// Memvalidasi 7 kriteria penerimaan kritis (Acceptance Criteria / DoD):
+// 1. Pendaftaran lengkap spesifikasi skema alat fungsi (PASARIN_TOOL_DECLARATIONS) sesuai standar Gemini.
+// 2. Dekomposisi kueri manajerial armada lusa ("Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?").
+// 3. Eksekusi alat berjalan secara tepat urutan tanpa memanggil modul yang tidak dibutuhkan.
+// 4. Keluaran akhir menyajikan rincian tonase surplus dan rekomendasi jenis kendaraan angkut secara padat.
+// 5. Pengujian eksekusi nyata setiap alat fungsi terdaftar (Weather, Decay, Pricing, QualityGate, Fleet, Units, Carbon).
+// 6. Kecepatan pemrosesan kueri kompleks diuji di bawah 2.000 ms (target ideal 1.500 ms).
+// 7. Penanganan galat jika dipanggil alat yang tidak terdaftar dalam registri.
 
 import {
   toolCallingRegistry,
@@ -28,13 +26,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Memeriksa kondisi boolean dan mencetak log hasil ke konsol.
- *
- * @param condition - Kondisi kebenaran yang diuji.
- * @param testName - Nama skenario pengujian.
- * @param detail - Informasi rincian nilai hasil observasi.
- */
+// Memeriksa kondisi boolean dan mencetak log hasil ke konsol.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -45,9 +37,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Menjalankan rangkaian pengujian integrasi Tool Calling Registry PSR-18.
- */
+// Menjalankan rangkaian pengujian integrasi Tool Calling Registry PSR-18.
 async function runToolCallingRegistryTests() {
   console.log("\nPASARIN PSR-18 Tool Calling Registry & Query Decomposition Test Suite");
 

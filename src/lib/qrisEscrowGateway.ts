@@ -1,28 +1,22 @@
-/**
- * Gerbang Pembayaran QRIS Dinamis Bank Indonesia & Rekening Bersama Escrow (PSR-37).
- * Mengimplementasikan:
- * 1. Generator Payload QRIS Dinamis berstandar nasional Bank Indonesia / ASPI / EMVCo TLV.
- * 2. Perhitungan Checksum CRC16-CCITT (Polinomial 0x1021) untuk integritas transaksi finansial.
- * 3. Mesin Transisi Status Rekening Escrow: unpaid -> held_in_escrow -> released_to_vendor.
- * 4. Logika Pelepasan Dana Instan (Zero-Click Settlement) ke dompet pedagang saat bukti PoD tervalidasi.
- */
+// Gerbang Pembayaran QRIS Dinamis Bank Indonesia & Rekening Bersama Escrow (PSR-37).
+// Mengimplementasikan:
+// 1. Generator Payload QRIS Dinamis berstandar nasional Bank Indonesia / ASPI / EMVCo TLV.
+// 2. Perhitungan Checksum CRC16-CCITT (Polinomial 0x1021) untuk integritas transaksi finansial.
+// 3. Mesin Transisi Status Rekening Escrow: unpaid -> held_in_escrow -> released_to_vendor.
+// 4. Logika Pelepasan Dana Instan (Zero-Click Settlement) ke dompet pedagang saat bukti PoD tervalidasi.
 
-/**
- * Status rekening penampung bersama (Escrow Payment Status) (PSR-37):
- * - unpaid: Belum dibayar oleh pembeli.
- * - held_in_escrow: Pembayaran QRIS terverifikasi dan ditahan di rekening penampung netral.
- * - released_to_vendor: Komoditas telah diterima utuh (PoD) dan dana diteruskan ke dompet pedagang.
- * - refunded: Transaksi dibatalkan dan dana dikembalikan ke pembeli.
- */
+// Status rekening penampung bersama (Escrow Payment Status) (PSR-37):
+// - unpaid: Belum dibayar oleh pembeli.
+// - held_in_escrow: Pembayaran QRIS terverifikasi dan ditahan di rekening penampung netral.
+// - released_to_vendor: Komoditas telah diterima utuh (PoD) dan dana diteruskan ke dompet pedagang.
+// - refunded: Transaksi dibatalkan dan dana dikembalikan ke pembeli.
 export type EscrowPaymentStatus =
   | "unpaid"
   | "held_in_escrow"
   | "released_to_vendor"
   | "refunded";
 
-/**
- * Metadata kios pedagang pasar penerima pembayaran QRIS (PSR-37).
- */
+// Metadata kios pedagang pasar penerima pembayaran QRIS (PSR-37).
 export interface QrisMerchantDetails {
   // NMID merchant yang disisipkan ke tag 26.
   merchantId: string;
@@ -31,9 +25,7 @@ export interface QrisMerchantDetails {
   postalCode?: string;
 }
 
-/**
- * Struktur payload dan metadata QRIS Dinamis standar Bank Indonesia EMVCo (PSR-37).
- */
+// Struktur payload dan metadata QRIS Dinamis standar Bank Indonesia EMVCo (PSR-37).
 export interface DynamicQrisResult {
   // String QRIS lengkap termasuk CRC di 4 karakter terakhir.
   qrisPayload: string;
@@ -47,12 +39,7 @@ export interface DynamicQrisResult {
   generatedAt: string;
 }
 
-/**
- * Menghitung checksum CRC16-CCITT berstandar EMVCo / ASPI (Polinomial 0x1021, Nilai Awal 0xFFFF).
- *
- * @param str - String payload sebelum nilai CRC disematkan.
- * @returns 4 karakter heksadesimal representasi CRC16.
- */
+// Menghitung checksum CRC16-CCITT berstandar EMVCo / ASPI (Polinomial 0x1021, Nilai Awal 0xFFFF).
 export function calculateQrisCrc16(str: string): string {
   let crc = 0xffff;
   const strlen = str.length;
@@ -72,26 +59,13 @@ export function calculateQrisCrc16(str: string): string {
   return hex.padStart(4, "0");
 }
 
-/**
- * Format string bantuan untuk menyusun Tag-Length-Value (TLV) standar EMVCo QRIS.
- *
- * @param tag - Kode tag 2 karakter (misal: "00", "54").
- * @param value - Nilai konten string yang diasosiasikan dengan tag.
- * @returns String terformat "<tag><panjang 2-digit><nilai>".
- */
+// Format string bantuan untuk menyusun Tag-Length-Value (TLV) standar EMVCo QRIS.
 function formatTlv(tag: string, value: string): string {
   const len = String(value.length).padStart(2, "0");
   return `${tag}${len}${value}`;
 }
 
-/**
- * Membangun payload QRIS Dinamis berstandar nasional Bank Indonesia (QRIS CPM/MPM).
- *
- * @param amountIdr - Nominal tagihan pesanan dalam mata uang Rupiah.
- * @param invoiceRef - Nomor referensi penawaran atau invoice transaksi.
- * @param merchant - Informasi data kios pedagang pasar penerima dana.
- * @returns Objek payload QRIS siap pindai oleh aplikasi mobile banking / e-wallet.
- */
+// Membangun payload QRIS Dinamis berstandar nasional Bank Indonesia (QRIS CPM/MPM).
 export function generateBankIndonesiaQrisPayload(
   amountIdr: number,
   invoiceRef: string,
@@ -156,12 +130,7 @@ export function generateBankIndonesiaQrisPayload(
   };
 }
 
-/**
- * Memvalidasi keabsahan struktur string payload QRIS Bank Indonesia dan checksum integritasnya.
- *
- * @param payload - String lengkap QRIS yang hendak diverifikasi.
- * @returns Status keabsahan, nominal pembayaran terdeteksi, dan nama merchant.
- */
+// Memvalidasi keabsahan struktur string payload QRIS Bank Indonesia dan checksum integritasnya.
 export function validateQrisPayloadStructure(payload: string): {
   valid: boolean;
   amountIdr?: number;
@@ -209,14 +178,8 @@ export function validateQrisPayloadStructure(payload: string): {
   };
 }
 
-/**
- * Mesin Transisi Status Rekening Penampung (Escrow State Machine) (PSR-37).
- * Menjamin aliran status finansial terkontrol: unpaid -> held_in_escrow -> released_to_vendor.
- *
- * @param currentStatus - Status pembayaran saat ini.
- * @param action - Aksi mutasi status yang diminta ("confirm_payment" | "release_to_vendor" | "refund").
- * @returns Status transisi sukses/gagal beserta status baru dan alasan jika ditolak.
- */
+// Mesin Transisi Status Rekening Penampung (Escrow State Machine) (PSR-37).
+// Menjamin aliran status finansial terkontrol: unpaid -> held_in_escrow -> released_to_vendor.
 export function transitionEscrowPaymentStatus(
   currentStatus: EscrowPaymentStatus,
   action: "confirm_payment" | "release_to_vendor" | "refund"
@@ -245,14 +208,8 @@ export function transitionEscrowPaymentStatus(
   return { success: false, newStatus: currentStatus, reason: "Aksi transisi tidak dikenali." };
 }
 
-/**
- * Menghitung pelepasan dana simulasi (Escrow Settlement) untuk pesanan yang telah dibayar (PSR-37).
- * Menyalurkan nominal pembayaran dari rekening penampung ke saldo dompet pedagang.
- *
- * @param amountIdr - Nominal transaksi yang dicairkan dalam Rupiah.
- * @param currentStatus - Status pembayaran saat ini (default: "held_in_escrow").
- * @returns Hasil mutasi settlement saldo dan pesan konfirmasi.
- */
+// Menghitung pelepasan dana simulasi (Escrow Settlement) untuk pesanan yang telah dibayar (PSR-37).
+// Menyalurkan nominal pembayaran dari rekening penampung ke saldo dompet pedagang.
 export function executeEscrowSettlement(
   amountIdr: number,
   currentStatus: EscrowPaymentStatus = "held_in_escrow"

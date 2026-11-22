@@ -1,9 +1,7 @@
 "use client";
 
-/**
- * Komponen Asisten PASARIN: tombol "Tanya asisten" dan dialog percakapan.
- * Dipakai di dashboard (data akun) dan di landing page (etalase publik) dengan endpoint berbeda.
- */
+// Komponen Asisten PASARIN: tombol "Tanya asisten" dan dialog percakapan.
+// Dipakai di dashboard (data akun) dan di landing page (etalase publik) dengan endpoint berbeda.
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, MessageCircle, Send, X } from "lucide-react";
@@ -34,7 +32,7 @@ const publicSuggestions = ["Sayur apa yang tersedia hari ini?", "Bayam paling mu
 // Asisten dashboard untuk akun yang sedang masuk; tidak tampil saat belum login.
 export function MarketChatbot() {
   const { user } = useAuth();
-  // A different account gets a new conversation, including after switching role.
+  // Akun berbeda memulai percakapan baru, termasuk setelah berganti peran.
   return user ? <ChatWorkspace key={`${user.id}:${user.role}`} greeting={`Halo, ${user.name}.`} subtitle={`Ruang kerja ${ROLE_LABELS[user.role]}`}
     intro="Tanyakan data ruang kerja atau cara menggunakan PASARIN. Asisten membantu menjelaskan; tindakan tetap Anda konfirmasi di dashboard."
     suggestions={suggestions[user.role]} endpoint="/api/orchestrator/query" authenticated /> : null;
@@ -57,10 +55,8 @@ interface WorkspaceProps {
   authenticated: boolean;
 }
 
-/**
- * Dialog percakapan satu pertanyaan per kirim, dengan batas 1.000 karakter, batas waktu 25 detik, dan tombol coba lagi.
- * Permintaan dashboard memakai token sesi; landing page memakai fetch biasa tanpa kredensial.
- */
+// Dialog percakapan satu pertanyaan per kirim, dengan batas 1.000 karakter, batas waktu 25 detik, dan tombol coba lagi.
+// Permintaan dashboard memakai token sesi; landing page memakai fetch biasa tanpa kredensial.
 function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoint, authenticated }: WorkspaceProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -99,10 +95,8 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
     trigger.current?.focus();
   }
 
-  /**
-   * Mengirim pertanyaan ke endpoint asisten; diabaikan bila kosong, lebih dari 1.000 karakter, atau masih ada permintaan berjalan.
-   * Saat `retry`, pertanyaan tidak ditambahkan lagi ke transkrip karena sudah tampil sebelumnya.
-   */
+  // Mengirim pertanyaan ke endpoint asisten; diabaikan bila kosong, lebih dari 1.000 karakter, atau masih ada permintaan berjalan.
+  // Saat `retry`, pertanyaan tidak ditambahkan lagi ke transkrip karena sudah tampil sebelumnya.
   async function send(text: string, retry = false) {
     const question = text.trim();
     if (!question || question.length > 1000 || inFlight.current) return;

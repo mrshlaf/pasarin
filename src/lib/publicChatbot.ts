@@ -1,8 +1,6 @@
-/**
- * Asisten publik landing page PASARIN untuk pengunjung yang belum masuk.
- * Hanya memakai etalase publik (komoditas, harga, kios, berat), ringkasan agregat, dan panduan;
- * tidak pernah membaca atau menampilkan data akun siapa pun.
- */
+// Asisten publik landing page PASARIN untuk pengunjung yang belum masuk.
+// Hanya memakai etalase publik (komoditas, harga, kios, berat), ringkasan agregat, dan panduan;
+// tidak pernah membaca atau menampilkan data akun siapa pun.
 
 import { GoogleGenAI } from "@google/genai";
 import { findCommodity, normalizeQuestion, withoutCommodities } from "@/lib/chatbotLanguage";
@@ -41,10 +39,8 @@ const ACCOUNT = "Akun PASARIN dipakai oleh mitra: pedagang kios, Warteg & UMKM, 
 // Contoh pertanyaan sebagai daftar berpoin.
 const examples = (count: number) => PUBLIC_EXAMPLES.slice(0, count).map((item) => `• ${item}`).join("\n");
 
-/**
- * Menjawab pertanyaan pengunjung landing page. Data akun tidak pernah dibaca; topik pribadi selalu ditolak.
- * Pertanyaan bebas diteruskan ke Gemini hanya dengan data etalase dan ringkasan publik.
- */
+// Menjawab pertanyaan pengunjung landing page. Data akun tidak pernah dibaca; topik pribadi selalu ditolak.
+// Pertanyaan bebas diteruskan ke Gemini hanya dengan data etalase dan ringkasan publik.
 export async function answerPublicQuestion(question: string, forceHeuristic = false) {
   const text = normalizeQuestion(question);
   const commodity = findCommodity(text);

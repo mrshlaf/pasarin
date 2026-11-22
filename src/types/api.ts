@@ -1,12 +1,8 @@
-/**
- * Definisi Tipe Data Kontrak API dan Entitas Domain PASARIN.
- * Memuat skema amplop HTTP seragam, telemetri mikroklimat cuaca (PSR-5),
- * kinetika peluruhan biologis Arrhenius (PSR-14), dan hasil sapuan surplus sore (PSR-4).
- */
+// Definisi Tipe Data Kontrak API dan Entitas Domain PASARIN.
+// Memuat skema amplop HTTP seragam, telemetri mikroklimat cuaca (PSR-5),
+// kinetika peluruhan biologis Arrhenius (PSR-14), dan hasil sapuan surplus sore (PSR-4).
 
-/**
- * Amplop respons API standar untuk seluruh endpoint HTTP PASARIN.
- */
+// Amplop respons API standar untuk seluruh endpoint HTTP PASARIN.
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
@@ -30,9 +26,7 @@ export interface PaginatedApiResponse<T = unknown> extends ApiResponse<T[]> {
   pagination: ApiPagination;
 }
 
-/**
- * Struktur payload diagnostik status kesehatan layanan dan konektivitas basis data (PSR-3).
- */
+// Struktur payload diagnostik status kesehatan layanan dan konektivitas basis data (PSR-3).
 export interface HealthCheckData {
   status: "healthy" | "degraded" | "unhealthy";
   service: string;
@@ -53,9 +47,7 @@ export interface AgentSweepTriggerPayload {
   targetKiosksCount?: number;
 }
 
-/**
- * Struktur catatan audit sistem untuk persistensi ke tabel system_audit_trail (PSR-4).
- */
+// Struktur catatan audit sistem untuk persistensi ke tabel system_audit_trail (PSR-4).
 export interface SystemAuditTrailRecord {
   event_id: string;
   subsystem: string;
@@ -65,9 +57,7 @@ export interface SystemAuditTrailRecord {
   occurred_at: string;
 }
 
-/**
- * Ringkasan hasil eksekusi sapuan surplus harian 14.30 WIB beserta alokasi 3-Tier (PSR-4).
- */
+// Ringkasan hasil eksekusi sapuan surplus harian 14.30 WIB beserta alokasi 3-Tier (PSR-4).
 export interface AfternoonSweepResult {
   eventId: string;
   subsystem: string;
@@ -93,9 +83,7 @@ export interface AfternoonSweepResult {
   };
 }
 
-/**
- * Struktur data telemetri cuaca mikro di los basah Pasar Induk Kramat Jati (PSR-5).
- */
+// Struktur data telemetri cuaca mikro di los basah Pasar Induk Kramat Jati (PSR-5).
 export interface WeatherTelemetryData {
   temperatureC: number;
   humidityPercent: number;
@@ -116,21 +104,15 @@ export interface WeatherTelemetryData {
   location: { latitude: number; longitude: number; name?: string };
 }
 
-/**
- * Klasifikasi kondisi fisik mutu sayuran berdasarkan skor peluruhan biologis:
- * segar_prima (< 0.35), layu_ringan (0.35 - 0.65), layu_sedang (0.65 - 0.85), tidak_layak (>= 0.85).
- */
+// Klasifikasi kondisi fisik mutu sayuran berdasarkan skor peluruhan biologis:
+// segar_prima (< 0.35), layu_ringan (0.35 - 0.65), layu_sedang (0.65 - 0.85), tidak_layak (>= 0.85).
 export type ProduceCondition = "segar_prima" | "layu_ringan" | "layu_sedang" | "tidak_layak";
 
-/**
- * Tingkatan alokasi penyelamatan sirkular:
- * fresh (eceran normal), tier_1 (Warteg/UMKM), tier_2 (Dapur Sosial), tier_3 (Sentra Maggot BSF).
- */
+// Tingkatan alokasi penyelamatan sirkular:
+// fresh (eceran normal), tier_1 (Warteg/UMKM), tier_2 (Dapur Sosial), tier_3 (Sentra Maggot BSF).
 export type CircularRescueTier = "fresh" | "tier_1" | "tier_2" | "tier_3";
 
-/**
- * Hasil komprehensif evaluasi kinetika peluruhan biologis Arrhenius-Q10 komoditas (PSR-14).
- */
+// Hasil komprehensif evaluasi kinetika peluruhan biologis Arrhenius-Q10 komoditas (PSR-14).
 export interface DecayEvaluationResult {
   commodityId: string;
   commodityName: string;
@@ -159,9 +141,7 @@ export interface CalculateDecayRequestPayload {
   humidityPercent?: number;
 }
 
-/**
- * Hasil evaluasi kehilangan klorofil visual melalui MobileNetV3 visual classifier (PSR-21 / Agent 10).
- */
+// Hasil evaluasi kehilangan klorofil visual melalui MobileNetV3 visual classifier (PSR-21 / Agent 10).
 export interface ChlorophyllLossEvaluationResult {
   chlorophyllLossPercent: number;
   visualDecayScore: number;
@@ -172,9 +152,7 @@ export interface ChlorophyllLossEvaluationResult {
   gateStatus: "passed" | "blocked";
 }
 
-/**
- * Hasil verifikasi gerbang kendali mutu etis dan anti-moral hazard (PSR-21).
- */
+// Hasil verifikasi gerbang kendali mutu etis dan anti-moral hazard (PSR-21).
 export interface QualityGateEvaluationResult {
   gateStatus: "passed" | "blocked";
   isHumanConsumable: boolean;
@@ -192,9 +170,7 @@ export interface QualityGateEvaluationResult {
   evaluatedAt: string;
 }
 
-/**
- * Parameter payload permintaan verifikasi integritas kelayakan konsumsi manusia (PSR-21).
- */
+// Parameter payload permintaan verifikasi integritas kelayakan konsumsi manusia (PSR-21).
 export interface QualityGateRequestPayload {
   commodityId: string;
   hoursOnDisplay: number;
@@ -206,9 +182,7 @@ export interface QualityGateRequestPayload {
   chlorophyllRatio?: number;
 }
 
-/**
- * Tahap penalaran langkah-demi-langkah ReAct (Thought -> Action -> Observation) (PSR-17).
- */
+// Tahap penalaran langkah-demi-langkah ReAct (Thought -> Action -> Observation) (PSR-17).
 export interface ReActStep {
   step: number;
   thought: string;
@@ -219,9 +193,7 @@ export interface ReActStep {
   toolPayload?: Record<string, unknown>;
 }
 
-/**
- * Hasil eksekusi siklus otonom orkestrator multi-agen (PSR-17 / Agent 1).
- */
+// Hasil eksekusi siklus otonom orkestrator multi-agen (PSR-17 / Agent 1).
 export interface OrchestratorRunResult {
   executionMode: "scheduled_autonomous_cron" | "manual_simulation";
   surplusDetectedKg: number;
@@ -239,9 +211,7 @@ export interface OrchestratorRunResult {
   executedAt: string;
 }
 
-/**
- * Hasil sintesis pemrosesan kueri bahasa alami manajer pasar (PSR-17 / PSR-18).
- */
+// Hasil sintesis pemrosesan kueri bahasa alami manajer pasar (PSR-17 / PSR-18).
 export interface OrchestratorQueryResult {
   query: string;
   executiveSummary: string;
@@ -252,9 +222,7 @@ export interface OrchestratorQueryResult {
   generatedAt: string;
 }
 
-/**
- * Deklarasi skema alat fungsi Gemini Function Calling (PSR-18).
- */
+// Deklarasi skema alat fungsi Gemini Function Calling (PSR-18).
 export interface ToolFunctionDeclaration {
   name: string;
   description: string;
@@ -266,9 +234,7 @@ export interface ToolFunctionDeclaration {
   };
 }
 
-/**
- * Hasil eksekusi sebuah alat sub-agen yang terdaftar (PSR-18).
- */
+// Hasil eksekusi sebuah alat sub-agen yang terdaftar (PSR-18).
 export interface ToolExecutionResult<T = unknown> {
   toolName: string;
   agentId: string;
@@ -279,9 +245,7 @@ export interface ToolExecutionResult<T = unknown> {
   executedAt: string;
 }
 
-/**
- * Rencana dekomposisi kueri bahasa alami manajerial (PSR-18).
- */
+// Rencana dekomposisi kueri bahasa alami manajerial (PSR-18).
 export interface QueryDecompositionPlan {
   originalQuery: string;
   detectedIntent: "logistics_fleet" | "climate_microclimate" | "pricing_and_floor" | "quality_and_ethics" | "market_overview";

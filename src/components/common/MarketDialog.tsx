@@ -1,20 +1,12 @@
-/**
- * Modul Komponen Dialog Modal Aksesibel (MarketDialog).
- * Membuka elemen modal native HTML5 <dialog> dengan perangkap fokus (focus trap)
- * serta mengembalikan fokus keyboard ke pemicu asal saat modal ditutup.
- */
+// Modul Komponen Dialog Modal Aksesibel (MarketDialog).
+// Membuka elemen modal native HTML5 <dialog> dengan perangkap fokus (focus trap)
+// serta mengembalikan fokus keyboard ke pemicu asal saat modal ditutup.
 
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
 
-/**
- * Komponen dialog modal dengan penanganan fokus keyboard dan penutupan klik di luar latar (backdrop).
- *
- * @param title - Judul modal yang terhubung ke aria-labelledby.
- * @param onClose - Callback fungsi saat modal ditutup.
- * @param children - Konten elemen anak di dalam modal.
- */
+// Komponen dialog modal dengan penanganan fokus keyboard dan penutupan klik di luar latar (backdrop).
 export function MarketDialog({ title, onClose, children }: {
   title: string;
   onClose: () => void;

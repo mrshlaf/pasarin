@@ -1,8 +1,6 @@
-/**
- * Uji API Asisten Dashboard.
- * Memeriksa otorisasi, validasi input, cakupan data per peran, mode tanpa kunci model, kegagalan model,
- * jalur pertanyaan bebas ke model, dan bahwa pertanyaan tidak pernah mengubah state pasar.
- */
+// Uji API Asisten Dashboard.
+// Memeriksa otorisasi, validasi input, cakupan data per peran, mode tanpa kunci model, kegagalan model,
+// jalur pertanyaan bebas ke model, dan bahwa pertanyaan tidak pernah mengubah state pasar.
 
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";

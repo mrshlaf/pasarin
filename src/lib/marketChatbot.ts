@@ -1,8 +1,6 @@
-/**
- * Asisten PASARIN untuk dashboard setiap peran.
- * Pertanyaan dinormalkan (bahasa santai, salah ketik), dicek batas privasinya, lalu dijawab langsung dari data
- * akun yang sudah disaring server. Pertanyaan bebas yang tidak dikenali diteruskan ke Gemini dengan data yang sama.
- */
+// Asisten PASARIN untuk dashboard setiap peran.
+// Pertanyaan dinormalkan (bahasa santai, salah ketik), dicek batas privasinya, lalu dijawab langsung dari data
+// akun yang sudah disaring server. Pertanyaan bebas yang tidak dikenali diteruskan ke Gemini dengan data yang sama.
 
 import { GoogleGenAI } from "@google/genai";
 import type { AppRole } from "@/data/accounts";
@@ -45,13 +43,8 @@ interface View {
   oversight: boolean;
 }
 
-/**
- * Menjawab satu pertanyaan dashboard untuk akun yang sedang masuk.
- * Jawaban data dan penolakan privasi tidak diparafrasekan model; hanya pertanyaan bebas dan beberapa ringkasan yang memakai Gemini.
- *
- * @param forceHeuristic - true untuk melewati model (dipakai tes dan mode tanpa kunci).
- * @returns summary, source ("data_pasar" atau "gemini"), dan metrik yang dipakai.
- */
+// Menjawab satu pertanyaan dashboard untuk akun yang sedang masuk.
+// Jawaban data dan penolakan privasi tidak diparafrasekan model; hanya pertanyaan bebas dan beberapa ringkasan yang memakai Gemini.
 export async function answerDashboardQuestion(user: ChatUser, question: string, forceHeuristic = false) {
   const snapshot = await readMarketSnapshot(user);
   const oversight = user.role === "manager" || user.role === "admin";
@@ -498,10 +491,8 @@ function evaluationAnswer(ops: Operations) {
     (ops.workstreams.length ? ` Alur yang perlu ditangani: ${ops.workstreams.join(", ")}.` : " Tidak ada alur yang perlu ditangani saat ini.");
 }
 
-/**
- * Pendapatan atau pengeluaran sesuai peran. Saldo pedagang sama dengan kartu "Saldo dompet" (dana yang sudah cair);
- * laba bersih tidak dihitung karena modal tidak dicatat.
- */
+// Pendapatan atau pengeluaran sesuai peran. Saldo pedagang sama dengan kartu "Saldo dompet" (dana yang sudah cair);
+// laba bersih tidak dihitung karena modal tidak dicatat.
 function earningsAnswer(role: AppRole, snapshot: Snapshot) {
   const buyer = role === "warteg" || role === "social_kitchen";
   const orders = buyer ? snapshot.offers.filter((item) => item.isMine && (item.status === "claimed" || item.status === "settled")) : [];
@@ -562,10 +553,8 @@ function reservedByStock(offers: Offer[]) {
   return reserved;
 }
 
-/**
- * Tujuan penyaluran stok pedagang menurut estimasi mutu (Warteg, Dapur Sosial, atau Maggot).
- * Berat yang sudah dipesan tidak dihitung, dan lot yang belum ditimbang ditandai terpisah.
- */
+// Tujuan penyaluran stok pedagang menurut estimasi mutu (Warteg, Dapur Sosial, atau Maggot).
+// Berat yang sudah dipesan tidak dihitung, dan lot yang belum ditimbang ditandai terpisah.
 function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commodityLabel?: string) {
   const reservedKg = reservedByStock(snapshot.offers);
   const listedStocks = new Set(snapshot.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));

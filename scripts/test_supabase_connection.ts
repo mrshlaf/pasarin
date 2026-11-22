@@ -1,12 +1,10 @@
-/**
- * Skrip Verifikasi Konektivitas dan Operasi CRUD Supabase PostgreSQL (PSR-2 & PSR-3).
- * Menguji komunikasi dua arah (baca dan tulis) ke database Supabase:
- * 1. Operasi baca (SELECT) katalog komoditas hortikultura.
- * 2. Operasi baca (SELECT) direktori 30 kios pedagang Pasar Kramat Jati.
- * 3. Operasi tulis (INSERT) pencatatan stok baru.
- * 4. Operasi pembaruan (UPDATE) kuantitas dan skor peluruhan stok.
- * 5. Operasi pembersihan (DELETE) item stok data uji.
- */
+// Skrip Verifikasi Konektivitas dan Operasi CRUD Supabase PostgreSQL (PSR-2 & PSR-3).
+// Menguji komunikasi dua arah (baca dan tulis) ke database Supabase:
+// 1. Operasi baca (SELECT) katalog komoditas hortikultura.
+// 2. Operasi baca (SELECT) direktori 30 kios pedagang Pasar Kramat Jati.
+// 3. Operasi tulis (INSERT) pencatatan stok baru.
+// 4. Operasi pembaruan (UPDATE) kuantitas dan skor peluruhan stok.
+// 5. Operasi pembersihan (DELETE) item stok data uji.
 import { createClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
 import * as path from "path";
@@ -31,10 +29,8 @@ if (!supabaseUrl || !supabaseKey) {
 // Inisialisasi klien Supabase JS SDK
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-/**
- * Menjalankan rangkaian pengujian siklus hidup data (CRUD) pada instans basis data Supabase.
- * Memverifikasi integritas relasional, skema tabel, serta izin operasi baca-tulis.
- */
+// Menjalankan rangkaian pengujian siklus hidup data (CRUD) pada instans basis data Supabase.
+// Memverifikasi integritas relasional, skema tabel, serta izin operasi baca-tulis.
 async function runDatabaseTests() {
   try {
     // Uji 1: Operasi baca (SELECT) katalog komoditas

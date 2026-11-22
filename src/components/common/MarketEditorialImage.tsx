@@ -1,8 +1,6 @@
 "use client";
 
-/**
- * Foto editorial pasar untuk dashboard dan landing page, dipilih menurut konteks halaman.
- */
+// Foto editorial pasar untuk dashboard dan landing page, dipilih menurut konteks halaman.
 
 import { useState } from "react";
 import Image from "next/image";
@@ -76,11 +74,9 @@ export interface MarketHeroBackgroundProps {
   className?: string;
 }
 
-/**
- * Latar belakang atmosferik foto lanskap lebar dengan gradient scrim mulus tanpa batas:
- * - Foto mengisi 100% wadah (inset-0) tanpa elemen potongan terpisah sehingga tidak ada garis/seam terpotong.
- * - Lapisan gradien bergradasi kontinu dari pinus pekat di area teks ke transparan di sisi foto.
- */
+// Latar belakang atmosferik foto lanskap lebar dengan gradient scrim mulus tanpa batas:
+// - Foto mengisi 100% wadah (inset-0) tanpa elemen potongan terpisah sehingga tidak ada garis/seam terpotong.
+// - Lapisan gradien bergradasi kontinu dari pinus pekat di area teks ke transparan di sisi foto.
 export function MarketHeroBackground({
   context,
   className,
@@ -110,9 +106,7 @@ export function MarketHeroBackground({
   );
 }
 
-/**
- * Alias komponen gambar editorial pasar.
- */
+// Alias komponen gambar editorial pasar.
 export function MarketEditorialImage(props: MarketHeroBackgroundProps) {
   return <MarketHeroBackground {...props} />;
 }

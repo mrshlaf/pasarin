@@ -1,10 +1,7 @@
-/**
- * Mendaftarkan daftar perintah, deskripsi, dan tombol menu bot Telegram PASARIN.
- * Tanpa ini, mengetik "/" di Telegram tidak menampilkan saran perintah apa pun.
- * Aman dijalankan berulang kali; token dibaca dari TELEGRAM_BOT_TOKEN atau .env.local dan tidak pernah dicetak.
- *
- * Pemakaian: npm run bot:setup
- */
+// Mendaftarkan daftar perintah, deskripsi, dan tombol menu bot Telegram PASARIN.
+// Tanpa ini, mengetik "/" di Telegram tidak menampilkan saran perintah apa pun.
+// Aman dijalankan berulang kali; token dibaca dari TELEGRAM_BOT_TOKEN atau .env.local dan tidak pernah dicetak.
+// Pemakaian: npm run bot:setup
 
 import fs from "node:fs";
 import path from "node:path";

@@ -1,8 +1,6 @@
-/**
- * Modul Konteks Autentikasi Klien React (Client-Side Authentication Context) (PSR-2).
- * Mengelola status login pengguna, sinkronisasi token sesi Supabase Auth,
- * serta mode autentikasi hibrida (server session cookies vs local development test accounts).
- */
+// Modul Konteks Autentikasi Klien React (Client-Side Authentication Context) (PSR-2).
+// Mengelola status login pengguna, sinkronisasi token sesi Supabase Auth,
+// serta mode autentikasi hibrida (server session cookies vs local development test accounts).
 
 "use client";
 
@@ -10,10 +8,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { accountProfile, resolveLoginEmail, type AppRole, type AuthUser } from "@/data/accounts";
 import { supabase, supabaseAuthConfigured } from "@/lib/supabase";
 
-/**
- * Tipe konteks autentikasi aplikasi PASARIN (PSR-2 / PSR-40).
- * Menyediakan status login, profil pengguna, dan metode mutasi sesi masuk/keluar.
- */
+// Tipe konteks autentikasi aplikasi PASARIN (PSR-2 / PSR-40).
+// Menyediakan status login, profil pengguna, dan metode mutasi sesi masuk/keluar.
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -30,10 +26,8 @@ const serverAuthEnabled = process.env.NEXT_PUBLIC_PASARIN_SERVER_AUTH === "1";
 // Akun uji lokal hanya tersedia di development dan tidak bercampur dengan sesi server.
 const localTestEnabled = process.env.NODE_ENV === "development" && !serverAuthEnabled;
 
-/**
- * Penyedia konteks autentikasi aplikasi yang mengikat status login pengguna ke Supabase Auth,
- * sesi cookie server, atau sesi simulasi lokal pengujian.
- */
+// Penyedia konteks autentikasi aplikasi yang mengikat status login pengguna ke Supabase Auth,
+// sesi cookie server, atau sesi simulasi lokal pengujian.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<AuthUser | null>(null);
   const [testUser, setTestUser] = useState<AuthUser | null>(null);
@@ -74,14 +68,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, []);
 
-  /**
-   * Mengotentikasi akun pengguna menggunakan username/email dan kata sandi.
-   * Mendukung alur autentikasi server session cookie, simulasi lokal, dan Supabase Auth Cloud.
-   *
-   * @param identifier - Username akun pasar atau alamat email resmi.
-   * @param password - Kata sandi akun pengguna.
-   * @returns Objek status keberhasilan login dan pesan kesalahan jika gagal.
-   */
+  // Mengotentikasi akun pengguna menggunakan username/email dan kata sandi.
+  // Mendukung alur autentikasi server session cookie, simulasi lokal, dan Supabase Auth Cloud.
   async function signInWithPassword(identifier: string, password: string) {
     if (serverAuthEnabled) {
       const response = await fetch("/api/auth/session", {
@@ -133,9 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: true };
   }
 
-  /**
-   * Mengakhiri sesi aktif di peramban dan membersihkan token cookie yang bersangkutan.
-   */
+  // Mengakhiri sesi aktif di peramban dan membersihkan token cookie yang bersangkutan.
   async function signOut() {
     if (serverUser) {
       const response = await fetch("/api/auth/session", { method: "DELETE" });
@@ -169,11 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Hook kustom untuk mengakses status autentikasi, profil pengguna saat ini, dan fungsi autentikasi.
- *
- * @returns Objek AuthContextType berisi status login dan metode autentikasi.
- */
+// Hook kustom untuk mengakses status autentikasi, profil pengguna saat ini, dan fungsi autentikasi.
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within an AuthProvider");

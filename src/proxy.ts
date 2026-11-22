@@ -1,19 +1,12 @@
-/**
- * Proxy header keamanan HTTP.
- * Menerapkan header keamanan HTTP ketat (nosniff, DENY framing, strict-origin referrer)
- * serta mengonfigurasi header CORS dan penanganan preflight OPTIONS untuk seluruh rute `/api`.
- */
+// Proxy header keamanan HTTP.
+// Menerapkan header keamanan HTTP ketat (nosniff, DENY framing, strict-origin referrer)
+// serta mengonfigurasi header CORS dan penanganan preflight OPTIONS untuk seluruh rute `/api`.
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-/**
- * Memproses setiap permintaan masuk pada level Edge runtime Next.js.
- * Menginjeksi identitas layanan, header proteksi peramban, dan kebijakan pembagian sumber daya lintas domain (CORS).
- *
- * @param request - Objek NextRequest masuk dari klien.
- * @returns Respons NextResponse termodifikasi dengan header keamanan dan CORS.
- */
+// Memproses setiap permintaan masuk pada level Edge runtime Next.js.
+// Menginjeksi identitas layanan, header proteksi peramban, dan kebijakan pembagian sumber daya lintas domain (CORS).
 export function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
@@ -34,10 +27,8 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
-/**
- * Konfigurasi pencocokan rute middleware.
- * Mengabaikan berkas statis publik (gambar, favicon, aset _next/static).
- */
+// Konfigurasi pencocokan rute middleware.
+// Mengabaikan berkas statis publik (gambar, favicon, aset _next/static).
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",

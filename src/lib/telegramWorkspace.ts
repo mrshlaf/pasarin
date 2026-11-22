@@ -1,8 +1,6 @@
-/**
- * Modul Ruang Kerja Bot Telegram Multi-Peran PASARIN (PSR-38).
- * Menghubungkan seluruh perintah teks (/start, /menu, /stok, /pasok, /cuaca, dll.) dan tombol inline
- * ke mesin transaksi pasar terpadu, mendukung navigasi halaman berpaginasi, serta otorisasi ketat per peran pengguna.
- */
+// Modul Ruang Kerja Bot Telegram Multi-Peran PASARIN (PSR-38).
+// Menghubungkan seluruh perintah teks (/start, /menu, /stok, /pasok, /cuaca, dll.) dan tombol inline
+// ke mesin transaksi pasar terpadu, mendukung navigasi halaman berpaginasi, serta otorisasi ketat per peran pengguna.
 
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
@@ -25,29 +23,19 @@ import { generateBankIndonesiaQrisPayload } from "@/lib/qrisEscrowGateway";
 import { answerDashboardQuestion } from "@/lib/marketChatbot";
 import { allowRequest } from "@/lib/rateLimit";
 
-/**
- * Representasi aktor pengguna Telegram terotentikasi (PSR-38).
- */
+// Representasi aktor pengguna Telegram terotentikasi (PSR-38).
 export type TelegramActor = Pick<AuthUser, "id" | "role" | "name" | "vendorId">;
 
-/**
- * Tipe tombol interaktif Telegram inline keyboard atau Mini App WebApp (PSR-38).
- */
+// Tipe tombol interaktif Telegram inline keyboard atau Mini App WebApp (PSR-38).
 export type TelegramButton = { text: string; callback_data: string } | { text: string; web_app: { url: string } };
 
-/**
- * Matriks baris dan kolom tombol inline keyboard Telegram (PSR-38).
- */
+// Matriks baris dan kolom tombol inline keyboard Telegram (PSR-38).
 type Keyboard = TelegramButton[][];
 
-/**
- * Kontrak struktur balasan bot Telegram (PSR-38).
- */
+// Kontrak struktur balasan bot Telegram (PSR-38).
 type Reply = { actionTaken: string; responseText: string; replyMarkup?: { inline_keyboard: Keyboard } };
 
-/**
- * Pemetaan nama peran pengguna resmi ke label Bahasa Indonesia untuk ruang kerja Telegram (PSR-38).
- */
+// Pemetaan nama peran pengguna resmi ke label Bahasa Indonesia untuk ruang kerja Telegram (PSR-38).
 export const telegramRoleName: Record<TelegramActor["role"], string> = {
   vendor: "Pedagang", warteg: "Warteg", social_kitchen: "Dapur sosial", maggot: "Sentra maggot",
   logistics: "Kurir", manager: "Pengelola pasar", admin: "Administrator",
@@ -60,25 +48,12 @@ const weight = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 });
 // Jumlah baris per halaman daftar Telegram.
 const pageSize = 6;
 
-/**
- * Menyusun respons balasan bot Telegram beserta tombol inline keyboard jika tersedia.
- *
- * @param actionTaken - Pengenal aksi yang dieksekusi untuk keperluan audit/log.
- * @param responseText - Isi pesan balasan teks.
- * @param keyboard - Matriks susunan tombol interaktif inline.
- * @returns Objek Reply siap kirim ke API Telegram.
- */
+// Menyusun respons balasan bot Telegram beserta tombol inline keyboard jika tersedia.
 export function telegramReply(actionTaken: string, responseText: string, keyboard: Keyboard = []): Reply {
   return { actionTaken, responseText, replyMarkup: keyboard.length ? { inline_keyboard: keyboard } : undefined };
 }
 
-/**
- * Memformat satu baris informasi ringkas lot penawaran untuk tampilan pesan teks Telegram.
- *
- * @param offer - Objek penawaran RescueOffer.
- * @param isCourier - Apakah informasi ditampilkan untuk kurir (menambahkan rincian tujuan pengantaran).
- * @returns String teks deskripsi lot komoditas, lokasi lapak, dan status pesanan.
- */
+// Memformat satu baris informasi ringkas lot penawaran untuk tampilan pesan teks Telegram.
 function offerLine(offer: RescueOffer, isCourier = false) {
   const commodity = COMMODITIES.find((item) => item.id === offer.commodityId)?.localName ?? offer.commodityId;
   const kiosk = KIOSKS.find((item) => item.id === offer.vendorId);
@@ -98,18 +73,7 @@ function offerLine(offer: RescueOffer, isCourier = false) {
     pickup + " · " + orderStatus(offer) + (offer.claimedBy ? " · " + offer.claimedBy : "");
 }
 
-/**
- * Merender daftar data berpaginasi dengan tombol navigasi halaman sebelumnya/berikutnya.
- *
- * @param command - Perintah dasar menu.
- * @param title - Judul daftar.
- * @param empty - Pesan jika daftar kosong.
- * @param items - Array data yang ditampilkan.
- * @param pageArg - Nomor halaman yang diminta.
- * @param line - Fungsi pemformat baris item.
- * @param actions - Fungsi pembuat tombol aksi per baris item.
- * @returns Teks daftar terpaginasi dan matriks keyboard inline.
- */
+// Merender daftar data berpaginasi dengan tombol navigasi halaman sebelumnya/berikutnya.
 function paged<T>(
   command: string, title: string, empty: string, items: T[], pageArg: string | undefined,
   line: (item: T) => string, actions: (item: T, index: number) => TelegramButton[] = () => [],
@@ -127,12 +91,7 @@ function paged<T>(
   return { text: list.length ? [title + " (" + page + "/" + pages + ")", ...list].join("\n\n") : title + "\n" + empty, keyboard };
 }
 
-/**
- * Menghasilkan menu navigasi tombol inline sesuai peran pengguna aktif di Telegram.
- *
- * @param user - Profil aktor Telegram pengguna saat ini.
- * @returns Matriks tombol inline TelegramButton.
- */
+// Menghasilkan menu navigasi tombol inline sesuai peran pengguna aktif di Telegram.
 function workspaceMenu(user: TelegramActor) {
   const accounts: TelegramButton[] = [{ text: "Akun saya", callback_data: "accounts" }];
   switch (user.role) {
@@ -173,10 +132,8 @@ const QUESTION_EXAMPLE: Record<TelegramActor["role"], string> = {
   admin: "apa yang perlu dievaluasi?",
 };
 
-/**
- * Menjawab pertanyaan bebas di Telegram memakai data akun yang sedang aktif.
- * Dibatasi 30 pertanyaan per 5 menit per chat agar kuota model tidak habis.
- */
+// Menjawab pertanyaan bebas di Telegram memakai data akun yang sedang aktif.
+// Dibatasi 30 pertanyaan per 5 menit per chat agar kuota model tidak habis.
 async function answerTelegramQuestion(text: string, chatId: number | string, user: TelegramActor) {
   const menu: Keyboard = [[{ text: "Buka menu", callback_data: "menu:menu" }]];
   if (!allowRequest("telegram:" + chatId, 30, 5 * 60 * 1000)) {
@@ -188,15 +145,7 @@ async function answerTelegramQuestion(text: string, chatId: number | string, use
     result.summary.slice(0, 3900) + (result.source === "gemini" ? "\n\n(Jawaban AI dari data akun Anda)" : ""), menu);
 }
 
-/**
- * Memproses perintah teks masuk dari obrolan Telegram ke operasi transaksi pasar yang bersangkutan.
- *
- * @param text - Teks pesan perintah dari pengguna Telegram (misal: "/menu", "/stok", "/cuaca").
- * @param chatId - ID unik obrolan Telegram.
- * @param user - Profil aktor Telegram pengguna saat ini jika sudah terautentikasi.
- * @param updateId - Nomor urut pembaruan Telegram untuk idempoten pencatatan pasokan.
- * @returns Respons Reply berisi teks balasan dan tombol inline.
- */
+// Memproses perintah teks masuk dari obrolan Telegram ke operasi transaksi pasar yang bersangkutan.
 export async function handleTelegramCommand(text: string, chatId: number | string, user?: TelegramActor, updateId?: number) {
   const [rawCommand, ...args] = text.trim().split(/\s+/);
   const command = rawCommand.toLowerCase().split("@")[0];
@@ -516,15 +465,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
   return telegramReply("help_displayed", "Pilih tugas yang tersedia untuk " + telegramRoleName[user.role] + ".", workspaceMenu(user));
 }
 
-/**
- * Memproses aksi interaktif klik tombol inline keyboard Telegram dengan validasi kepemilikan peran dan pesanan.
- *
- * @param action - Kata kunci aksi tombol (misal: "claim", "pay", "deliver", "reject_offer", "qc", "qp").
- * @param id - Parameter ID penawaran atau pasokan terkait.
- * @param user - Profil aktor Telegram pengguna saat ini.
- * @param args - Parameter argumen tambahan (kuantitas, mode, dll.).
- * @returns Respons Reply hasil pemrosesan aksi tombol.
- */
+// Memproses aksi interaktif klik tombol inline keyboard Telegram dengan validasi kepemilikan peran dan pesanan.
 export async function handleTelegramAction(action: string, id: string | undefined, user: TelegramActor, args: string[] = []) {
   const role = user.role;
   const vendor = role === "vendor" ? user.vendorId : undefined;

@@ -1,16 +1,10 @@
-/**
- * Endpoint Uji Coba Simulasi 24-Jam Metabolisme Pasar (PSR-31).
- * GET & POST: Menjalankan skenario hulu-ke-hilir 5 tahapan sirkadian pasar tradisional.
- */
+// Endpoint Uji Coba Simulasi 24-Jam Metabolisme Pasar (PSR-31).
+// GET & POST: Menjalankan skenario hulu-ke-hilir 5 tahapan sirkadian pasar tradisional.
 
 import { NextResponse } from "next/server";
 import { run24HourMarketMetabolismTrial } from "@/lib/marketMetabolismSimulator";
 
-/**
- * Menjalankan uji coba simulasi metabolisme pasar 24 jam melintasi 5 fase sirkadian.
- *
- * @returns Respons JSON laporan simulasi lengkap dan metrik reduksi emisi gas metana IPCC 2006.
- */
+// Menjalankan uji coba simulasi metabolisme pasar 24 jam melintasi 5 fase sirkadian.
 export async function GET() {
   try {
     const trialReport = await run24HourMarketMetabolismTrial();
@@ -30,12 +24,8 @@ export async function GET() {
   }
 }
 
-/**
- * Memicu eksekusi simulasi metabolisme pasar 24 jam via HTTP POST.
- * Sama persis dengan GET; disediakan untuk klien yang memicu simulasi sebagai aksi.
- *
- * @returns Respons JSON laporan hasil simulasi.
- */
+// Memicu eksekusi simulasi metabolisme pasar 24 jam via HTTP POST.
+// Sama persis dengan GET; disediakan untuk klien yang memicu simulasi sebagai aksi.
 export async function POST() {
   return GET();
 }

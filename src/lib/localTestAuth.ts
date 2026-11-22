@@ -1,8 +1,6 @@
-/**
- * Modul Autentikasi Pengujian Lokal Khusus Pengembangan (Localhost Development Auth).
- * Memfasilitasi peralihan akun cepat antar-peran (pedagang, warteg, panti, maggot, kurir) saat pengujian lokal
- * tanpa membebani kuota API Supabase Auth, dengan isolasi ketat hanya pada alamat loopback (localhost).
- */
+// Modul Autentikasi Pengujian Lokal Khusus Pengembangan (Localhost Development Auth).
+// Memfasilitasi peralihan akun cepat antar-peran (pedagang, warteg, panti, maggot, kurir) saat pengujian lokal
+// tanpa membebani kuota API Supabase Auth, dengan isolasi ketat hanya pada alamat loopback (localhost).
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -10,14 +8,10 @@ import type { AuthUser } from "@/data/accounts";
 import { MARKET_ACCOUNT_BY_USERNAME, localActorId } from "@/data/marketAccounts";
 import { databaseConfigured } from "@/lib/database";
 
-/**
- * Nama cookie sesi pengujian lokal loopback (PSR-40).
- */
+// Nama cookie sesi pengujian lokal loopback (PSR-40).
 export const LOCAL_TEST_COOKIE = "pasarin_local_test";
 
-/**
- * Durasi masa berlaku sesi pengujian lokal dalam detik (8 jam operasional pasar) (PSR-40).
- */
+// Durasi masa berlaku sesi pengujian lokal dalam detik (8 jam operasional pasar) (PSR-40).
 export const LOCAL_TEST_SESSION_SECONDS = 8 * 60 * 60;
 
 declare global {
@@ -25,13 +19,8 @@ declare global {
   var pasarinLocalTestSigningKey: Buffer | undefined;
 }
 
-/**
- * Memastikan permintaan berasal secara sah dari lingkungan pengembangan lokal (loopback interface localhost).
- * Memblokir penggunaan mode pengujian ini pada lingkungan produksi cloud untuk mencegah celah keamanan impersonasi peran.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Boolean bernilai true hanya jika permintaan berasal dari host loopback pengembangan.
- */
+// Memastikan permintaan berasal secara sah dari lingkungan pengembangan lokal (loopback interface localhost).
+// Memblokir penggunaan mode pengujian ini pada lingkungan produksi cloud untuk mencegah celah keamanan impersonasi peran.
 export function isLocalTestRequest(req: NextRequest) {
   // Mode uji hanya aktif saat development tanpa database nyata, lalu host, x-forwarded-for, dan origin harus loopback.
   if (process.env.NODE_ENV !== "development" || databaseConfigured() || process.env.PASARIN_STATE_BACKEND === "supabase") return false;
@@ -43,12 +32,7 @@ export function isLocalTestRequest(req: NextRequest) {
   return !origin || origin === `${req.nextUrl.protocol}//${host}`;
 }
 
-/**
- * Mengambil profil identitas pengguna pengujian lokal dari master direktori akun pasar.
- *
- * @param username - Nama pengguna akun pasar (misal: "pasar1", "warteg1").
- * @returns Profil AuthUser lengkap atau null jika username tidak terdaftar.
- */
+// Mengambil profil identitas pengguna pengujian lokal dari master direktori akun pasar.
 export function localTestProfile(username: string): AuthUser | null {
   const account = MARKET_ACCOUNT_BY_USERNAME.get(username);
   if (!account) return null;
@@ -62,34 +46,19 @@ export function localTestProfile(username: string): AuthUser | null {
   };
 }
 
-/**
- * Menghasilkan atau menggunakan kunci rahasia efemeral bersama untuk menandatangani token sesi pengujian lokal.
- *
- * @param payload - String muatan yang akan ditandatangani.
- * @returns Buffer tanda tangan kriptografis HMAC-SHA256.
- */
+// Menghasilkan atau menggunakan kunci rahasia efemeral bersama untuk menandatangani token sesi pengujian lokal.
 function signLocalTestSession(payload: string) {
   globalThis.pasarinLocalTestSigningKey ??= randomBytes(32);
   return createHmac("sha256", globalThis.pasarinLocalTestSigningKey).update(payload).digest();
 }
 
-/**
- * Menerbitkan token sesi pengujian lokal bertanda tangan kriptografis yang tahan manipulasi peran (tamper-proof).
- *
- * @param username - Nama pengguna akun pasar.
- * @returns String token sesi pengujian terformat "<username>.<expires>.<signature>".
- */
+// Menerbitkan token sesi pengujian lokal bertanda tangan kriptografis yang tahan manipulasi peran (tamper-proof).
 export function makeLocalTestSession(username: string) {
   const payload = `${username}.${Date.now() + LOCAL_TEST_SESSION_SECONDS * 1000}`;
   return `${payload}.${signLocalTestSession(payload).toString("base64url")}`;
 }
 
-/**
- * Membaca dan memvalidasi token sesi pengujian lokal dari cookie permintaan HTTP masuk secara timing-safe.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Profil pengguna AuthUser jika tanda tangan valid dan belum kedaluwarsa, atau null.
- */
+// Membaca dan memvalidasi token sesi pengujian lokal dari cookie permintaan HTTP masuk secara timing-safe.
 export function readLocalTestUser(req: NextRequest): AuthUser | null {
   if (!isLocalTestRequest(req)) return null;
   const cookie = req.cookies.get(LOCAL_TEST_COOKIE)?.value;

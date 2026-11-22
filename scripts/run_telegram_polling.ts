@@ -1,17 +1,14 @@
-/**
- * Eksekutor Polling Real-Time Bot Telegram PASARIN.
- * Menghubungkan bot Telegram nyata (@agent_pasarin_bot) secara langsung
- * ke engine PASARIN tanpa memerlukan tunnel ngrok atau webhook publik eksternal.
- *
- * Mendukung interaksi percakapan dan tombol aksi peran pedagang, pembeli, dan kurir:
- * - /start    : Pesan sambutan dan panduan peran pasar.
- * - /status   : Pemantauan kondisi dan pesanan aktif pasar.
- * - /dlh      : Laporan kepatuhan DLH DKI Jakarta & simulasi 24 jam.
- * - /cuaca    : Telemetri mikro los pasar Kramat Jati.
- * - /evaluasi : Pemicu evaluasi berkala mutu stok pedagang.
- * - /surplus  : Katalog penawaran penyelamatan pangan aktif.
- * - /pasok    : Pencatatan pasokan baru oleh pedagang kios.
- */
+// Eksekutor Polling Real-Time Bot Telegram PASARIN.
+// Menghubungkan bot Telegram nyata (@agent_pasarin_bot) secara langsung
+// ke engine PASARIN tanpa memerlukan tunnel ngrok atau webhook publik eksternal.
+// Mendukung interaksi percakapan dan tombol aksi peran pedagang, pembeli, dan kurir:
+// - /start    : Pesan sambutan dan panduan peran pasar.
+// - /status   : Pemantauan kondisi dan pesanan aktif pasar.
+// - /dlh      : Laporan kepatuhan DLH DKI Jakarta & simulasi 24 jam.
+// - /cuaca    : Telemetri mikro los pasar Kramat Jati.
+// - /evaluasi : Pemicu evaluasi berkala mutu stok pedagang.
+// - /surplus  : Katalog penawaran penyelamatan pangan aktif.
+// - /pasok    : Pencatatan pasokan baru oleh pedagang kios.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -83,10 +80,8 @@ async function startPolling() {
   await apiCall("deleteWebhook", { drop_pending_updates: false });
   console.log("[INFO] Mode Long-Polling Aktif. Menunggu pesan masuk dari Telegram...\n");
 
-  /**
-   * Akun cadangan untuk chat tanpa sesi aktif. Semua pengirim tanpa login diperlakukan sebagai admin,
-   * jadi skrip ini hanya untuk bot pengembangan, bukan bot publik.
-   */
+  // Akun cadangan untuk chat tanpa sesi aktif. Semua pengirim tanpa login diperlakukan sebagai admin,
+  // jadi skrip ini hanya untuk bot pengembangan, bukan bot publik.
   const defaultAdminActor: AuthUser = {
     ...localTestProfile("admin1")!,
     id: "local:admin1",

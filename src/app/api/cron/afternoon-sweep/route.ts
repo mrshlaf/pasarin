@@ -1,8 +1,6 @@
-/**
- * Rute Penjadwal Otonom Sapuan Surplus Pasar 14.30 WIB (PSR-4).
- * Memicu pemindaian 30 kios pedagang los basah Kramat Jati pada titik kritis pergantian ritme pasar.
- * Dilindungi oleh validasi Bearer secret token.
- */
+// Rute Penjadwal Otonom Sapuan Surplus Pasar 14.30 WIB (PSR-4).
+// Memicu pemindaian 30 kios pedagang los basah Kramat Jati pada titik kritis pergantian ritme pasar.
+// Dilindungi oleh validasi Bearer secret token.
 
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
@@ -15,26 +13,17 @@ import { matchesSecret } from "@/lib/apiAuth";
 // Sapuan membaca dan mengubah state pasar setiap dipanggil, jadi tidak boleh dirender statis.
 export const dynamic = "force-dynamic";
 
-/**
- * Memvalidasi keabsahan token otorisasi permintaan cron.
- * Rasionale Keamanan: Rute pemicu sapuan sore mengeksekusi kalkulasi massal dan audit log.
- * Akses wajib membawa Bearer token rahasia (CRON_SECRET_KEY) untuk mencegah penyerang luar memicu audit palsu secara berulang.
- *
- * @param req - Objek NextRequest pembawa header otorisasi.
- * @returns True jika permintaan memiliki kredensial valid, false jika tidak sah.
- */
+// Memvalidasi keabsahan token otorisasi permintaan cron.
+// Rasionale Keamanan: Rute pemicu sapuan sore mengeksekusi kalkulasi massal dan audit log.
+// Akses wajib membawa Bearer token rahasia (CRON_SECRET_KEY) untuk mencegah penyerang luar memicu audit palsu secara berulang.
 function isAuthorizedCronRequest(req: NextRequest): boolean {
   const token = req.headers.get("authorization")?.match(/^Bearer (\S+)$/i)?.[1];
   return matchesSecret(token, getEnv().CRON_SECRET_KEY);
 }
 
-/**
- * Mengeksekusi siklus sapuan inventaris sore hari (Afternoon Sweep) pukul 14.30 WIB.
- * Mengagregasi perkiraan surplus per jalur dari usulan yang menunggu konfirmasi pedagang
- * dan mencatat ringkasan ke audit trail.
- *
- * @returns Ringkasan hasil sapuan AfternoonSweepResult beserta verifikasi audit trail.
- */
+// Mengeksekusi siklus sapuan inventaris sore hari (Afternoon Sweep) pukul 14.30 WIB.
+// Mengagregasi perkiraan surplus per jalur dari usulan yang menunggu konfirmasi pedagang
+// dan mencatat ringkasan ke audit trail.
 async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   const startTime = Date.now();
   const triggeredAt = new Date().toISOString();
@@ -100,13 +89,8 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
   };
 }
 
-/**
- * Menangani pemicuan sapuan berkala via HTTP GET (standar Vercel Cron dan external cron trigger).
- * Jadwal di vercel.json `30 7 * * *` dalam UTC, setara 14.30 WIB.
- *
- * @param req - Objek NextRequest pembawa header otorisasi Bearer token.
- * @returns Respons JSON berisi AfternoonSweepResult jika terotorisasi, atau HTTP 401 jika ditolak.
- */
+// Menangani pemicuan sapuan berkala via HTTP GET (standar Vercel Cron dan external cron trigger).
+// Jadwal di vercel.json `30 7 * * *` dalam UTC, setara 14.30 WIB.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
@@ -122,12 +106,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemicuan sapuan manual via HTTP POST dari dashboard administrator sistem.
- *
- * @param req - Objek NextRequest pembawa header otorisasi Bearer token.
- * @returns Respons JSON berisi AfternoonSweepResult jika terotorisasi, atau HTTP 401 jika ditolak.
- */
+// Menangani pemicuan sapuan manual via HTTP POST dari dashboard administrator sistem.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorizedCronRequest(req)) {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);

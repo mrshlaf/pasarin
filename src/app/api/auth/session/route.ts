@@ -1,8 +1,6 @@
-/**
- * Rute API Sesi Server Kredensial Pasar (PSR-2).
- * Mengatur pemulihan sesi dari cookie bertanda tangan HMAC, autentikasi langsung ke basis data PostgreSQL,
- * serta penghapusan cookie sesi saat pengguna keluar.
- */
+// Rute API Sesi Server Kredensial Pasar (PSR-2).
+// Mengatur pemulihan sesi dari cookie bertanda tangan HMAC, autentikasi langsung ke basis data PostgreSQL,
+// serta penghapusan cookie sesi saat pengguna keluar.
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,23 +17,13 @@ const credentials = z.object({
   password: z.string().max(256),
 });
 
-/**
- * Memulihkan data profil pengguna dari token sesi server yang tersimpan di HttpOnly cookie peramban.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Respons JSON berisi profil AuthUser atau null.
- */
+// Memulihkan data profil pengguna dari token sesi server yang tersimpan di HttpOnly cookie peramban.
 export async function GET(req: NextRequest) {
   if (!serverAuthEnabled()) return NextResponse.json({ user: null }, { status: 404 });
   return NextResponse.json({ user: readSessionUser(req) });
 }
 
-/**
- * Memvalidasi kredensial pengguna terhadap tabel auth.users PostgreSQL dan menerbitkan cookie sesi baru.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Respons JSON berisi profil AuthUser dan set-cookie sesi.
- */
+// Memvalidasi kredensial pengguna terhadap tabel auth.users PostgreSQL dan menerbitkan cookie sesi baru.
 export async function POST(req: NextRequest) {
   if (!serverAuthEnabled()) return NextResponse.json({ error: "Mode sesi server tidak aktif." }, { status: 404 });
   if (!databaseConfigured()) return NextResponse.json({ error: "Basis data akun belum dikonfigurasi." }, { status: 503 });
@@ -53,11 +41,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * Mengakhiri sesi server dan menghapus HttpOnly cookie sesi dari peramban klien.
- *
- * @returns Respons JSON konfirmasi sesi diakhiri.
- */
+// Mengakhiri sesi server dan menghapus HttpOnly cookie sesi dari peramban klien.
 export async function DELETE() {
   const response = NextResponse.json({ user: null });
   response.cookies.set(SESSION_COOKIE, "", { ...sessionCookie, maxAge: 0 });

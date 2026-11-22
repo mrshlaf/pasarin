@@ -1,9 +1,7 @@
-/**
- * Modul Komponen Antarmuka Ruang Kerja Pasar Bersama (Market Workspace Shared Components).
- * Menyediakan blok pembangun visual terstandarisasi untuk seluruh dasbor peran:
- * metrik ringkasan kartu, indikator meteran peluruhan biologis (DecayMeter), chip tier alokasi sirkular,
- * pill status pesanan, serta pemformatan baku mata uang Rupiah dan berat fisik kilogram.
- */
+// Modul Komponen Antarmuka Ruang Kerja Pasar Bersama (Market Workspace Shared Components).
+// Menyediakan blok pembangun visual terstandarisasi untuk seluruh dasbor peran:
+// metrik ringkasan kartu, indikator meteran peluruhan biologis (DecayMeter), chip tier alokasi sirkular,
+// pill status pesanan, serta pemformatan baku mata uang Rupiah dan berat fisik kilogram.
 
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -39,9 +37,7 @@ const statusTones: Record<string, Tone> = {
   Dikembalikan: "danger",
 };
 
-/**
- * Komponen pembungkus seksi ruang kerja untuk menjaga konsistensi hierarki tata letak dan jarak visual.
- */
+// Komponen pembungkus seksi ruang kerja untuk menjaga konsistensi hierarki tata letak dan jarak visual.
 export function MarketSection({ title, description, action, variant = "card", children }: {
   title: string;
   description?: string;
@@ -79,9 +75,7 @@ const metricTones = {
   danger: "text-danger",
 } as const;
 
-/**
- * Menampilkan metrik dan saldo real-time dalam panel baris berpembatas halus.
- */
+// Menampilkan metrik dan saldo real-time dalam panel baris berpembatas halus.
 export function MarketMetrics({ items }: { items: MarketMetric[] }) {
   const baseCols = items.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2";
   const wideCols = items.length === 1 ? "lg:grid-cols-1" : items.length === 2 ? "lg:grid-cols-2" : items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
@@ -99,9 +93,7 @@ export function MarketMetrics({ items }: { items: MarketMetric[] }) {
   );
 }
 
-/**
- * Menampilkan label status pesanan dengan indikator warna semantik dan kontras teks tinggi.
- */
+// Menampilkan label status pesanan dengan indikator warna semantik dan kontras teks tinggi.
 export function StatusPill({ label, tone }: { label: string; tone?: Tone }) {
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[12px] font-semibold leading-4 ${toneStyles[tone ?? statusTones[label] ?? "neutral"]}`}>
@@ -124,9 +116,7 @@ const tierStyles: Record<RescueOffer["targetTier"], string> = {
   tier_3: "border-tier-3/30 bg-tier-3-soft text-tier-3-ink",
 };
 
-/**
- * Menampilkan badge jalur distribusi sirkular 3-Tier yang terhubung pada suatu lot penawaran.
- */
+// Menampilkan badge jalur distribusi sirkular 3-Tier yang terhubung pada suatu lot penawaran.
 export function TierChip({ tier }: { tier: RescueOffer["targetTier"] }) {
   return (
     <span className={`inline-flex items-center rounded-md border px-2 py-1 text-[12px] font-semibold leading-4 ${tierStyles[tier]}`}>
@@ -135,9 +125,7 @@ export function TierChip({ tier }: { tier: RescueOffer["targetTier"] }) {
   );
 }
 
-/**
- * Visualisasi skala peluruhan biologis (0 - 100) berbasis Arrhenius lengkap dengan batas zona aman, waspada, dan afkir.
- */
+// Visualisasi skala peluruhan biologis (0 - 100) berbasis Arrhenius lengkap dengan batas zona aman, waspada, dan afkir.
 export function DecayMeter({ score }: { score: number }) {
   const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
   const marker = Math.max(1, Math.min(99, percent));
@@ -178,9 +166,7 @@ export function DecayMeter({ score }: { score: number }) {
   );
 }
 
-/**
- * Tampilan status kosong (empty state) yang memberikan instruksi aksi berikutnya kepada pengguna.
- */
+// Tampilan status kosong (empty state) yang memberikan instruksi aksi berikutnya kepada pengguna.
 export function EmptyState({ icon: Icon, title, description }: {
   icon: LucideIcon;
   title: string;
@@ -197,9 +183,7 @@ export function EmptyState({ icon: Icon, title, description }: {
   );
 }
 
-/**
- * Komponen baris daftar pasokan atau penawaran yang responsif pada layar ponsel maupun desktop.
- */
+// Komponen baris daftar pasokan atau penawaran yang responsif pada layar ponsel maupun desktop.
 export function MarketRow({ title, detail, status, children }: {
   title: string; detail: string; status?: string; children?: ReactNode;
 }) {
@@ -217,16 +201,12 @@ export function MarketRow({ title, detail, status, children }: {
   );
 }
 
-/**
- * Menghasilkan judul penawaran terstandarisasi yang memuat nama komoditas dan berat kilogram.
- */
+// Menghasilkan judul penawaran terstandarisasi yang memuat nama komoditas dan berat kilogram.
 export function offerTitle(offer: RescueOffer) {
   return commodityName(offer.commodityId) + ", " + kg(offer.quantityKg);
 }
 
-/**
- * Menampilkan rincian parameter lot penawaran dalam format pasangan label dan nilai terformat.
- */
+// Menampilkan rincian parameter lot penawaran dalam format pasangan label dan nilai terformat.
 export function LotFacts({ items }: { items: { label: string; value: string }[] }) {
   return (
     <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px] leading-5">
@@ -250,31 +230,23 @@ export function kioskInfo(vendorId: string) {
   return KIOSKS.find((item) => item.id === vendorId);
 }
 
-/**
- * Menyelesaikan identitas kios pedagang untuk ditampilkan pada tiket pesanan pembeli dan kurir.
- */
+// Menyelesaikan identitas kios pedagang untuk ditampilkan pada tiket pesanan pembeli dan kurir.
 export function kioskLabel(vendorId: string) {
   const kiosk = kioskInfo(vendorId);
   return kiosk ? "Kios " + kiosk.stallNumber + ", " + kiosk.name : vendorId;
 }
 
-/**
- * Memformat nominal mata uang Rupiah Indonesia (IDR) dengan pemisah ribuan titik.
- */
+// Memformat nominal mata uang Rupiah Indonesia (IDR) dengan pemisah ribuan titik.
 export function rupiah(amount: number) {
   return "Rp " + amount.toLocaleString("id-ID");
 }
 
-/**
- * Memformat berat komoditas dalam kilogram dengan pemisah desimal koma standar Indonesia.
- */
+// Memformat berat komoditas dalam kilogram dengan pemisah desimal koma standar Indonesia.
 export function kg(amount: number) {
   return amount.toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " kg";
 }
 
-/**
- * Mengubah sisa jam simpan ke format ramah pengguna: menit jika < 1 jam, jam & menit jika ada sisa, atau afkir.
- */
+// Mengubah sisa jam simpan ke format ramah pengguna: menit jika < 1 jam, jam & menit jika ada sisa, atau afkir.
 export function formatRemainingShelfLife(hours: number, decayScore?: number): string {
   if (decayScore !== undefined && decayScore >= 0.85) {
     return "Afkir (pakan maggot)";
@@ -294,18 +266,14 @@ export function formatRemainingShelfLife(hours: number, decayScore?: number): st
   return `${fullHours} jam ${remainingMinutes} menit`;
 }
 
-/**
- * Memformat durasi waktu pajang komoditas dalam jam bulat tanpa koma yang membingungkan.
- */
+// Memformat durasi waktu pajang komoditas dalam jam bulat tanpa koma yang membingungkan.
 export function formatElapsedHours(hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) return "1 jam";
   const rounded = Math.max(1, Math.round(hours));
   return `${rounded} jam`;
 }
 
-/**
- * Memformat tanggal pengantaran dalam format ringkas berbahasa Indonesia ("14 Okt").
- */
+// Memformat tanggal pengantaran dalam format ringkas berbahasa Indonesia ("14 Okt").
 export function dateLabel(value?: string) {
   if (!value) return "";
   const date = new Date(value);

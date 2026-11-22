@@ -1,10 +1,8 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-31 (24-Hour Market Metabolism Simulation Trial).
- * Memverifikasi Kriteria Penerimaan (DoD):
- * 1. Seluruh 5 tahapan siklus 24 jam berhasil disimulasikan dari hulu ke hilir tanpa kendala.
- * 2. Angka penyelamatan surplus sayuran terbukti melampaui ambang batas efisiensi DLH DKI (>= 90%).
- * 3. Seluruh 3 Invarian Kritis (Invarian 1, 2, 3) terverifikasi lolos 100%.
- */
+// Skrip Pengujian Unit Mandiri: PSR-31 (24-Hour Market Metabolism Simulation Trial).
+// Memverifikasi Kriteria Penerimaan (DoD):
+// 1. Seluruh 5 tahapan siklus 24 jam berhasil disimulasikan dari hulu ke hilir tanpa kendala.
+// 2. Angka penyelamatan surplus sayuran terbukti melampaui ambang batas efisiensi DLH DKI (>= 90%).
+// 3. Seluruh 3 Invarian Kritis (Invarian 1, 2, 3) terverifikasi lolos 100%.
 
 import { run24HourMarketMetabolismTrial } from "../src/lib/marketMetabolismSimulator";
 
@@ -13,13 +11,7 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Fungsi pembantu pencatat asersi uji metabolisme pasar 24 jam.
- *
- * @param condition - Ekspresi kebenaran boolean yang diuji.
- * @param testName - Nama spesifik pengujian.
- * @param detail - Informasi pendukung nilai observasi.
- */
+// Fungsi pembantu pencatat asersi uji metabolisme pasar 24 jam.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -30,9 +22,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Runner utama simulasi metabolisme sirkadian 24 jam pasar Kramat Jati PSR-31.
- */
+// Runner utama simulasi metabolisme sirkadian 24 jam pasar Kramat Jati PSR-31.
 async function runMetabolismTrialTests() {
   console.log("\nPengujian Unit Mandiri: PSR-31 (24-Hour Market Metabolism Simulation Trial)");
   console.log("Fokus: Validasi 5 Fase Sirkadian, Target Efisiensi >=90%, dan Invarian Kritis\n");

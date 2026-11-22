@@ -1,16 +1,12 @@
-/**
- * Batas privasi Asisten PASARIN.
- * Data etalase (komoditas, harga, kios penjual, berat tersedia) boleh dibagikan ke semua akun.
- * Data pribadi pihak lain (pendapatan, saldo, pesanan, pembeli, belanja, kontak, kredensial) hanya untuk pemiliknya,
- * kecuali pengelola/admin yang memang mengawasi keuangan pasar.
- */
+// Batas privasi Asisten PASARIN.
+// Data etalase (komoditas, harga, kios penjual, berat tersedia) boleh dibagikan ke semua akun.
+// Data pribadi pihak lain (pendapatan, saldo, pesanan, pembeli, belanja, kontak, kredensial) hanya untuk pemiliknya,
+// kecuali pengelola/admin yang memang mengawasi keuangan pasar.
 
 import type { AuthUser } from "@/data/accounts";
 
-/**
- * Identitas minimal yang dibutuhkan asisten. Sesi Telegram tidak selalu membawa email,
- * jadi email opsional; tanpa email, penyebutan username sendiri dianggap pihak lain (lebih ketat).
- */
+// Identitas minimal yang dibutuhkan asisten. Sesi Telegram tidak selalu membawa email,
+// jadi email opsional; tanpa email, penyebutan username sendiri dianggap pihak lain (lebih ketat).
 export type ChatUser = Pick<AuthUser, "id" | "role" | "name" | "vendorId"> & { email?: string };
 import { KIOSKS } from "@/data/kiosks";
 import { MARKET_ACCOUNTS } from "@/data/marketAccounts";
@@ -59,10 +55,8 @@ export function mentionedKioskIds(raw: string) {
   return KIOSK_PATTERNS.filter((item) => item.pattern.test(raw)).map((item) => item.id);
 }
 
-/**
- * Batas privasi untuk pengunjung landing page yang belum masuk:
- * semua data akun (keuangan, pesanan, pembeli, kontak, kredensial) ditolak, termasuk "milik saya".
- */
+// Batas privasi untuk pengunjung landing page yang belum masuk:
+// semua data akun (keuangan, pesanan, pembeli, kontak, kredensial) ditolak, termasuk "milik saya".
 export function publicPrivacyRefusal(text: string) {
   if (CREDENTIAL.test(text)) return "Maaf, saya tidak bisa memberikan kata sandi, PIN, atau data login akun mana pun.";
   if (CONTACT.test(text)) return "Maaf, nomor telepon, email, rekening, dan identitas pribadi tidak dibagikan lewat asisten.";
@@ -79,11 +73,7 @@ export type PrivacyCheck =
   | { kind: "refuse"; message: string }
   | { kind: "kiosk-finance"; kioskId: string };
 
-/**
- * Menentukan apakah pertanyaan boleh dijawab.
- * @param raw - Pertanyaan asli (huruf kecil) untuk mengenali nama kios dan akun.
- * @param text - Pertanyaan ternormalisasi untuk mengenali topik.
- */
+// Menentukan apakah pertanyaan boleh dijawab.
 export function checkPrivacy(user: ChatUser, raw: string, text: string): PrivacyCheck {
   const oversight = user.role === "manager" || user.role === "admin";
   const mentionedKiosks = KIOSK_PATTERNS.filter((item) => item.pattern.test(raw)).map((item) => item.id);

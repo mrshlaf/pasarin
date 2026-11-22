@@ -1,14 +1,11 @@
-/**
- * Skrip Pelaksana Rangkaian Pengujian Menyeluruh (Master Automated Test Orchestrator - PSR-39).
- * Mengorkestrasi eksekusi seluruh berkas pengujian mandiri dalam lingkungan uji terisolasi.
- *
- * Alur Kerja:
- * 1. Mendeteksi direktori skrip pengujian aktif.
- * 2. Memindai seluruh berkas uji berawalan 'test_*.ts' (mengecualikan pengujian live DB Supabase agar hermetik).
- * 3. Menyiapkan environment terisolasi hermetik (menghapus API key eksternal agar fallback simulasi teruji).
- * 4. Menjalankan 'run_unit_tests.ts' dan seluruh sub-skrip pengujian secara sekuensial.
- * 5. Menetapkan exit code 1 jika ada satu pun pengujian yang gagal (CI/CD pipeline guard).
- */
+// Skrip Pelaksana Rangkaian Pengujian Menyeluruh (Master Automated Test Orchestrator - PSR-39).
+// Mengorkestrasi eksekusi seluruh berkas pengujian mandiri dalam lingkungan uji terisolasi.
+// Alur Kerja:
+// 1. Mendeteksi direktori skrip pengujian aktif.
+// 2. Memindai seluruh berkas uji berawalan 'test_*.ts' (mengecualikan pengujian live DB Supabase agar hermetik).
+// 3. Menyiapkan environment terisolasi hermetik (menghapus API key eksternal agar fallback simulasi teruji).
+// 4. Menjalankan 'run_unit_tests.ts' dan seluruh sub-skrip pengujian secara sekuensial.
+// 5. Menetapkan exit code 1 jika ada satu pun pengujian yang gagal (CI/CD pipeline guard).
 
 import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";

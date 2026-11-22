@@ -1,8 +1,6 @@
-/**
- * Komponen Penunjuk Waktu Dinamis Waktu Indonesia Barat (WIB, UTC+7).
- * Menyajikan visualisasi waktu aktual Jakarta secara reaktif per detik
- * untuk memandu ritme kerja pedagang los basah dan batas waktu kedaluwarsa penawaran.
- */
+// Komponen Penunjuk Waktu Dinamis Waktu Indonesia Barat (WIB, UTC+7).
+// Menyajikan visualisasi waktu aktual Jakarta secara reaktif per detik
+// untuk memandu ritme kerja pedagang los basah dan batas waktu kedaluwarsa penawaran.
 
 "use client";
 
@@ -16,10 +14,8 @@ interface RealtimeWibClockProps {
   showDate?: boolean;
 }
 
-/**
- * Komponen jam digital real-time Waktu Indonesia Barat (WIB, UTC+7).
- * Berjalan dinamis setiap detik di browser klien untuk semua dashboard peran.
- */
+// Komponen jam digital real-time Waktu Indonesia Barat (WIB, UTC+7).
+// Berjalan dinamis setiap detik di browser klien untuk semua dashboard peran.
 export function RealtimeWibClock({
   className = "",
   showSeconds = true,

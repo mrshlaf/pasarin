@@ -1,14 +1,11 @@
-/**
- * Modul Registri Pemanggilan Alat Sub-Agen & Dekomposisi Kueri Bahasa Alami (PSR-18).
- * Bertanggung jawab:
- * 1. Mendaftarkan seluruh spesifikasi alat sub-agen ke dalam skema deklarasi fungsi resmi (FunctionDeclaration)
- *    yang kompatibel dengan Google Gemini 2.0 Flash Tool Calling SDK.
- * 2. Menghubungkan pengenal alat dengan eksekusi nyata pada modul sub-agen terkait (weatherAgent, pasarinCore, qualityGateAgent).
- * 3. Mendekomposisi pertanyaan bahasa alami manajer pasar menjadi rencana eksekusi alat berurutan (execution plan)
- *    tanpa memanggil modul yang tidak dibutuhkan, dengan target latensi respons di bawah dua detik (< 1.500 ms).
- *
- * Landasan Spesifikasi PRD §4.18, §16, dan §2942-2977.
- */
+// Modul Registri Pemanggilan Alat Sub-Agen & Dekomposisi Kueri Bahasa Alami (PSR-18).
+// Bertanggung jawab:
+// 1. Mendaftarkan seluruh spesifikasi alat sub-agen ke dalam skema deklarasi fungsi resmi (FunctionDeclaration)
+// yang kompatibel dengan Google Gemini 2.0 Flash Tool Calling SDK.
+// 2. Menghubungkan pengenal alat dengan eksekusi nyata pada modul sub-agen terkait (weatherAgent, pasarinCore, qualityGateAgent).
+// 3. Mendekomposisi pertanyaan bahasa alami manajer pasar menjadi rencana eksekusi alat berurutan (execution plan)
+// tanpa memanggil modul yang tidak dibutuhkan, dengan target latensi respons di bawah dua detik (< 1.500 ms).
+// Landasan Spesifikasi PRD §4.18, §16, dan §2942-2977.
 
 import { COMMODITIES } from "@/data/commodities";
 import { weatherAgent } from "@/lib/weatherAgent";
@@ -30,10 +27,8 @@ import {
   CircularRescueTier,
 } from "@/types/api";
 
-/**
- * Daftar deklarasi skema pemanggilan fungsi terstruktur (Function Declarations)
- * untuk seluruh sub-agen PASARIN sesuai standar Google Gemini Tool Calling (PSR-18 / PRD §4.18).
- */
+// Daftar deklarasi skema pemanggilan fungsi terstruktur (Function Declarations)
+// untuk seluruh sub-agen PASARIN sesuai standar Google Gemini Tool Calling (PSR-18 / PRD §4.18).
 export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
   {
     name: "fetchOpenWeatherTelemetry",
@@ -159,14 +154,8 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
   },
 ];
 
-/**
- * Mengeksekusi alat sub-agen yang terdaftar berdasarkan nama alat dan argumen masukan (PSR-18).
- * Menghubungkan deklarasi skema secara deterministik ke implementasi kode nyata.
- *
- * @param toolName - Nama alat fungsi yang hendak dipanggil.
- * @param args - Kamus parameter argumen fungsi.
- * @returns Hasil eksekusi terstruktur ToolExecutionResult.
- */
+// Mengeksekusi alat sub-agen yang terdaftar berdasarkan nama alat dan argumen masukan (PSR-18).
+// Menghubungkan deklarasi skema secara deterministik ke implementasi kode nyata.
 export async function executeRegisteredTool(
   toolName: string,
   args: Record<string, unknown> = {}
@@ -407,13 +396,8 @@ export async function executeRegisteredTool(
   }
 }
 
-/**
- * Mengurai (dekomposisi) pertanyaan teks bahasa alami manajer pasar menjadi rencana pemanggilan alat terurut (PSR-18).
- * Menyeleksi hanya sub-agen yang relevan secara presisi tanpa memanggil modul yang tidak dibutuhkan.
- *
- * @param query - Pertanyaan teks bahasa alami dari manajer pasar.
- * @returns Rencana dekomposisi kueri terstruktur QueryDecompositionPlan.
- */
+// Mengurai (dekomposisi) pertanyaan teks bahasa alami manajer pasar menjadi rencana pemanggilan alat terurut (PSR-18).
+// Menyeleksi hanya sub-agen yang relevan secara presisi tanpa memanggil modul yang tidak dibutuhkan.
 export function decomposeManagerialQuery(query: string): QueryDecompositionPlan {
   const lower = query.toLowerCase().trim();
 
@@ -585,14 +569,9 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
   };
 }
 
-/**
- * Mengeksekusi rencana dekomposisi kueri bahasa alami secara terkoordinasi (PSR-18).
- * Menghasilkan alur penalaran langkah-demi-langkah ReAct (Thought -> Action -> Observation)
- * serta ringkasan eksekutif bernilai rekayasa tinggi dalam waktu eksekusi singkat (< 1.500 ms).
- *
- * @param query - Pertanyaan teks bahasa alami dari manajer pasar.
- * @returns Hasil eksekusi kueri terstruktur OrchestratorQueryResult.
- */
+// Mengeksekusi rencana dekomposisi kueri bahasa alami secara terkoordinasi (PSR-18).
+// Menghasilkan alur penalaran langkah-demi-langkah ReAct (Thought -> Action -> Observation)
+// serta ringkasan eksekutif bernilai rekayasa tinggi dalam waktu eksekusi singkat (< 1.500 ms).
 export async function executeDecomposedManagerialQuery(query: string): Promise<OrchestratorQueryResult> {
   const globalStartTime = Date.now();
   const plan = decomposeManagerialQuery(query);
@@ -696,9 +675,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
   };
 }
 
-/**
- * Fasad Registri Pemanggilan Alat & Dekomposisi Kueri (PSR-18).
- */
+// Fasad Registri Pemanggilan Alat & Dekomposisi Kueri (PSR-18).
 export const toolCallingRegistry = {
   declarations: PASARIN_TOOL_DECLARATIONS,
   executeTool: executeRegisteredTool,

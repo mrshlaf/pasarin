@@ -1,30 +1,19 @@
-/**
- * Modul Pengelola Koneksi Basis Data Relasional PostgreSQL Supabase (PSR-3).
- * Menginisialisasi connection pool tunggal (singleton) per instans runtime Node.js/Next.js
- * dengan konfigurasi batas idle, timeout koneksi, serta dukungan SSL untuk cloud production.
- */
+// Modul Pengelola Koneksi Basis Data Relasional PostgreSQL Supabase (PSR-3).
+// Menginisialisasi connection pool tunggal (singleton) per instans runtime Node.js/Next.js
+// dengan konfigurasi batas idle, timeout koneksi, serta dukungan SSL untuk cloud production.
 
 import { Pool } from "pg";
 
 // Pool tunggal per proses, dibuat malas saat pertama dipanggil.
 let pool: Pool | null = null;
 
-/**
- * Memeriksa apakah string koneksi basis data PostgreSQL (SUPABASE_DB_URL) telah dikonfigurasi.
- *
- * @returns Boolean bernilai true jika SUPABASE_DB_URL tersedia di environment.
- */
+// Memeriksa apakah string koneksi basis data PostgreSQL (SUPABASE_DB_URL) telah dikonfigurasi.
 export function databaseConfigured() {
   return Boolean(process.env.SUPABASE_DB_URL);
 }
 
-/**
- * Mengembalikan instans connection pool bersama (shared connection pool) untuk transaksi basis data server.
- * Membatasi maksimal 4 koneksi aktif untuk menghemat pool koneksi serverless Supabase.
- *
- * @returns Instans Pool objek pg.
- * @throws Galat jika variabel lingkungan SUPABASE_DB_URL belum dikonfigurasi.
- */
+// Mengembalikan instans connection pool bersama (shared connection pool) untuk transaksi basis data server.
+// Membatasi maksimal 4 koneksi aktif untuk menghemat pool koneksi serverless Supabase.
 export function getDatabasePool() {
   const connectionString = process.env.SUPABASE_DB_URL;
   if (!connectionString) throw new Error("SUPABASE_DB_URL belum diatur.");

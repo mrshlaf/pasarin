@@ -1,9 +1,7 @@
-/**
- * Modul Inti Kinetika Peluruhan Biologis Hortikultura Tropis (PSR-14).
- * Menghitung laju degradasi respirasi seluler berbasis termodinamika Arrhenius dan koefisien kelipatan Q10.
- * Menentukan skor kebusukan (decayScore 0.00 - 1.00), alokasi penyelamatan sirkular 3-Tier,
- * serta kalkulasi harga salvaging adaptif dengan perlindungan batas bawah modal pedagang (Price Floor Protection).
- */
+// Modul Inti Kinetika Peluruhan Biologis Hortikultura Tropis (PSR-14).
+// Menghitung laju degradasi respirasi seluler berbasis termodinamika Arrhenius dan koefisien kelipatan Q10.
+// Menentukan skor kebusukan (decayScore 0.00 - 1.00), alokasi penyelamatan sirkular 3-Tier,
+// serta kalkulasi harga salvaging adaptif dengan perlindungan batas bawah modal pedagang (Price Floor Protection).
 
 import { Commodity, COMMODITIES } from "@/data/commodities";
 import {
@@ -12,46 +10,26 @@ import {
   CircularRescueTier,
 } from "@/types/api";
 
-/**
- * Konstanta gas universal R dalam satuan J/(mol·K) (PSR-14).
- */
+// Konstanta gas universal R dalam satuan J/(mol·K) (PSR-14).
 export const UNIVERSAL_GAS_CONSTANT_R = 8.314; // J/(mol·K)
 
-/**
- * Energi aktivasi respirasi sel daun hortikultura Ea dalam J/mol (~48.5 kJ/mol) (PSR-14).
- */
+// Energi aktivasi respirasi sel daun hortikultura Ea dalam J/mol (~48.5 kJ/mol) (PSR-14).
 export const ACTIVATION_ENERGY_EA_J_MOL = 48500.0; // J/mol (~48.5 kJ/mol)
 
-/**
- * Faktor frekuensi Arrhenius A per jam (PSR-14).
- */
+// Faktor frekuensi Arrhenius A per jam (PSR-14).
 export const ARRHENIUS_FREQUENCY_FACTOR_A = 1.42e7; // 1/jam
 
-/**
- * Suhu acuan penyimpanan dasar dalam derajat Celsius (PSR-14).
- */
+// Suhu acuan penyimpanan dasar dalam derajat Celsius (PSR-14).
 export const BASELINE_STORAGE_TEMP_C = 25.0; // °C
 
-/**
- * Ambang batas kelembapan relatif kritis (% RH) (PSR-14).
- */
+// Ambang batas kelembapan relatif kritis (% RH) (PSR-14).
 export const CRITICAL_RELATIVE_HUMIDITY_PERCENT = 80.0; // Ambang batas kelembapan (%)
 
-/**
- * Koefisien penalti degradasi kelembapan udara (PSR-14).
- */
+// Koefisien penalti degradasi kelembapan udara (PSR-14).
 export const HUMIDITY_PENALTY_COEFFICIENT = 0.015;
 
-/**
- * Menghitung laju degradasi respirasi k(T, RH) dan faktor percepatan relatif terhadap suhu acuan 25°C.
- * Mengintegrasikan koefisien kelipatan termal biologis Q10 serta koreksi sensitivitas kelembapan relatif.
- *
- * @param temperatureC - Suhu lingkungan los pasar aktual (°C).
- * @param humidityPercent - Kelembapan relatif udara aktual (% RH).
- * @param q10Coefficient - Koefisien Q10 komoditas (laju metabolisme berlipat ganda per kenaikan 10°C).
- * @param humiditySensitivity - Faktor koreksi dampak defisit kelembapan terhadap laju respirasi seluler.
- * @returns Objek konstanta laju kRatePerHour dan faktor percepatan accelerationFactor.
- */
+// Menghitung laju degradasi respirasi k(T, RH) dan faktor percepatan relatif terhadap suhu acuan 25°C.
+// Mengintegrasikan koefisien kelipatan termal biologis Q10 serta koreksi sensitivitas kelembapan relatif.
 export function calculateArrheniusDecayRate(
   temperatureC: number,
   humidityPercent: number,
@@ -82,16 +60,8 @@ export function calculateArrheniusDecayRate(
   };
 }
 
-/**
- * Menghitung akumulasi skor kebusukan biologis (decayScore 0.0000 - 1.0000) dan estimasi sisa jam simpan aman.
- * Menghubungkan durasi pajang fisik dengan jam ekuivalen Arrhenius berdasarkan akselerasi suhu los pasar.
- *
- * @param commodity - Objek data acuan komoditas hortikultura yang dievaluasi.
- * @param temperatureC - Suhu lingkungan los pasar aktual (°C).
- * @param humidityPercent - Kelembapan relatif udara aktual (% RH).
- * @param hoursElapsed - Durasi waktu komoditas terpapar di meja los sejak subuh (jam).
- * @returns Objek skor kebusukan (0-1), faktor akselerasi metabolik, dan sisa jam simpan aman.
- */
+// Menghitung akumulasi skor kebusukan biologis (decayScore 0.0000 - 1.0000) dan estimasi sisa jam simpan aman.
+// Menghubungkan durasi pajang fisik dengan jam ekuivalen Arrhenius berdasarkan akselerasi suhu los pasar.
 export function calculateDecayScore(
   commodity: Commodity,
   temperatureC: number,
@@ -146,13 +116,8 @@ export function calculateDecayScore(
   };
 }
 
-/**
- * Menetapkan klasifikasi mutu fisik dan alokasi penyelamatan sirkular 3-Tier berdasarkan DecayScore.
- * Menegakkan Invarian 1 (Zero Edible Food to Feed): komoditas layak konsumsi manusia dilarang ke sentra maggot.
- *
- * @param decayScore - Skor akumulasi peluruhan biologis (0.0000 - 1.0000).
- * @returns Objek klasifikasi kondisi fisik, rekomendasi tier penyelamatan, label tier, dan diskon dasar.
- */
+// Menetapkan klasifikasi mutu fisik dan alokasi penyelamatan sirkular 3-Tier berdasarkan DecayScore.
+// Menegakkan Invarian 1 (Zero Edible Food to Feed): komoditas layak konsumsi manusia dilarang ke sentra maggot.
 export function classifyProduceCondition(decayScore: number): {
   condition: ProduceCondition;
   recommendedTier: CircularRescueTier;
@@ -197,16 +162,8 @@ export function classifyProduceCondition(decayScore: number): {
   };
 }
 
-/**
- * Mengevaluasi kinetika peluruhan komoditas dengan kinetika Arrhenius dan proteksi harga modal pedagang (PSR-14).
- * Menghitung harga salvaging diskon bertingkat (50% - 70%) tanpa pernah menembus batas bawah modal (Price Floor).
- *
- * @param commodity - Objek data acuan komoditas hortikultura yang dievaluasi.
- * @param temperatureC - Suhu lingkungan los pasar aktual (°C).
- * @param humidityPercent - Kelembapan relatif udara aktual (% RH).
- * @param hoursElapsed - Durasi waktu komoditas terpapar di meja los sejak subuh (jam).
- * @returns Objek DecayEvaluationResult lengkap beserta harga salvaging aman dan alokasi tier.
- */
+// Mengevaluasi kinetika peluruhan komoditas dengan kinetika Arrhenius dan proteksi harga modal pedagang (PSR-14).
+// Menghitung harga salvaging diskon bertingkat (50% - 70%) tanpa pernah menembus batas bawah modal (Price Floor).
 export function evaluateProduceDecay(
   commodity: Commodity,
   temperatureC: number,
@@ -264,16 +221,8 @@ export function evaluateProduceDecay(
   };
 }
 
-/**
- * Mencari data komoditas berdasarkan ID dan mengevaluasi kinetika peluruhannya.
- * Mengembalikan null secara aman jika ID komoditas tidak ditemukan dalam direktori master.
- *
- * @param commodityId - Pengidentifikasi unik komoditas (misal: "c_kangkung").
- * @param hoursElapsed - Durasi waktu komoditas terpapar di meja los sejak subuh (jam).
- * @param temperatureC - Suhu lingkungan los pasar aktual (°C, default: 32.5°C).
- * @param humidityPercent - Kelembapan relatif udara aktual (% RH, default: 75%).
- * @returns Objek DecayEvaluationResult jika ditemukan, atau null jika ID tidak terdaftar.
- */
+// Mencari data komoditas berdasarkan ID dan mengevaluasi kinetika peluruhannya.
+// Mengembalikan null secara aman jika ID komoditas tidak ditemukan dalam direktori master.
 export function evaluateProduceById(
   commodityId: string,
   hoursElapsed: number,
@@ -290,15 +239,8 @@ export function evaluateProduceById(
   return evaluateProduceDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
 }
 
-/**
- * Mengevaluasi secara batch seluruh 30 komoditas dalam katalog master hortikultura pasar.
- * Digunakan untuk pemindaian komprehensif inventaris pada jadwal sapuan sore (14:30 WIB).
- *
- * @param hoursElapsed - Durasi waktu komoditas terpapar di meja los sejak subuh (jam).
- * @param temperatureC - Suhu lingkungan los pasar aktual (°C, default: 32.5°C).
- * @param humidityPercent - Kelembapan relatif udara aktual (% RH, default: 75%).
- * @returns Array berisi hasil evaluasi kinetika peluruhan 30 komoditas pasar.
- */
+// Mengevaluasi secara batch seluruh 30 komoditas dalam katalog master hortikultura pasar.
+// Digunakan untuk pemindaian komprehensif inventaris pada jadwal sapuan sore (14:30 WIB).
 export function getAllCommodityEvaluations(
   hoursElapsed: number,
   temperatureC = 32.5,
@@ -309,9 +251,7 @@ export function getAllCommodityEvaluations(
   );
 }
 
-/**
- * Parameter acuan kinetika termal Arrhenius-Q10 kurikulum (PSR-14).
- */
+// Parameter acuan kinetika termal Arrhenius-Q10 kurikulum (PSR-14).
 export const ARRHENIUS_CONSTANTS = {
   GAS_CONSTANT_R: UNIVERSAL_GAS_CONSTANT_R,
   ACTIVATION_ENERGY_EA: ACTIVATION_ENERGY_EA_J_MOL,
@@ -323,14 +263,10 @@ export const ARRHENIUS_CONSTANTS = {
   BETA_HUMIDITY_COEFFICIENT: HUMIDITY_PENALTY_COEFFICIENT,
 } as const;
 
-/**
- * Alias tingkatan alokasi sirkular penyelamatan pangan (PSR-14 / PSR-21).
- */
+// Alias tingkatan alokasi sirkular penyelamatan pangan (PSR-14 / PSR-21).
 export type RescueTier = CircularRescueTier;
 
-/**
- * Kontrak struktur hasil evaluasi kinetika Arrhenius dan status biologis komoditas (PSR-14).
- */
+// Kontrak struktur hasil evaluasi kinetika Arrhenius dan status biologis komoditas (PSR-14).
 export interface ArrheniusDecayResult {
   commodityId: string;
   commodityName: string;
@@ -348,14 +284,7 @@ export interface ArrheniusDecayResult {
   isEdibleForHumans: boolean;
 }
 
-/**
- * Menghitung konstanta laju peluruhan k(T, RH) dengan akselerasi Q10 (~2.2x pada 33°C vs 20°C) (PSR-14).
- *
- * @param temperatureCelsius - Suhu lingkungan pasar dalam Celsius (°C).
- * @param relativeHumidityPercent - Kelembapan relatif dalam % RH.
- * @param q10 - Koefisien kelipatan termal biologis (default: 2.0).
- * @returns Konstanta laju degradasi per jam.
- */
+// Menghitung konstanta laju peluruhan k(T, RH) dengan akselerasi Q10 (~2.2x pada 33°C vs 20°C) (PSR-14).
 export function calculateArrheniusRateConstant(
   temperatureCelsius: number,
   relativeHumidityPercent: number,
@@ -373,15 +302,7 @@ export function calculateArrheniusRateConstant(
   return k_baseline * thermalRatio * humidityCorrection;
 }
 
-/**
- * Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan & laju respirasi Arrhenius (PSR-14).
- *
- * @param commodity - Objek metadata komoditas yang dievaluasi.
- * @param temperatureCelsius - Suhu aktual los pasar (°C).
- * @param relativeHumidityPercent - Kelembapan relatif los pasar (% RH).
- * @param hoursElapsed - Waktu pajang sejak subuh (jam).
- * @returns Objek ArrheniusDecayResult dengan status kelayakan konsumsi manusia.
- */
+// Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan & laju respirasi Arrhenius (PSR-14).
 export function evaluateArrheniusDecay(
   commodity: Commodity,
   temperatureCelsius: number,
@@ -453,9 +374,7 @@ export function evaluateArrheniusDecay(
   };
 }
 
-/**
- * Kontrak struktur data simulasi redaman pengunjung akibat hujan dan kebecekan lorong pasar (PSR-15).
- */
+// Kontrak struktur data simulasi redaman pengunjung akibat hujan dan kebecekan lorong pasar (PSR-15).
 export interface FootfallSimulationResult {
   rainfallMm: number;
   isRaining: boolean;
@@ -469,14 +388,8 @@ export interface FootfallSimulationResult {
   aisleAccessibilityDescription: string;
 }
 
-/**
- * Model redaman pengunjung pasar akibat hujan lebat sore dan lorong becek (PSR-15).
- * Curah hujan 10 mm menurunkan ~48% pembeli eceran sehingga meningkatkan surplus stok lapak.
- *
- * @param rainfallMm - Curah hujan terukur dalam milimeter (mm).
- * @param isRainDetected - Penanda boolean apakah hujan sedang terdeteksi sensor cuaca.
- * @returns Objek FootfallSimulationResult berisi persentase penurunan pengunjung dan pengali surplus.
- */
+// Model redaman pengunjung pasar akibat hujan lebat sore dan lorong becek (PSR-15).
+// Curah hujan 10 mm menurunkan ~48% pembeli eceran sehingga meningkatkan surplus stok lapak.
 export function calculateRainFootfallAttenuation(
   rainfallMm: number,
   isRainDetected: boolean = false
@@ -524,9 +437,7 @@ export function calculateRainFootfallAttenuation(
   };
 }
 
-/**
- * Kontrak struktur data hasil penetapan harga dinamis inverse surge sore hari (PSR-20).
- */
+// Kontrak struktur data hasil penetapan harga dinamis inverse surge sore hari (PSR-20).
 export interface DynamicPricingResult {
   commodityId: string;
   commodityName: string;
@@ -542,15 +453,8 @@ export interface DynamicPricingResult {
   targetAudience: "Warteg & Katering UMKM" | "Dapur Sosial" | "Pakan Maggot BSF";
 }
 
-/**
- * Model penetapan harga dinamis inverse surge sore hari (14.30-18.00 WIB) dengan proteksi price floor modal (PSR-20).
- * Diskon bertambah seiring bertambahnya waktu kritis namun terkunci aman di atas harga pakan maggot + margin pedagang.
- *
- * @param commodity - Objek metadata komoditas yang dijual.
- * @param currentHourDecimal - Jam operasional pasar dalam format desimal (contoh: 14.5 untuk 14:30 WIB).
- * @param rainfallMm - Curah hujan terukur saat penawaran dihitung (mm).
- * @returns Objek DynamicPricingResult berisi harga tebus penyelamatan (IDR/kg) dan mekanisme penetapan harga.
- */
+// Model penetapan harga dinamis inverse surge sore hari (14.30-18.00 WIB) dengan proteksi price floor modal (PSR-20).
+// Diskon bertambah seiring bertambahnya waktu kritis namun terkunci aman di atas harga pakan maggot + margin pedagang.
 export function calculateInverseSurgePricing(
   commodity: Commodity,
   currentHourDecimal: number = 14.5,
@@ -613,19 +517,15 @@ export function calculateInverseSurgePricing(
 }
 
 
-/**
- * Tingkat urgensi penyelamatan pangan (Level 1 sampai 5) (PSR-19):
- * 1: Rendah (> 12 jam aman tersisa)
- * 2: Sedang (8-12 jam tersisa)
- * 3: Meningkat (6-8 jam tersisa)
- * 4: Mendesak (4-6 jam tersisa)
- * 5: Darurat Kritis (< 4 jam tersisa)
- */
+// Tingkat urgensi penyelamatan pangan (Level 1 sampai 5) (PSR-19):
+// 1: Rendah (> 12 jam aman tersisa)
+// 2: Sedang (8-12 jam tersisa)
+// 3: Meningkat (6-8 jam tersisa)
+// 4: Mendesak (4-6 jam tersisa)
+// 5: Darurat Kritis (< 4 jam tersisa)
 export type UrgencyLevel = 1 | 2 | 3 | 4 | 5;
 
-/**
- * Parameter masukan data stok lapak kios pasar untuk pemodelan komposit (PSR-19).
- */
+// Parameter masukan data stok lapak kios pasar untuk pemodelan komposit (PSR-19).
 export interface KioskStockInput {
   kioskId: string;
   kioskName: string;
@@ -635,9 +535,7 @@ export interface KioskStockInput {
   arrivalHourDecimal: number;
 }
 
-/**
- * Hasil proyeksi kuantitatif surplus per kios pedagang pasar (PSR-19).
- */
+// Hasil proyeksi kuantitatif surplus per kios pedagang pasar (PSR-19).
 export interface StallSurplusPrediction {
   kioskId: string;
   commodityId: string;
@@ -653,9 +551,7 @@ export interface StallSurplusPrediction {
   recommendedSalvagePricePerKg: number;
 }
 
-/**
- * Ringkasan agregat komposit proyeksi surplus pangan pasar Kramat Jati pada 14:30 WIB (PSR-19).
- */
+// Ringkasan agregat komposit proyeksi surplus pangan pasar Kramat Jati pada 14:30 WIB (PSR-19).
 export interface CompositeMarketSurplusSummary {
   totalAnalyzedStalls: number;
   totalMarketStockKg: number;
@@ -667,13 +563,8 @@ export interface CompositeMarketSurplusSummary {
   weatherImpactDescription: string;
 }
 
-/**
- * Mengklasifikasikan skala urgensi penyelamatan pangan (Level 1 - 5) berdasarkan sisa jam simpan aman (PSR-19).
- * Skala 5 merepresentasikan status darurat kritis (< 4 jam tersisa) yang memerlukan prioritas penjemputan armada.
- *
- * @param hoursRemaining - Sisa jam simpan aman sebelum mutu komoditas rusak total.
- * @returns Tingkat urgensi penyelamatan dari 1 (rendah) hingga 5 (darurat kritis).
- */
+// Mengklasifikasikan skala urgensi penyelamatan pangan (Level 1 - 5) berdasarkan sisa jam simpan aman (PSR-19).
+// Skala 5 merepresentasikan status darurat kritis (< 4 jam tersisa) yang memerlukan prioritas penjemputan armada.
 export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
   if (hoursRemaining < 4.0) return 5;
   if (hoursRemaining < 6.0) return 4;
@@ -682,14 +573,8 @@ export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
   return 1;
 }
 
-/**
- * Memprediksi kuantitas sisa stok eceran (surplus kg) yang belum terjual akibat redaman pengunjung (PSR-15/PSR-19).
- * Mengintegrasikan laju penjualan normal 82% dengan koefisien penurunan serapan akibat lorong becek saat hujan.
- *
- * @param initialStockKg - Bobot pasokan awal pedagang subuh hari (kg).
- * @param footfallDropPercentage - Persentase penurunan arus pembeli akibat kondisi lorong dan hujan (%).
- * @returns Estimasi bobot surplus yang perlu dialihkan ke jalur penyelamatan sirkular (kg).
- */
+// Memprediksi kuantitas sisa stok eceran (surplus kg) yang belum terjual akibat redaman pengunjung (PSR-15/PSR-19).
+// Mengintegrasikan laju penjualan normal 82% dengan koefisien penurunan serapan akibat lorong becek saat hujan.
 export function predictRetailSurplusKg(initialStockKg: number, footfallDropPercentage: number) {
   // Normalnya 82% stok laku eceran; hujan memangkas serapan, tetapi serapan minimal 20% dan surplus minimal 10% stok.
   const baselineRetailClearance = 0.82;
@@ -698,17 +583,8 @@ export function predictRetailSurplusKg(initialStockKg: number, footfallDropPerce
   return Math.round(initialStockKg * Math.max(0.1, 1 - effectiveClearanceRate));
 }
 
-/**
- * Memprediksi kuantitatif surplus pasar agregat komposit (validasi target empiris 1.240 kg) pada 14:30 WIB (PSR-19).
- * Mengagregasi seluruh input stok 30 kios pedagang binaan, menghitung peluruhan Arrhenius, dan memetakan alokasi 3-Tier.
- *
- * @param stallItems - Array data input stok kios pasar beserta jam kedatangan pasokan subuh.
- * @param temperatureCelsius - Suhu mikro los pasar aktual (°C, default: 32.5°C).
- * @param relativeHumidityPercent - Kelembapan relatif los pasar (% RH, default: 75.0%).
- * @param rainfallMm - Curah hujan terukur pada sensor (mm, default: 12.5 mm).
- * @param currentHourDecimal - Waktu simulasi pasar dalam format desimal (default: 14.5 = 14:30 WIB).
- * @returns Objek berisi rincian prediksi per kios dan ringkasan komposit agregat pasar.
- */
+// Memprediksi kuantitatif surplus pasar agregat komposit (validasi target empiris 1.240 kg) pada 14:30 WIB (PSR-19).
+// Mengagregasi seluruh input stok 30 kios pedagang binaan, menghitung peluruhan Arrhenius, dan memetakan alokasi 3-Tier.
 export function calculateCompositeMarketSurplus(
   stallItems: KioskStockInput[],
   temperatureCelsius: number = 32.5,
@@ -801,15 +677,9 @@ export function calculateCompositeMarketSurplus(
   };
 }
 
-/**
- * Memvalidasi kepatuhan gerbang mutu etis dan anti-moral hazard (Invarian 1 / PSR-21).
- * Melarang pengalihan sayuran yang masih layak konsumsi manusia (decayScore < 0.85)
- * ke saluran pakan ternak / budidaya maggot BSF (Tier 3).
- *
- * @param decayScore - Skor akumulasi peluruhan biologis komoditas (0.00 - 1.00).
- * @param requestedTier - Saluran penyelamatan sirkular yang diminta (tier_1 | tier_2 | tier_3).
- * @returns Objek hasil validasi status perizinan dan alasan pelanggaran etis jika diblokir.
- */
+// Memvalidasi kepatuhan gerbang mutu etis dan anti-moral hazard (Invarian 1 / PSR-21).
+// Melarang pengalihan sayuran yang masih layak konsumsi manusia (decayScore < 0.85)
+// ke saluran pakan ternak / budidaya maggot BSF (Tier 3).
 export function validateQualityGateMoralHazard(
   decayScore: number,
   requestedTier: RescueTier

@@ -1,8 +1,6 @@
-/**
- * Rute API Mesin Pencocokan Sirkular 3-Tier (PSR-22 / Matchmaking Engine API).
- * Menghitung kecocokan geografis dan kapasitas serap mitra pembeli sirkular
- * berdasarkan jarak radius (haversine) dan kompatibilitas komoditas.
- */
+// Rute API Mesin Pencocokan Sirkular 3-Tier (PSR-22 / Matchmaking Engine API).
+// Menghitung kecocokan geografis dan kapasitas serap mitra pembeli sirkular
+// berdasarkan jarak radius (haversine) dan kompatibilitas komoditas.
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -26,12 +24,7 @@ const matchOffer = z.object({
 // Body POST: 1 sampai 200 penawaran per permintaan.
 const matchBatch = z.object({ offers: z.array(matchOffer).min(1).max(200) });
 
-/**
- * Mencari rekomendasi pembeli sirkular terdekat berdasarkan parameter kueri URL.
- *
- * @param req - Objek NextRequest pembawa parameter kueri pencocokan.
- * @returns Respons JSON daftar kandidat pembeli yang diurutkan berdasarkan skor gabungan.
- */
+// Mencari rekomendasi pembeli sirkular terdekat berdasarkan parameter kueri URL.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -56,12 +49,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Mengevaluasi rekomendasi pencocokan pembeli untuk kumpulan penawaran secara massal.
- *
- * @param req - Objek NextRequest pembawa array penawaran surplus.
- * @returns Respons JSON rekapitulasi hasil pencocokan batch.
- */
+// Mengevaluasi rekomendasi pencocokan pembeli untuk kumpulan penawaran secara massal.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const input = await validateJsonBody(req, matchBatch);
@@ -84,11 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (probe) rute pencocokan.
- *
- * @returns Respons HTTP 200 OK kosong.
- */
+// Menangani pemeriksaan ketersediaan ringan (probe) rute pencocokan.
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }

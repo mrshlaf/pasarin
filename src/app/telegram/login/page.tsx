@@ -1,9 +1,7 @@
 "use client";
 
-/**
- * Halaman masuk Telegram Mini App.
- * Kata sandi dikirim lewat HTTPS ke /api/telegram/login bersama initData Telegram, bukan diketik di obrolan.
- */
+// Halaman masuk Telegram Mini App.
+// Kata sandi dikirim lewat HTTPS ke /api/telegram/login bersama initData Telegram, bukan diketik di obrolan.
 
 import Script from "next/script";
 import { useState, type FormEvent } from "react";
@@ -24,10 +22,8 @@ export default function TelegramLogin() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  /**
-   * Mengirim kredensial bersama initData ke server; nama akun ditampilkan bila berhasil.
-   * Formulir dikosongkan setelah sukses agar kata sandi tidak tertinggal di Mini App.
-   */
+  // Mengirim kredensial bersama initData ke server; nama akun ditampilkan bila berhasil.
+  // Formulir dikosongkan setelah sukses agar kata sandi tidak tertinggal di Mini App.
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || !initData) return;

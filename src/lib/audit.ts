@@ -1,26 +1,18 @@
-/**
- * Modul Pencatatan Jejak Audit Sistem (System Audit Trail) (PSR-4).
- * Mencatat seluruh mutasi dan peristiwa operasional penting ke tabel `system_audit_trail` Supabase.
- * Mengimplementasikan buffer memori sirkular lokal (kapasitas 100 entri) sebagai fail-safe saat jaringan database terputus.
- */
+// Modul Pencatatan Jejak Audit Sistem (System Audit Trail) (PSR-4).
+// Mencatat seluruh mutasi dan peristiwa operasional penting ke tabel `system_audit_trail` Supabase.
+// Mengimplementasikan buffer memori sirkular lokal (kapasitas 100 entri) sebagai fail-safe saat jaringan database terputus.
 
 import { getServiceRoleClient } from "@/lib/supabase";
 import { SystemAuditTrailRecord } from "@/types/api";
 
-/**
- * Buffer sirkular catatan audit terbaru di memori lokal (PSR-4).
- * Selalu diisi, termasuk saat insert Supabase berhasil, sehingga tetap tersedia ketika database offline.
- */
+// Buffer sirkular catatan audit terbaru di memori lokal (PSR-4).
+// Selalu diisi, termasuk saat insert Supabase berhasil, sehingga tetap tersedia ketika database offline.
 const inMemoryAuditRingBuffer: SystemAuditTrailRecord[] = [];
 
-/**
- * Batas maksimal kapasitas ring buffer audit lokal (100 entri) (PSR-4).
- */
+// Batas maksimal kapasitas ring buffer audit lokal (100 entri) (PSR-4).
 const MAX_RING_BUFFER_SIZE = 100;
 
-/**
- * Parameter masukan pencatatan peristiwa audit sistem (PSR-4).
- */
+// Parameter masukan pencatatan peristiwa audit sistem (PSR-4).
 interface RecordAuditParams {
   subsystem: string;
   action_type: string;
@@ -29,14 +21,9 @@ interface RecordAuditParams {
   durationMs?: number;
 }
 
-/**
- * Merekam catatan audit sistem ke Supabase atau ring buffer memori lokal.
- * Menjamin ketersediaan audit: jika koneksi basis data gagal, rekaman tetap tersimpan
- * pada buffer in-memory sehingga sistem operasional pasar tidak mengalami pemblokiran (non-blocking failover).
- *
- * @param params - Parameter peristiwa audit mencakup subsistem asal, tipe aksi, payload rincian, dan durasi eksekusi (ms).
- * @returns Status keberhasilan perekaman, ID unik peristiwa (eventId), dan media penyimpanan yang digunakan ("supabase" | "in_memory").
- */
+// Merekam catatan audit sistem ke Supabase atau ring buffer memori lokal.
+// Menjamin ketersediaan audit: jika koneksi basis data gagal, rekaman tetap tersimpan
+// pada buffer in-memory sehingga sistem operasional pasar tidak mengalami pemblokiran (non-blocking failover).
 export async function recordAuditLog(params: RecordAuditParams): Promise<{
   success: boolean;
   eventId: string;
@@ -92,13 +79,8 @@ export async function recordAuditLog(params: RecordAuditParams): Promise<{
   return { success: true, eventId, storage: "in_memory" };
 }
 
-/**
- * Mengambil riwayat peristiwa audit terbaru dari buffer memori lokal.
- * Berguna untuk diagnostik cepat dashboard pengawas pasar tanpa membebani kuota kueri basis data.
- *
- * @param limit - Jumlah maksimal rekaman yang diambil (default: 20).
- * @returns Larik rekaman jejak audit sistem terbaru terurut dari yang paling baru.
- */
+// Mengambil riwayat peristiwa audit terbaru dari buffer memori lokal.
+// Berguna untuk diagnostik cepat dashboard pengawas pasar tanpa membebani kuota kueri basis data.
 export function getRecentAuditLogs(limit = 20): SystemAuditTrailRecord[] {
   return inMemoryAuditRingBuffer.slice(0, limit);
 }

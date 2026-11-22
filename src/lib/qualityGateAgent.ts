@@ -1,15 +1,12 @@
-/**
- * Modul Agen Gerbang Kendali Mutu & Pencegahan Moral Hazard (PSR-21 / Agent 10).
- * Bertanggung jawab menegakkan etika redistribusi pangan sirkular dan memblokir
- * manipulasi pedagang yang berupaya mengalihkan sayuran layak konsumsi manusia ke pakan maggot.
- *
- * Landasan Invarian PRD §5.1 & §6.1:
- * 1. Invarian 1 (Zero Edible Food to Feed): 0% sayuran layak makan manusia (decayScore < 0.85)
- *    boleh dialihkan ke sentra budidaya maggot BSF (Tier 3).
- * 2. Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg.
- * 3. Invarian 3 (30-Minute Social Reservation Window): Sayur bernutrisi tinggi di Tier 2
- *    dikunci selama 30 menit khusus untuk dapur sosial sebelum dapat diakses pihak lain.
- */
+// Modul Agen Gerbang Kendali Mutu & Pencegahan Moral Hazard (PSR-21 / Agent 10).
+// Bertanggung jawab menegakkan etika redistribusi pangan sirkular dan memblokir
+// manipulasi pedagang yang berupaya mengalihkan sayuran layak konsumsi manusia ke pakan maggot.
+// Landasan Invarian PRD §5.1 & §6.1:
+// 1. Invarian 1 (Zero Edible Food to Feed): 0% sayuran layak makan manusia (decayScore < 0.85)
+// boleh dialihkan ke sentra budidaya maggot BSF (Tier 3).
+// 2. Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg.
+// 3. Invarian 3 (30-Minute Social Reservation Window): Sayur bernutrisi tinggi di Tier 2
+// dikunci selama 30 menit khusus untuk dapur sosial sebelum dapat diakses pihak lain.
 
 import { COMMODITIES, Commodity } from "@/data/commodities";
 import { calculateDecayScore, classifyProduceCondition } from "@/lib/pasarinCore";
@@ -21,25 +18,16 @@ import {
   CircularRescueTier,
 } from "@/types/api";
 
-/**
- * Ambang batas skor peluruhan maksimal untuk kategori layak konsumsi manusia.
- * Komoditas dengan skor peluruhan di bawah 0.85 wajib dialokasikan untuk pangan manusia.
- */
+// Ambang batas skor peluruhan maksimal untuk kategori layak konsumsi manusia.
+// Komoditas dengan skor peluruhan di bawah 0.85 wajib dialokasikan untuk pangan manusia.
 export const HUMAN_CONSUMABLE_DECAY_THRESHOLD = 0.85;
 
-/**
- * Durasi jendela waktu reservasi eksklusif dapur sosial dalam menit.
- */
+// Durasi jendela waktu reservasi eksklusif dapur sosial dalam menit.
 export const SOCIAL_RESERVATION_WINDOW_MINUTES = 30;
 
-/**
- * Memvalidasi integritas kelayakan konsumsi manusia dan menegakkan aturan anti-moral hazard.
- * Menguji apakah komoditas yang diajukan ke Tier 3 (pakan maggot) sebenarnya masih layak dimakan manusia.
- * Jika terbukti melanggar Invarian 1, sistem otomatis memblokir pengajuan dan mencatat ke audit trail.
- *
- * @param params - Parameter evaluasi mutu mencakup ID komoditas, jam pajang, dan tier yang diminta.
- * @returns Hasil evaluasi gerbang kendali mutu beserta status kelulusan dan tindakan perbaikan.
- */
+// Memvalidasi integritas kelayakan konsumsi manusia dan menegakkan aturan anti-moral hazard.
+// Menguji apakah komoditas yang diajukan ke Tier 3 (pakan maggot) sebenarnya masih layak dimakan manusia.
+// Jika terbukti melanggar Invarian 1, sistem otomatis memblokir pengajuan dan mencatat ke audit trail.
 export async function verifyHumanGradeIntegrity(
   params: QualityGateRequestPayload,
   options: { recordIncident?: boolean } = {},
@@ -157,14 +145,7 @@ export async function verifyHumanGradeIntegrity(
   };
 }
 
-/**
- * Evaluasi sinkronus cepat integritas mutu untuk komponen antarmuka pengguna (UI Playground).
- *
- * @param commodity - Objek komoditas atau pengidentifikasi string komoditas.
- * @param decayScore - Nilai skor peluruhan hasil simulasi (0.00 - 1.00).
- * @param requestedTier - Kategori redistribusi yang diajukan pedagang.
- * @returns Status kelulusan gerbang mutu secara instan.
- */
+// Evaluasi sinkronus cepat integritas mutu untuk komponen antarmuka pengguna (UI Playground).
 export function evaluateProduceQuality(
   commodity: Commodity | string,
   decayScore: number,
@@ -191,14 +172,9 @@ export function evaluateProduceQuality(
     message: "PASSED: Alokasi memenuhi batas mutu biologis dan etika redistribusi.",
   };
 }
-/**
- * Evaluasi degradasi klorofil visual sayuran daun berbasis MobileNetV3 visual classifier (PSR-21 / Agent 10).
- * Mengukur tingkat klorosis (menguningnya pigmen hijau daun) untuk mendeteksi pembusukan dini.
- * Implementasi saat ini belum memanggil model visual; lihat catatan placeholder di dalam fungsi.
- *
- * @param input - Data masukan mencakup rasio klorofil terukur (0.00 - 1.00) atau representasi string base64 foto los.
- * @returns Hasil evaluasi visual mencakup persentase kehilangan klorofil, estimasi mutu, dan tier kelayakan.
- */
+// Evaluasi degradasi klorofil visual sayuran daun berbasis MobileNetV3 visual classifier (PSR-21 / Agent 10).
+// Mengukur tingkat klorosis (menguningnya pigmen hijau daun) untuk mendeteksi pembusukan dini.
+// Implementasi saat ini belum memanggil model visual; lihat catatan placeholder di dalam fungsi.
 export function evaluateChlorophyllLoss(input: {
   chlorophyllRatio?: number;
   imageBase64?: string;
@@ -231,10 +207,8 @@ export function evaluateChlorophyllLoss(input: {
   };
 }
 
-/**
- * Objek fasad Agent 10: Multi-Modal Quality Gate & Moral Hazard Protection Agent.
- * Terdaftar pada ReAct Tool Calling Registry untuk pemanggilan alat otonom orchestrator.
- */
+// Objek fasad Agent 10: Multi-Modal Quality Gate & Moral Hazard Protection Agent.
+// Terdaftar pada ReAct Tool Calling Registry untuk pemanggilan alat otonom orchestrator.
 export const qualityGateAgent = {
   name: "QualityGateAgent",
   role: "Multi-Modal Quality Gate & Moral Hazard Protection",

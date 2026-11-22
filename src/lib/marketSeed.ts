@@ -1,10 +1,8 @@
-/**
- * Modul Pembangkit Data Awal Simulasi Pasar (Market Seed Generator) (PSR-2 / PSR-4).
- * Menghasilkan dataset deterministik realistis untuk 30 kios pedagang binaan Pasar Induk Kramat Jati:
- * - 6 tingkatan mutu komoditas per kios (segar, layu ringan, layu sedang, tidak layak).
- * - Algoritma pencarian biner (binary search) untuk menghitung durasi paparan jam fisik yang tepat sesuai target DecayScore.
- * - Penawaran dan transaksi riwayat realistis untuk antrean kerja seluruh peran (Warteg, Dapur Sosial, Maggot, Kurir).
- */
+// Modul Pembangkit Data Awal Simulasi Pasar (Market Seed Generator) (PSR-2 / PSR-4).
+// Menghasilkan dataset deterministik realistis untuk 30 kios pedagang binaan Pasar Induk Kramat Jati:
+// - 6 tingkatan mutu komoditas per kios (segar, layu ringan, layu sedang, tidak layak).
+// - Algoritma pencarian biner (binary search) untuk menghitung durasi paparan jam fisik yang tepat sesuai target DecayScore.
+// - Penawaran dan transaksi riwayat realistis untuk antrean kerja seluruh peran (Warteg, Dapur Sosial, Maggot, Kurir).
 
 import { COMMODITIES, type Commodity } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
@@ -13,20 +11,16 @@ import type { EscrowTransaction, RescueOffer, StockItem } from "@/types/market";
 import type { ServerState } from "@/lib/serverSimulationState";
 import { calculateDecay } from "@/lib/decayEngine";
 
-/**
- * Parameter cuaca mikro dasar untuk penyemaian data pasar (32°C, 75% RH) (PSR-5).
- */
+// Parameter cuaca mikro dasar untuk penyemaian data pasar (32°C, 75% RH) (PSR-5).
 const SEED_WEATHER = { temperatureC: 32, humidityPercent: 75 } as const;
 
-/**
- * Enam tahapan mutu simpan per kios Pasar Kramat Jati:
- * 1. Segar Prima (decayTarget: 0.12, penjualan retail normal).
- * 2. Layu Ringan (decayTarget: 0.46, Tier 1 Warteg & UMKM).
- * 3. Transisi Layu Ringan-Sedang (decayTarget: 0.60).
- * 4. Layu Sedang (decayTarget: 0.74, Tier 2 Dapur Sosial & Panti).
- * 5. Transisi Layu Sedang-Afkir (decayTarget: 0.82).
- * 6. Tidak Layak / Afkir (decayTarget: 0.94, Tier 3 Sentra Maggot BSF).
- */
+// Enam tahapan mutu simpan per kios Pasar Kramat Jati:
+// 1. Segar Prima (decayTarget: 0.12, penjualan retail normal).
+// 2. Layu Ringan (decayTarget: 0.46, Tier 1 Warteg & UMKM).
+// 3. Transisi Layu Ringan-Sedang (decayTarget: 0.60).
+// 4. Layu Sedang (decayTarget: 0.74, Tier 2 Dapur Sosial & Panti).
+// 5. Transisi Layu Sedang-Afkir (decayTarget: 0.82).
+// 6. Tidak Layak / Afkir (decayTarget: 0.94, Tier 3 Sentra Maggot BSF).
 const STAGES = [
   { decayTarget: 0.12, offerTier: null },
   { decayTarget: 0.46, offerTier: "tier_1" },
@@ -36,18 +30,10 @@ const STAGES = [
   { decayTarget: 0.94, offerTier: "tier_3" },
 ] as const;
 
-/**
- * Tipe tingkatan alokasi penyelamatan sirkular yang sah (tier_1 | tier_2 | tier_3).
- */
+// Tipe tingkatan alokasi penyelamatan sirkular yang sah (tier_1 | tier_2 | tier_3).
 type OfferTier = NonNullable<(typeof STAGES)[number]["offerTier"]>;
 
-/**
- * Memilih komoditas acuan yang selaras dengan spesialisasi los kios dan memprioritaskan kategori komoditas serupa.
- *
- * @param kiosk - Data lapak kios pedagang.
- * @param kioskIndex - Indeks urutan kios untuk distribusi deterministik.
- * @returns Array objek Commodity yang terpilih.
- */
+// Memilih komoditas acuan yang selaras dengan spesialisasi los kios dan memprioritaskan kategori komoditas serupa.
 function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
   const selected: Commodity[] = [];
   for (const specialization of kiosk.specialization) {
@@ -81,13 +67,7 @@ function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
   return selected.slice(0, STAGES.length);
 }
 
-/**
- * Menggunakan pencarian biner (binary search) untuk menemukan durasi jam pajang fisik yang tepat sesuai target DecayScore.
- *
- * @param commodity - Objek acuan komoditas.
- * @param target - Target nilai skor peluruhan biologis (0.00 - 1.00).
- * @returns Durasi jam paparan di los pasar yang menghasilkan skor tersebut.
- */
+// Menggunakan pencarian biner (binary search) untuk menemukan durasi jam pajang fisik yang tepat sesuai target DecayScore.
 function hoursForDecay(commodity: Commodity, target: number) {
   let low = 0;
   let high = Math.max(24, commodity.standardShelfLifeHours * 3);
@@ -102,12 +82,7 @@ function hoursForDecay(commodity: Commodity, target: number) {
   return Number(((low + high) / 2).toFixed(2));
 }
 
-/**
- * Menghitung stempel waktu string WIB (HH:mm) berdasarkan pengurangan jam offset dari saat ini.
- *
- * @param hours - Jumlah jam ke belakang dari waktu saat ini.
- * @returns String waktu WIB dua digit, misalnya "04:30".
- */
+// Menghitung stempel waktu string WIB (HH:mm) berdasarkan pengurangan jam offset dari saat ini.
 function wibClockFromOffset(hours: number) {
   const date = new Date(Date.now() - hours * 3_600_000);
   return new Intl.DateTimeFormat("en-GB", {
@@ -115,39 +90,22 @@ function wibClockFromOffset(hours: number) {
   }).format(date);
 }
 
-/**
- * Mengambil nama profil pengguna pasar berdasarkan username akun.
- *
- * @param username - Nama pengguna akun pasar (misal: "pasar1", "warteg1").
- * @returns Nama lengkap pengguna atau username asal jika tidak ditemukan.
- */
+// Mengambil nama profil pengguna pasar berdasarkan username akun.
 function accountName(username: string) {
   return MARKET_ACCOUNTS.find((account) => account.username === username)?.name ?? username;
 }
 
-/**
- * Menentukan harga penyelamatan per kg berdasarkan tingkatan alokasi 3-Tier sirkular (PSR-20).
- * - Tier 3 (Maggot): Gratis (Rp 0/kg).
- * - Tier 2 (Dapur Sosial): Diskon sosial masif (15% harga grosir awal, min Rp 1.000/kg).
- * - Tier 1 (Warteg): Harga dinamis terdiskon hasil evaluasi kinetika Arrhenius, terkunci batas dasar (price floor).
- *
- * @param commodity - Komoditas pangan terkait.
- * @param tier - Tingkatan alokasi sirkular (tier_1 | tier_2 | tier_3).
- * @param evaluationPrice - Estimasi harga hasil kinetika peluruhan.
- * @returns Harga per kilogram terformat dalam Rupiah.
- */
+// Menentukan harga penyelamatan per kg berdasarkan tingkatan alokasi 3-Tier sirkular (PSR-20).
+// - Tier 3 (Maggot): Gratis (Rp 0/kg).
+// - Tier 2 (Dapur Sosial): Diskon sosial masif (15% harga grosir awal, min Rp 1.000/kg).
+// - Tier 1 (Warteg): Harga dinamis terdiskon hasil evaluasi kinetika Arrhenius, terkunci batas dasar (price floor).
 function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: number) {
   if (tier === "tier_3") return 0;
   if (tier === "tier_2") return Math.max(1000, Math.round((commodity.baseWholesalePricePerKg * 0.15) / 500) * 500);
   return Math.max(commodity.minimumSalvagePricePerKg, evaluationPrice);
 }
 
-/**
- * Membangun dataset simulasi pasar deterministik dengan 30 kios pedagang, tahapan umur simpan bertingkat, dan penawaran teralokasi.
- *
- * @param actorIds - Pemetaan opsional akun pengguna ke ID Supabase.
- * @returns Objek ServerState lengkap siap pakai.
- */
+// Membangun dataset simulasi pasar deterministik dengan 30 kios pedagang, tahapan umur simpan bertingkat, dan penawaran teralokasi.
 export function buildMarketSeedState(actorIds: Record<string, string> = {}): ServerState {
   const stocks: StockItem[] = [];
   const offers: RescueOffer[] = [];
@@ -218,9 +176,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
   const commodityName = (commodityId: string) =>
     COMMODITIES.find((commodity) => commodity.id === commodityId)?.localName ?? commodityId;
 
-  /**
-   * Menetapkan klaim pada lot penawaran dan menyinkronkan baris transaksi rekening escrow terkait.
-   */
+  // Menetapkan klaim pada lot penawaran dan menyinkronkan baris transaksi rekening escrow terkait.
   const claimOffer = (
     offer: RescueOffer, username: string, paymentStatus: RescueOffer["paymentStatus"], settled = false,
   ) => {

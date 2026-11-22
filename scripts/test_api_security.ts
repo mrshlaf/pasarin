@@ -1,14 +1,12 @@
-/**
- * Skrip Uji Keamanan API, Autentikasi Peran, & Konsistensi Transaksi (PSR-3 & PSR-40).
- * Memverifikasi:
- * 1. Proteksi otentikasi Bearer token pada seluruh rute API sensitif (HTTP 401 & HTTP 403).
- * 2. Penolakan input rusak atau tidak sesuai skema Zod (HTTP 400 & HTTP 422).
- * 3. Kinetika peluruhan dinamis dan penimbangan fisik pedagang sebelum penerbitan lot.
- * 4. Penguncian atomik klaim pembeli untuk mencegah race condition (HTTP 200 vs HTTP 409).
- * 5. Siklus pembayaran QRIS Escrow dan serah terima logistik.
- * 6. Paritas fitur Telegram Bot dengan web workspace.
- * 7. Isolasi sesi uji lokal agar tidak bocor ke lingkungan produksi.
- */
+// Skrip Uji Keamanan API, Autentikasi Peran, & Konsistensi Transaksi (PSR-3 & PSR-40).
+// Memverifikasi:
+// 1. Proteksi otentikasi Bearer token pada seluruh rute API sensitif (HTTP 401 & HTTP 403).
+// 2. Penolakan input rusak atau tidak sesuai skema Zod (HTTP 400 & HTTP 422).
+// 3. Kinetika peluruhan dinamis dan penimbangan fisik pedagang sebelum penerbitan lot.
+// 4. Penguncian atomik klaim pembeli untuk mencegah race condition (HTTP 200 vs HTTP 409).
+// 5. Siklus pembayaran QRIS Escrow dan serah terima logistik.
+// 6. Paritas fitur Telegram Bot dengan web workspace.
+// 7. Isolasi sesi uji lokal agar tidak bocor ke lingkungan produksi.
 
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -63,9 +61,7 @@ supabase.auth.getUser = async (token) => {
   return { data: { user }, error: null };
 };
 
-/**
- * Membangun objek NextRequest pembawa Bearer token otorisasi atau secret token Telegram.
- */
+// Membangun objek NextRequest pembawa Bearer token otorisasi atau secret token Telegram.
 function request(body?: unknown, role?: AppRole, headers?: Record<string, string>) {
   return new NextRequest("http://localhost/api", {
     method: body === undefined ? "GET" : "POST",
@@ -74,9 +70,7 @@ function request(body?: unknown, role?: AppRole, headers?: Record<string, string
   });
 }
 
-/**
- * Membaca snapshot data ruang kerja terotorisasi, mencakup evaluasi kinetika peluruhan terkini.
- */
+// Membaca snapshot data ruang kerja terotorisasi, mencakup evaluasi kinetika peluruhan terkini.
 async function view(role: AppRole) {
   const response = await state(request(undefined, role));
   // Memvalidasi pembacaan state ruang kerja terotorisasi menghasilkan HTTP 200 OK
@@ -84,9 +78,7 @@ async function view(role: AppRole) {
   return (await response.json()).data;
 }
 
-/**
- * Mensimulasikan pesan privat atau penekanan tombol callback Telegram yang terotentikasi.
- */
+// Mensimulasikan pesan privat atau penekanan tombol callback Telegram yang terotentikasi.
 async function sendTelegram(chat: number, id: number, action: string, callback = false) {
   const message = { chat: { id: chat, type: "private" }, from: { id: chat }, text: action };
   const session = callback ? (await telegramChatSessions(chat)).active : undefined;
@@ -96,9 +88,7 @@ async function sendTelegram(chat: number, id: number, action: string, callback =
   }, undefined, { "X-Telegram-Bot-Api-Secret-Token": "telegram-test-secret" }));
 }
 
-/**
- * Menjalankan pengujian terpadu alur pencatatan stok, kinetika peluruhan, reservasi, pembayaran QRIS, dan serah terima.
- */
+// Menjalankan pengujian terpadu alur pencatatan stok, kinetika peluruhan, reservasi, pembayaran QRIS, dan serah terima.
 async function run() {
   // 1. Uji Penolakan Permintaan Tanpa Token Otorisasi (HTTP 401 Unauthorized)
   // Memvalidasi endpoint state menolak akses anonim tanpa header Authorization
@@ -365,9 +355,7 @@ async function run() {
   console.log("Cron estimate stays private until seller weighs stock and confirms publication quantity.");
 }
 
-/**
- * Menguji pemanggilan Google Gemini SDK dengan upstream mock yang memvalidasi integritas payload pasar.
- */
+// Menguji pemanggilan Google Gemini SDK dengan upstream mock yang memvalidasi integritas payload pasar.
 async function checkGemini() {
   const fetchBefore = globalThis.fetch;
   process.env.GEMINI_API_KEY = "fixture-gemini-key";
@@ -402,9 +390,7 @@ async function checkGemini() {
   }
 }
 
-/**
- * Memverifikasi kredensial uji lokal dan memastikan sesi pengujian tidak dapat diakses di luar lingkungan pengembangan.
- */
+// Memverifikasi kredensial uji lokal dan memastikan sesi pengujian tidak dapat diakses di luar lingkungan pengembangan.
 async function checkLocalTestSessions() {
   const environment = process.env.NODE_ENV;
   const databaseUrl = process.env.SUPABASE_DB_URL;

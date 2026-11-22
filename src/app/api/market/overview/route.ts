@@ -1,17 +1,11 @@
-/**
- * Rute API Ringkasan Publik Agregat Pasar Induk Kramat Jati.
- * Menyediakan data publik teragregasi (lot tersedia, komoditas teratas, alokasi armada)
- * dengan header cache edge CDN untuk meringankan beban server.
- */
+// Rute API Ringkasan Publik Agregat Pasar Induk Kramat Jati.
+// Menyediakan data publik teragregasi (lot tersedia, komoditas teratas, alokasi armada)
+// dengan header cache edge CDN untuk meringankan beban server.
 
 import { errorResponse, successResponse } from "@/lib/api-response";
 import { readPublicMarketOverview } from "@/lib/serverSimulationState";
 
-/**
- * Mengembalikan data agregat pasar publik anonim tanpa mengekspos akun privat.
- *
- * @returns Respons API terformat JSON dengan instruksi cache publik.
- */
+// Mengembalikan data agregat pasar publik anonim tanpa mengekspos akun privat.
 export async function GET() {
   try {
     const response = successResponse(await readPublicMarketOverview());

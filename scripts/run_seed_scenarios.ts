@@ -1,18 +1,15 @@
-/**
- * Eksekutor Skenario Uji Pasar PASARIN (PSR-39 / Scenario Seed Runner).
- * Menginjeksikan 7 skenario pengujian nyata ke dalam sistem state pasar:
- * 1. Skenario Segar Prima: Penjualan ritel normal di Kios A-12 milik vendor_kramat_01 (DecayScore < 0.35).
- * 2. Skenario Layu Ringan: Penawaran Tier 1 Warteg dengan diskon modal 58%.
- * 3. Skenario Layu Kritis: Penawaran Tier 2 Dapur Sosial dengan masa reservasi 30 menit.
- * 4. Skenario Afkir Biologis: Penawaran Tier 3 Biokonversi Maggot BSF.
- * 5. Skenario Audit Invarian 1: Pencegahan moral hazard dan pemotongan poin reputasi.
- * 6. Skenario Escrow QRIS BI & Antrean Kurir: Status held_in_escrow siap antar armada.
- * 7. Skenario Transaksi Selesai: Konfirmasi serah terima kurir dan pencairan saldo pedagang.
- *
- * Catatan Pengujian:
- * - Menulis ke basis data Supabase PostgreSQL jika SUPABASE_DB_URL dikonfigurasi.
- * - Menulis snapshot fail-safe ke file sistem lokal JSON untuk pengujian terisolasi.
- */
+// Eksekutor Skenario Uji Pasar PASARIN (PSR-39 / Scenario Seed Runner).
+// Menginjeksikan 7 skenario pengujian nyata ke dalam sistem state pasar:
+// 1. Skenario Segar Prima: Penjualan ritel normal di Kios A-12 milik vendor_kramat_01 (DecayScore < 0.35).
+// 2. Skenario Layu Ringan: Penawaran Tier 1 Warteg dengan diskon modal 58%.
+// 3. Skenario Layu Kritis: Penawaran Tier 2 Dapur Sosial dengan masa reservasi 30 menit.
+// 4. Skenario Afkir Biologis: Penawaran Tier 3 Biokonversi Maggot BSF.
+// 5. Skenario Audit Invarian 1: Pencegahan moral hazard dan pemotongan poin reputasi.
+// 6. Skenario Escrow QRIS BI & Antrean Kurir: Status held_in_escrow siap antar armada.
+// 7. Skenario Transaksi Selesai: Konfirmasi serah terima kurir dan pencairan saldo pedagang.
+// Catatan Pengujian:
+// - Menulis ke basis data Supabase PostgreSQL jika SUPABASE_DB_URL dikonfigurasi.
+// - Menulis snapshot fail-safe ke file sistem lokal JSON untuk pengujian terisolasi.
 
 import fs from "node:fs";
 import os from "node:os";

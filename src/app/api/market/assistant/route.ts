@@ -1,8 +1,6 @@
-/**
- * Rute API Asisten Publik Landing Page.
- * Menjawab pertanyaan pengunjung yang belum masuk dari etalase publik dan panduan PASARIN.
- * Dibatasi 12 pertanyaan per 5 menit per alamat IP agar kuota model tidak habis.
- */
+// Rute API Asisten Publik Landing Page.
+// Menjawab pertanyaan pengunjung yang belum masuk dari etalase publik dan panduan PASARIN.
+// Dibatasi 12 pertanyaan per 5 menit per alamat IP agar kuota model tidak habis.
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
@@ -13,12 +11,8 @@ import { allowRequest } from "@/lib/rateLimit";
 // Pertanyaan dibatasi 500 karakter; `forceHeuristic` melewati model AI dan memakai jawaban berbasis aturan.
 const query = z.object({ query: z.string().trim().min(1).max(500), forceHeuristic: z.boolean().optional() });
 
-/**
- * Menjawab satu pertanyaan pengunjung. Validasi dijalankan sebelum kuota dihitung
- * sehingga permintaan rusak tidak memakan jatah pertanyaan.
- *
- * @returns 200 berisi jawaban, 422 untuk input tidak valid, 429 bila melewati batas, atau 503 bila data pasar tidak tersedia.
- */
+// Menjawab satu pertanyaan pengunjung. Validasi dijalankan sebelum kuota dihitung
+// sehingga permintaan rusak tidak memakan jatah pertanyaan.
 export async function POST(req: NextRequest) {
   const input = await validateJsonBody(req, query);
   if (!input.success) return input.errorResponse;

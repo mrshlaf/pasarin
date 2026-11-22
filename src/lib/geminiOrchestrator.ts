@@ -1,16 +1,13 @@
-/**
- * Modul Agen Pengorkestrasi Pusat ReAct (PSR-17 / Agent 1: Central Orchestrator).
- * Bertanggung jawab mengoordinasikan seluruh sub-agen otonom PASARIN:
- * 1. Menjalankan siklus otonom sapuan sore 14:30 WIB (Autonomous Afternoon Sweep).
- * 2. Memproses kueri bahasa alami manajerial pengelola pasar dengan penalaran ReAct berantai.
- * 3. Mengimplementasikan arsitektur Hybrid: Google Gemini 2.0 Flash (@google/genai)
- *    dengan fail-safe fallback otomatis ke mesin penalaran ReAct heuristik deterministik.
- *
- * Landasan Spesifikasi PRD §4.1, §4.18.1, dan baris 2904-2939:
- * - Batas maksimal siklus penalaran dipatok 5 putaran (max 5 turns) untuk mencegah loop tak berujung.
- * - Format penalaran baku: Thought -> Action -> Observation -> Final Answer.
- * - Pencatatan komprehensif ke basis data jejak audit (system_audit_trail).
- */
+// Modul Agen Pengorkestrasi Pusat ReAct (PSR-17 / Agent 1: Central Orchestrator).
+// Bertanggung jawab mengoordinasikan seluruh sub-agen otonom PASARIN:
+// 1. Menjalankan siklus otonom sapuan sore 14:30 WIB (Autonomous Afternoon Sweep).
+// 2. Memproses kueri bahasa alami manajerial pengelola pasar dengan penalaran ReAct berantai.
+// 3. Mengimplementasikan arsitektur Hybrid: Google Gemini 2.0 Flash (@google/genai)
+// dengan fail-safe fallback otomatis ke mesin penalaran ReAct heuristik deterministik.
+// Landasan Spesifikasi PRD §4.1, §4.18.1, dan baris 2904-2939:
+// - Batas maksimal siklus penalaran dipatok 5 putaran (max 5 turns) untuk mencegah loop tak berujung.
+// - Format penalaran baku: Thought -> Action -> Observation -> Final Answer.
+// - Pencatatan komprehensif ke basis data jejak audit (system_audit_trail).
 
 import { GoogleGenAI } from "@google/genai";
 import { getEnv } from "@/lib/env";
@@ -36,14 +33,10 @@ import {
   ReActStep,
 } from "@/types/api";
 
-/**
- * Batas maksimal putaran penalaran ReAct sebelum terminasi wajib.
- */
+// Batas maksimal putaran penalaran ReAct sebelum terminasi wajib.
 export const MAX_REACT_TURNS = 5;
 
-/**
- * Prompt instruksi sistem untuk Agent 1 Central Orchestrator (PRD §4.18.1).
- */
+// Prompt instruksi sistem untuk Agent 1 Central Orchestrator (PRD §4.18.1).
 export const ORCHESTRATOR_SYSTEM_PROMPT =
   "You are the Central Orchestrator of PASARIN (Proactive Agent for Market Surplus Redistribution). " +
   "Coordinate sub-agents in 5 sequential phases: ingest stock from 30 kiosks, fetch field weather, model Arrhenius decay, " +
@@ -55,30 +48,17 @@ let latestOrchestratorRun: OrchestratorRunResult | null = null;
 // Riwayat kueri terbaru untuk panel admin; hanya di memori instans ini.
 const latestQueryHistory: OrchestratorQueryResult[] = [];
 
-/**
- * Mengambil rekam jejak siklus otonom orkestrator terakhir untuk visualisasi antarmuka pengguna dasbor.
- *
- * @returns Objek OrchestratorRunResult terakhir atau null jika siklus belum pernah dipicu.
- */
+// Mengambil rekam jejak siklus otonom orkestrator terakhir untuk visualisasi antarmuka pengguna dasbor.
 export function getLatestOrchestratorRun(): OrchestratorRunResult | null {
   return latestOrchestratorRun;
 }
 
-/**
- * Mengambil riwayat kueri manajerial terakhir dari memori proses untuk jejak audit interaktif.
- *
- * @param limit - Jumlah maksimal riwayat kueri yang diambil (default: 10).
- * @returns Array riwayat kueri OrchestratorQueryResult terurut dari yang terbaru.
- */
+// Mengambil riwayat kueri manajerial terakhir dari memori proses untuk jejak audit interaktif.
 export function getLatestQueryHistory(limit = 10): OrchestratorQueryResult[] {
   return latestQueryHistory.slice(0, limit);
 }
 
-/**
- * Membentuk sampel representatif dataset stok 30 kios Kramat Jati untuk evaluasi komposit pasar 14:30 WIB.
- *
- * @returns Array objek KioskStockInput untuk 30 kios pedagang binaan.
- */
+// Membentuk sampel representatif dataset stok 30 kios Kramat Jati untuk evaluasi komposit pasar 14:30 WIB.
 function buildStallStockInputs(): KioskStockInput[] {
   const inputs: KioskStockInput[] = [];
 
@@ -110,14 +90,9 @@ function buildStallStockInputs(): KioskStockInput[] {
   return inputs;
 }
 
-/**
- * Menjalankan siklus otonom terpadu sistem multi-agen PASARIN (PSR-17).
- * Mengorkestrasi pengumpulan telemetri cuaca, dekomposisi stok 30 kios, kalkulasi susut kinetika,
- * verifikasi batas etika gerbang mutu, penetapan harga dinamis, dan perencanaan armada logistik.
- *
- * @param options - Parameter eksekusi mencakup mode operasi dan opsi pemaksaan mesin heuristik.
- * @returns Hasil eksekusi OrchestratorRunResult lengkap dengan jejak langkah ReAct dan ringkasan eksekutif.
- */
+// Menjalankan siklus otonom terpadu sistem multi-agen PASARIN (PSR-17).
+// Mengorkestrasi pengumpulan telemetri cuaca, dekomposisi stok 30 kios, kalkulasi susut kinetika,
+// verifikasi batas etika gerbang mutu, penetapan harga dinamis, dan perencanaan armada logistik.
 export async function executeAutonomousOrchestration(options?: {
   executionMode?: "scheduled_autonomous_cron" | "manual_simulation";
   forceHeuristic?: boolean;
@@ -285,15 +260,9 @@ export async function executeAutonomousOrchestration(options?: {
   return result;
 }
 
-/**
- * Memproses kueri bahasa alami dari pengelola pasar menggunakan arsitektur ReAct Hybrid (PSR-17 / PSR-18).
- * Menghubungkan Google Gemini 2.0 Flash (@google/genai) saat API key tersedia dan valid,
- * serta secara cerdas beralih ke mesin penalaran ReAct heuristik deterministik jika layanan offline atau kuota habis.
- *
- * @param query - Pertanyaan teks bahasa alami dari pengguna / pengelola pasar.
- * @param options - Konfigurasi eksekusi kueri.
- * @returns Sintesis jawaban terstruktur OrchestratorQueryResult.
- */
+// Memproses kueri bahasa alami dari pengelola pasar menggunakan arsitektur ReAct Hybrid (PSR-17 / PSR-18).
+// Menghubungkan Google Gemini 2.0 Flash (@google/genai) saat API key tersedia dan valid,
+// serta secara cerdas beralih ke mesin penalaran ReAct heuristik deterministik jika layanan offline atau kuota habis.
 export async function processManagerialNaturalQuery(
   query: string,
   options?: { forceHeuristic?: boolean; recordResult?: boolean }
@@ -381,9 +350,7 @@ export async function processManagerialNaturalQuery(
   return queryResult;
 }
 
-/**
- * Objek fasad Agent 1: Central Orchestrator & Coordinator Agent (PSR-17).
- */
+// Objek fasad Agent 1: Central Orchestrator & Coordinator Agent (PSR-17).
 export const geminiOrchestrator = {
   name: "GeminiOrchestratorAgent",
   role: "Central Orchestrator & Multi-Agent ReAct Coordinator",

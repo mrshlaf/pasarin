@@ -1,21 +1,19 @@
-/**
- * Modul Master Testbench Pengujian Sesi Kelas (PSR-39 / In-Class Unit Testbench).
- * Memvalidasi 14 suite rekayasa perangkat lunak PASARIN (Sprint 1, Sprint 2 & Sprint 3):
- * 1. [SUITE 1: PSR-5]  Telemetri Cuaca Hiperlokal & In-Memory Cache 15 Menit.
- * 2. [SUITE 2: PSR-14] Kinetika Peluruhan Biologis Arrhenius-Q10 & Laju Respirasi Daun.
- * 3. [SUITE 3: PSR-15] Model Redaman Pengunjung Pasar Akibat Hujan Lebat (Penurunan 48%).
- * 4. [SUITE 4: PSR-20] Inverse Surge Dynamic Pricing & Price Floor Modal Pedagang.
- * 5. [SUITE 5: PSR-19] Mesin Prediksi Surplus Komposit & Validasi Target Baseline 1.240 kg.
- * 6. [SUITE 6: PSR-21] Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1 (Zero Edible to Feed).
- * 7. [SUITE 7: PSR-17] Google Gemini 2.0 Flash ReAct Agent Core (Siklus Otonom 14:30 WIB & Max 5 Turns).
- * 8. [SUITE 8: PSR-18] Tool Calling Registry & Dekomposisi Kueri Bahasa Alami (< 1.500 ms).
- * 9. [SUITE 9: PSR-40] Autentikasi Pengguna Supabase Auth & Penegakan Isolasi Peran (Role Isolation).
- * 10. [SUITE 10: PSR-3 & 4] Arsitektur API Response Envelope, Validasi Skema Zod & Otorisasi Cron.
- * 11. [SUITE 11: PSR-16] Konsistensi Master Data 30 Kios & 30 Komoditas Pasar Kramat Jati.
- * 12. [SUITE 12: Invarian 2 & 3] Urutan Harga Berjenjang & Jendela Reservasi Sosial 30 Menit.
- * 13. [SUITE 13: PSR-22] Mesin Pencocokan Sirkular 3-Tier, Formula Haversine, & Proteksi Kapasitas.
- * 14. [SUITE 14: PSR-26] Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik.
- */
+// Modul Master Testbench Pengujian Sesi Kelas (PSR-39 / In-Class Unit Testbench).
+// Memvalidasi 14 suite rekayasa perangkat lunak PASARIN (Sprint 1, Sprint 2 & Sprint 3):
+// 1. [SUITE 1: PSR-5]  Telemetri Cuaca Hiperlokal & In-Memory Cache 15 Menit.
+// 2. [SUITE 2: PSR-14] Kinetika Peluruhan Biologis Arrhenius-Q10 & Laju Respirasi Daun.
+// 3. [SUITE 3: PSR-15] Model Redaman Pengunjung Pasar Akibat Hujan Lebat (Penurunan 48%).
+// 4. [SUITE 4: PSR-20] Inverse Surge Dynamic Pricing & Price Floor Modal Pedagang.
+// 5. [SUITE 5: PSR-19] Mesin Prediksi Surplus Komposit & Validasi Target Baseline 1.240 kg.
+// 6. [SUITE 6: PSR-21] Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1 (Zero Edible to Feed).
+// 7. [SUITE 7: PSR-17] Google Gemini 2.0 Flash ReAct Agent Core (Siklus Otonom 14:30 WIB & Max 5 Turns).
+// 8. [SUITE 8: PSR-18] Tool Calling Registry & Dekomposisi Kueri Bahasa Alami (< 1.500 ms).
+// 9. [SUITE 9: PSR-40] Autentikasi Pengguna Supabase Auth & Penegakan Isolasi Peran (Role Isolation).
+// 10. [SUITE 10: PSR-3 & 4] Arsitektur API Response Envelope, Validasi Skema Zod & Otorisasi Cron.
+// 11. [SUITE 11: PSR-16] Konsistensi Master Data 30 Kios & 30 Komoditas Pasar Kramat Jati.
+// 12. [SUITE 12: Invarian 2 & 3] Urutan Harga Berjenjang & Jendela Reservasi Sosial 30 Menit.
+// 13. [SUITE 13: PSR-22] Mesin Pencocokan Sirkular 3-Tier, Formula Haversine, & Proteksi Kapasitas.
+// 14. [SUITE 14: PSR-26] Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik.
 
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
@@ -82,10 +80,8 @@ import {
   CircularBuyer,
 } from "@/data/buyers";
 
-/**
- * Kontrak struktur laporan hasil pengujian terintegrasi master testbench (PSR-39).
- * Memuat ringkasan asersi lulus/gagal, rasio keberhasilan (%), stempel waktu, dan rincian per suite.
- */
+// Kontrak struktur laporan hasil pengujian terintegrasi master testbench (PSR-39).
+// Memuat ringkasan asersi lulus/gagal, rasio keberhasilan (%), stempel waktu, dan rincian per suite.
 export interface MasterTestReport {
   suiteTitle: string;
   totalAssertions: number;
@@ -102,15 +98,10 @@ export interface MasterTestReport {
   }>;
 }
 
-/**
- * Menjalankan rangkaian uji otomatis 14 suite rekayasa perangkat lunak PASARIN secara terintegrasi (PSR-39).
- * Mengevaluasi 76 asersi pengujian unit mencakup telemetri cuaca, kinetika Arrhenius, redaman hujan,
- * dynamic pricing, prediksi surplus komposit, gerbang mutu etis, ReAct Gemini 2.0 Flash, tool calling,
- * otorisasi peran, Telegram webhook, integrasi master data, invarian sirkular, dan mesin pencocokan Haversine.
- *
- * @param options - Opsi eksekusi pengujian, seperti mode senyap (silent) tanpa pencetakan log konsol.
- * @returns Laporan master pengujian MasterTestReport berisi ringkasan asersi lulus/gagal dan rincian per suite.
- */
+// Menjalankan rangkaian uji otomatis 14 suite rekayasa perangkat lunak PASARIN secara terintegrasi (PSR-39).
+// Mengevaluasi 76 asersi pengujian unit mencakup telemetri cuaca, kinetika Arrhenius, redaman hujan,
+// dynamic pricing, prediksi surplus komposit, gerbang mutu etis, ReAct Gemini 2.0 Flash, tool calling,
+// otorisasi peran, Telegram webhook, integrasi master data, invarian sirkular, dan mesin pencocokan Haversine.
 export async function runMasterInClassTestSuite(options?: { silent?: boolean }): Promise<MasterTestReport> {
   const isSilent = Boolean(options?.silent);
   let totalTests = 0;
@@ -901,9 +892,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   };
 }
 
-/**
- * Objek fasad testbench terpadu untuk pengujian otomatis in-class (PSR-39).
- */
+// Objek fasad testbench terpadu untuk pengujian otomatis in-class (PSR-39).
 export const inClassTestbench = {
   runMasterInClassTestSuite,
 };

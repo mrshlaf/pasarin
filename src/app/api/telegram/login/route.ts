@@ -1,8 +1,6 @@
-/**
- * Rute API Otentikasi Masuk Telegram Mini App (PSR-38).
- * Memverifikasi keabsahan data initData yang ditandatangani bot token Telegram,
- * menerapkan pembatasan laju percobaan masuk, serta menginisialisasi sesi obrolan terotentikasi.
- */
+// Rute API Otentikasi Masuk Telegram Mini App (PSR-38).
+// Memverifikasi keabsahan data initData yang ditandatangani bot token Telegram,
+// menerapkan pembatasan laju percobaan masuk, serta menginisialisasi sesi obrolan terotentikasi.
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,12 +17,7 @@ const credentials = z.object({
   password: z.string().min(1).max(256),
 });
 
-/**
- * Mengautentikasi pengguna Telegram Mini App ke akun resmi pasar dan memulai sesi aktif obrolan.
- *
- * @param req - Objek NextRequest masuk.
- * @returns Respons JSON status keberhasilan login.
- */
+// Mengautentikasi pengguna Telegram Mini App ke akun resmi pasar dan memulai sesi aktif obrolan.
 export async function POST(req: NextRequest) {
   const token = getEnv().TELEGRAM_BOT_TOKEN;
   if (!token) return NextResponse.json({ error: "Login Telegram belum tersedia." }, { status: 503 });

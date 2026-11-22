@@ -1,13 +1,10 @@
-/**
- * Skrip Penyemaian Awal Akun Pasar dan State Simulasi ke Supabase Cloud (PSR-2 / PSR-4).
- * Menghubungkan secara langsung ke kluster PostgreSQL Supabase untuk mendaftarkan 142 akun peran
- * dan menginisialisasi snapshot state pasar awal.
- *
- * Cakupan:
- * 1. Pendaftaran akun multi-peran (pedagang, UMKM, dapur sosial, sentra maggot, kurir, dinas, manajemen).
- * 2. Inisialisasi data stok komoditas pangan aktif dan penawaran penyelamatan.
- * 3. Verifikasi jumlah akun dan entitas transaksi awal yang berhasil di-seed.
- */
+// Skrip Penyemaian Awal Akun Pasar dan State Simulasi ke Supabase Cloud (PSR-2 / PSR-4).
+// Menghubungkan secara langsung ke kluster PostgreSQL Supabase untuk mendaftarkan 142 akun peran
+// dan menginisialisasi snapshot state pasar awal.
+// Cakupan:
+// 1. Pendaftaran akun multi-peran (pedagang, UMKM, dapur sosial, sentra maggot, kurir, dinas, manajemen).
+// 2. Inisialisasi data stok komoditas pangan aktif dan penawaran penyelamatan.
+// 3. Verifikasi jumlah akun dan entitas transaksi awal yang berhasil di-seed.
 
 import { loadEnvFile } from "node:process";
 
@@ -21,9 +18,7 @@ try {
 // Menetapkan backend state pasar ke Supabase PostgreSQL
 process.env.PASARIN_STATE_BACKEND = "supabase";
 
-/**
- * Menjalankan proses penyemaian akun pasar dan snapshot simulasi awal.
- */
+// Menjalankan proses penyemaian akun pasar dan snapshot simulasi awal.
 async function run() {
   // Validasi konfigurasi connection string Supabase
   if (!process.env.SUPABASE_DB_URL) {

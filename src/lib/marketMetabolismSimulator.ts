@@ -1,12 +1,10 @@
-/**
- * Modul Uji Coba Simulasi Terpadu 24-Jam Metabolisme Pasar (PSR-31).
- * Menguji interoperabilitas end-to-end seluruh 17 agen otonom melintasi 5 tahapan sirkadian:
- * 1. Subuh (04:30 WIB): Penerimaan pasokan grosir 30 kios & 30 komoditas hortikultura.
- * 2. Terik Siang (12:00 WIB): Puncak suhu los (34°C) & akselerasi laju respirasi kinetika Arrhenius-Q10.
- * 3. Evaluasi Mutu (14:30 WIB): Pemicuan Cron Sweep, penalaran ReAct AI Gemini 2.0 Flash, & Dynamic Pricing.
- * 4. Hujan Sore (15:30 WIB): Redaman pembeli 48%, alokasi prioritas 30m Dapur Sosial & klaim QRIS Escrow.
- * 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, konfirmasi serah terima, pelepasan escrow, & akuntansi emisi karbon.
- */
+// Modul Uji Coba Simulasi Terpadu 24-Jam Metabolisme Pasar (PSR-31).
+// Menguji interoperabilitas end-to-end seluruh 17 agen otonom melintasi 5 tahapan sirkadian:
+// 1. Subuh (04:30 WIB): Penerimaan pasokan grosir 30 kios & 30 komoditas hortikultura.
+// 2. Terik Siang (12:00 WIB): Puncak suhu los (34°C) & akselerasi laju respirasi kinetika Arrhenius-Q10.
+// 3. Evaluasi Mutu (14:30 WIB): Pemicuan Cron Sweep, penalaran ReAct AI Gemini 2.0 Flash, & Dynamic Pricing.
+// 4. Hujan Sore (15:30 WIB): Redaman pembeli 48%, alokasi prioritas 30m Dapur Sosial & klaim QRIS Escrow.
+// 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, konfirmasi serah terima, pelepasan escrow, & akuntansi emisi karbon.
 
 import { KIOSKS } from "@/data/kiosks";
 import { COMMODITIES } from "@/data/commodities";
@@ -25,9 +23,7 @@ import {
   executeEscrowSettlement,
 } from "@/lib/qrisEscrowGateway";
 
-/**
- * Kontrak rekaman log tahapan sirkadian simulasi metabolisme pasar (PSR-31).
- */
+// Kontrak rekaman log tahapan sirkadian simulasi metabolisme pasar (PSR-31).
 export interface PhaseLogEntry {
   phase: string;
   // Label jam WIB tahapan, misalnya "04:30 WIB" atau rentang "17:30 - 21:00 WIB".
@@ -39,11 +35,9 @@ export interface PhaseLogEntry {
   metrics: Record<string, string | number | boolean>;
 }
 
-/**
- * Laporan komprehensif uji coba metabolisme pasar 24 jam (PSR-31 Trial Report).
- * Merangkum efisiensi pengalihan sampah DLH (>= 90%), audit 3 invarian etis,
- * penyelesaian finansial escrow QRIS, dan reduksi emisi metana/karbon IPCC 2006.
- */
+// Laporan komprehensif uji coba metabolisme pasar 24 jam (PSR-31 Trial Report).
+// Merangkum efisiensi pengalihan sampah DLH (>= 90%), audit 3 invarian etis,
+// penyelesaian finansial escrow QRIS, dan reduksi emisi metana/karbon IPCC 2006.
 export interface MetabolismTrialReport {
   trialId: string;
   executedAt: string;
@@ -75,17 +69,13 @@ export interface MetabolismTrialReport {
   phaseLogs: PhaseLogEntry[];
 }
 
-/**
- * Menjalankan uji coba komprehensif simulasi siklus 24 jam metabolisme pasar (PSR-31 Trial).
- * Mengevaluasi 5 fase sirkadian:
- * 1. Subuh (04:30 WIB) - Penerimaan pasokan awal 30 kios.
- * 2. Siang Terik (12:00 WIB) - Puncak suhu mikro los 34°C dan kinetika Arrhenius.
- * 3. Sapuan Sore (14:30 WIB) - ReAct AI Cron Sweep, prediksi surplus komposit, dan penetapan harga dinamis.
- * 4. Hujan Sore (15:30 WIB) - Redaman pengunjung pasar 48%, alokasi 30m prioritas dapur sosial, dan pembayaran QRIS Escrow.
- * 5. Logistik Malam (17:30 - 21:00 WIB) - Penugasan armada, pelepasan escrow dompet pedagang, dan audit karbon IPCC 2006.
- *
- * @returns Laporan performa uji coba metabolisme pasar lengkap (MetabolismTrialReport).
- */
+// Menjalankan uji coba komprehensif simulasi siklus 24 jam metabolisme pasar (PSR-31 Trial).
+// Mengevaluasi 5 fase sirkadian:
+// 1. Subuh (04:30 WIB) - Penerimaan pasokan awal 30 kios.
+// 2. Siang Terik (12:00 WIB) - Puncak suhu mikro los 34°C dan kinetika Arrhenius.
+// 3. Sapuan Sore (14:30 WIB) - ReAct AI Cron Sweep, prediksi surplus komposit, dan penetapan harga dinamis.
+// 4. Hujan Sore (15:30 WIB) - Redaman pengunjung pasar 48%, alokasi 30m prioritas dapur sosial, dan pembayaran QRIS Escrow.
+// 5. Logistik Malam (17:30 - 21:00 WIB) - Penugasan armada, pelepasan escrow dompet pedagang, dan audit karbon IPCC 2006.
 export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialReport> {
   const trialStartTime = Date.now();
   const trialId = `TRL-24H-${Date.now().toString().slice(-6)}`;

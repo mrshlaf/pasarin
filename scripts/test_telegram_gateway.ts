@@ -1,12 +1,10 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-24 & PSR-25 (Telegram Gateway & Security Suite).
- * Memverifikasi:
- * 1. Otentikasi Webhook menggunakan X-Telegram-Bot-Api-Secret-Token.
- * 2. Validasi tanda tangan kriptografis HMAC-SHA256 initData Telegram Mini App.
- * 3. Penegakan isolasi chat privat (grup ditolak demi privasi harga modal).
- * 4. Pergantian akun dinamis (multi-account switching) dan pencegahan tombol usang (stale buttons).
- * 5. Proteksi brute force login via rate limiting HTTP 429.
- */
+// Skrip Pengujian Unit Mandiri: PSR-24 & PSR-25 (Telegram Gateway & Security Suite).
+// Memverifikasi:
+// 1. Otentikasi Webhook menggunakan X-Telegram-Bot-Api-Secret-Token.
+// 2. Validasi tanda tangan kriptografis HMAC-SHA256 initData Telegram Mini App.
+// 3. Penegakan isolasi chat privat (grup ditolak demi privasi harga modal).
+// 4. Pergantian akun dinamis (multi-account switching) dan pencegahan tombol usang (stale buttons).
+// 5. Proteksi brute force login via rate limiting HTTP 429.
 
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
@@ -25,13 +23,7 @@ const site = "https://pasarin.example.test";
 // Badan setiap sendMessage yang ditangkap mock fetch, untuk memeriksa teks dan tombol balasan bot.
 const sent: { text: string; reply_markup?: { inline_keyboard: Record<string, unknown>[][] } }[] = [];
 
-/**
- * Membangun payload otentikasi initData tertandatangani HMAC-SHA256 sebagaimana dikirim Telegram Mini App ke server.
- *
- * @param chat - ID chat telegram pengguna.
- * @param seconds - Waktu Unix epoch tanda tangan dibuat.
- * @returns String URLSearchParams memuat user, auth_date, dan hash HMAC.
- */
+// Membangun payload otentikasi initData tertandatangani HMAC-SHA256 sebagaimana dikirim Telegram Mini App ke server.
 function launchData(chat: number, seconds = Math.floor(Date.now() / 1000)) {
   const user = JSON.stringify({ id: chat, first_name: "Tester" });
   // Sesuai spesifikasi Mini App: kunci = HMAC("WebAppData", token), lalu data-check-string berisi key=value urut abjad dipisah baris baru.
@@ -40,15 +32,7 @@ function launchData(chat: number, seconds = Math.floor(Date.now() / 1000)) {
   return new URLSearchParams({ user, auth_date: String(seconds), hash }).toString();
 }
 
-/**
- * Memanggil rute otentikasi HTTPS kredensial akun tanpa membocorkan kata sandi pada ruang obrolan Telegram.
- *
- * @param chat - ID obrolan telegram.
- * @param identifier - Username atau email login.
- * @param password - Kata sandi akun.
- * @param initData - String initData yang tertandatangani sah.
- * @returns Response HTTP dari endpoint login.
- */
+// Memanggil rute otentikasi HTTPS kredensial akun tanpa membocorkan kata sandi pada ruang obrolan Telegram.
 function signIn(chat: number, identifier: string, password = identifier, initData = launchData(chat)) {
   return login(new NextRequest("http://localhost/api/telegram/login", {
     method: "POST", headers: { "Content-Type": "application/json" },
@@ -59,16 +43,7 @@ function signIn(chat: number, identifier: string, password = identifier, initDat
 // Penghitung update_id agar setiap update unik dan tidak dianggap duplikat oleh webhook.
 let updateId = 0;
 
-/**
- * Mengirimkan pembaruan pesan privat atau callback tombol inline melalui handler webhook Telegram resmi.
- *
- * @param chat - ID obrolan telegram.
- * @param input - Isi teks perintah atau callback data.
- * @param callback - Bernilai true jika berupa interaksi tombol inline.
- * @param sender - ID pengirim pesan.
- * @param type - Tipe chat obrolan (private atau group).
- * @returns Respons JSON dari webhook Telegram PASARIN.
- */
+// Mengirimkan pembaruan pesan privat atau callback tombol inline melalui handler webhook Telegram resmi.
 async function telegram(chat: number, input: string, callback = false, sender = chat, type = "private") {
   const from = { id: sender };
   const message = { chat: { id: chat, type }, from, text: input };
@@ -83,9 +58,7 @@ async function telegram(chat: number, input: string, callback = false, sender = 
   return response.json();
 }
 
-/**
- * Runner utama pengujian alur kerja Telegram Bot Gateway PSR-24 & PSR-25.
- */
+// Runner utama pengujian alur kerja Telegram Bot Gateway PSR-24 & PSR-25.
 async function run() {
   Object.assign(process.env, { NODE_ENV: "development", TELEGRAM_BOT_TOKEN: token, TELEGRAM_WEBHOOK_SECRET: secret });
   delete process.env.PASARIN_STATE_BACKEND;

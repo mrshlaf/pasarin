@@ -1,8 +1,6 @@
-/**
- * Modul Gerbang Autentikasi dan Otorisasi Berbasis Peran API (PSR-2).
- * Memvalidasi sesi pengguna dari cookie sesi server, token Bearer Supabase Auth,
- * atau kredensial simulasi lokal khusus lingkungan pengembangan, serta menegakkan batasan peran (RBAC).
- */
+// Modul Gerbang Autentikasi dan Otorisasi Berbasis Peran API (PSR-2).
+// Memvalidasi sesi pengguna dari cookie sesi server, token Bearer Supabase Auth,
+// atau kredensial simulasi lokal khusus lingkungan pengembangan, serta menegakkan batasan peran (RBAC).
 
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
@@ -12,14 +10,8 @@ import { errorResponse } from "@/lib/api-response";
 import { readLocalTestUser } from "@/lib/localTestAuth";
 import { serverAuthEnabled, readSessionUser } from "@/lib/serverAuth";
 
-/**
- * Membandingkan string rahasia menggunakan timing-safe buffer comparison.
- * Mencegah serangan analisis waktu (timing-attack) pada validasi token rahasia webhook atau cron.
- *
- * @param value - Nilai token masukan dari permintaan HTTP.
- * @param secret - Nilai token rahasia acuan dari variabel lingkungan server.
- * @returns True jika kedua nilai identik secara byte per byte.
- */
+// Membandingkan string rahasia menggunakan timing-safe buffer comparison.
+// Mencegah serangan analisis waktu (timing-attack) pada validasi token rahasia webhook atau cron.
 export function matchesSecret(value: string | null | undefined, secret: string | undefined) {
   if (!value || !secret) return false;
   const a = Buffer.from(value);
@@ -27,15 +19,9 @@ export function matchesSecret(value: string | null | undefined, secret: string |
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/**
- * Menegakkan otorisasi peran (RBAC) pada rute API endpoint Next.js.
- * Memeriksa identitas pengguna secara berurutan: cookie sesi server, Bearer token Supabase,
- * atau header sesi simulasi lokal (localhost development).
- *
- * @param req - Objek NextRequest masuk.
- * @param roles - Daftar peran yang diizinkan mengakses endpoint (opsional, jika kosong hanya memverifikasi autentikasi).
- * @returns Objek hasil berisi profil pengguna valid atau respons galat 401/403/503 siap kirim.
- */
+// Menegakkan otorisasi peran (RBAC) pada rute API endpoint Next.js.
+// Memeriksa identitas pengguna secara berurutan: cookie sesi server, Bearer token Supabase,
+// atau header sesi simulasi lokal (localhost development).
 export async function requireApiRole(req: NextRequest, roles?: readonly AppRole[]) {
   // Cookie sesi server diprioritaskan; bila tidak ada, lanjut ke Bearer lalu sesi uji lokal.
   if (serverAuthEnabled()) {

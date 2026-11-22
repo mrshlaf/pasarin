@@ -1,13 +1,11 @@
-/**
- * Skrip Pengujian Unit Mandiri: PSR-27 (Logistics Fleet and Cargo Calculator).
- * Memverifikasi:
- * 1. Aturan Ambang Batas Muatan (Weight Dispatch Rule):
- *    - Muatan <= 300 kg dialokasikan ke Motor Viar Roda 3.
- *    - Muatan 301 - 1.000 kg dialokasikan ke Mobil Daihatsu GranMax Pikap.
- *    - Muatan > 1.000 kg dialokasikan ke Truk Engkel Isuzu Elf.
- * 2. Rute Penjemputan Terurut (Multi-stop sequencing: Blok A -> Blok B -> Blok C).
- * 3. Manifes Perjalanan Pengantaran Digital & Kalkulasi Konsumsi BBM.
- */
+// Skrip Pengujian Unit Mandiri: PSR-27 (Logistics Fleet and Cargo Calculator).
+// Memverifikasi:
+// 1. Aturan Ambang Batas Muatan (Weight Dispatch Rule):
+// - Muatan <= 300 kg dialokasikan ke Motor Viar Roda 3.
+// - Muatan 301 - 1.000 kg dialokasikan ke Mobil Daihatsu GranMax Pikap.
+// - Muatan > 1.000 kg dialokasikan ke Truk Engkel Isuzu Elf.
+// 2. Rute Penjemputan Terurut (Multi-stop sequencing: Blok A -> Blok B -> Blok C).
+// 3. Manifes Perjalanan Pengantaran Digital & Kalkulasi Konsumsi BBM.
 
 import {
   calculateFleetAllocation,
@@ -20,14 +18,8 @@ let passedCount = 0;
 // Jumlah asersi gagal; bila lebih dari nol, skrip keluar dengan kode 1.
 let failedCount = 0;
 
-/**
- * Fungsi pembantu (helper) untuk mengevaluasi kondisi kebenaran asersi.
- * Mencetak log status lulus/gagal beserta nama skenario dan detail nilai observasi.
- *
- * @param condition - Kondisi boolean yang diuji (harus bernilai true untuk lulus).
- * @param testName - Nama atau deskripsi ringkas skenario pengujian.
- * @param detail - Detail nilai aktual atau teks observasi tambahan.
- */
+// Fungsi pembantu (helper) untuk mengevaluasi kondisi kebenaran asersi.
+// Mencetak log status lulus/gagal beserta nama skenario dan detail nilai observasi.
 function assert(condition: boolean, testName: string, detail?: string) {
   if (condition) {
     console.log(`  ✅ [PASS] ${testName}${detail ? ` -> ${detail}` : ""}`);
@@ -38,10 +30,8 @@ function assert(condition: boolean, testName: string, detail?: string) {
   }
 }
 
-/**
- * Fungsi utama eksekutor rangkaian uji coba kalkulator armada logistik PSR-27.
- * Menguji kalkulasi armada berdasarkan bobot muatan, pengurutan rute kios, dan pembuatan manifes.
- */
+// Fungsi utama eksekutor rangkaian uji coba kalkulator armada logistik PSR-27.
+// Menguji kalkulasi armada berdasarkan bobot muatan, pengurutan rute kios, dan pembuatan manifes.
 async function runFleetCalculatorTests() {
   console.log("\nPengujian Unit Mandiri: PSR-27 (Logistics Fleet & Cargo Calculator)");
   console.log("Fokus: Weight Dispatch Rule, Rute Multi-Stop, dan Manifes Digital\n");

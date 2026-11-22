@@ -1,8 +1,6 @@
-/**
- * Master Direktori Mitra Pembeli dan Jalur Penyaluran Sirkular 3-Tier (PSR-22).
- * Memuat koordinat geospasial mitra pembeli di sekitar Pasar Induk Kramat Jati,
- * kuota tampung harian, komoditas preferensi, dan jam operasional.
- */
+// Master Direktori Mitra Pembeli dan Jalur Penyaluran Sirkular 3-Tier (PSR-22).
+// Memuat koordinat geospasial mitra pembeli di sekitar Pasar Induk Kramat Jati,
+// kuota tampung harian, komoditas preferensi, dan jam operasional.
 
 export interface CircularBuyer {
   id: string;
@@ -25,24 +23,18 @@ export interface CircularBuyer {
   };
 }
 
-/**
- * Titik jangkar geospasial los basah Blok A Pasar Induk Kramat Jati sebagai pusat kalkulasi jarak Haversine.
- */
+// Titik jangkar geospasial los basah Blok A Pasar Induk Kramat Jati sebagai pusat kalkulasi jarak Haversine.
 export const MARKET_ANCHOR_COORDINATES = {
   latitude: -6.2675,
   longitude: 106.8702,
   name: "Pasar Induk Kramat Jati, Jakarta Timur",
 } as const;
 
-/**
- * Batas radius maksimal pengalihan logistik surplus pangan (5,0 km).
- * Ditentukan untuk memastikan pengantaran selesai dalam batas waktu kesegaran sayuran daun.
- */
+// Batas radius maksimal pengalihan logistik surplus pangan (5,0 km).
+// Ditentukan untuk memastikan pengantaran selesai dalam batas waktu kesegaran sayuran daun.
 export const MAX_MATCHMAKING_RADIUS_KM = 5.0;
 
-/**
- * Direktori mitra pembeli sirkular terverifikasi dalam radius operasional Pasar Induk Kramat Jati.
- */
+// Direktori mitra pembeli sirkular terverifikasi dalam radius operasional Pasar Induk Kramat Jati.
 export const CIRCULAR_BUYERS: CircularBuyer[] = [
   // Mitra Tier 1: Warteg & Katering UMKM (Penyelamatan Mutu Layu Ringan)
   {

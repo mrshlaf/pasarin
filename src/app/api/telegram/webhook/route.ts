@@ -1,8 +1,6 @@
-/**
- * Rute API Webhook Telegram Bot Gateway (PSR-38).
- * Menerima pembaruan masuk dari server Telegram, memvalidasi secret token webhook,
- * menyinkronkan sesi aktif akun pasar pada chat privat, dan mengeksekusi perintah maupun tombol aksi.
- */
+// Rute API Webhook Telegram Bot Gateway (PSR-38).
+// Menerima pembaruan masuk dari server Telegram, memvalidasi secret token webhook,
+// menyinkronkan sesi aktif akun pasar pada chat privat, dan mengeksekusi perintah maupun tombol aksi.
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -16,9 +14,7 @@ import { getEnv } from "@/lib/env";
 import { answerPublicQuestion } from "@/lib/publicChatbot";
 import { allowRequest } from "@/lib/rateLimit";
 
-/**
- * Membangun menu pemilihan akun privat dan tombol peluncur Mini App berbasis HTTPS.
- */
+// Membangun menu pemilihan akun privat dan tombol peluncur Mini App berbasis HTTPS.
 function accountMenu(req: NextRequest, sessions: Awaited<ReturnType<typeof telegramChatSessions>>, title: string) {
   const url = new URL("/telegram/login", req.nextUrl.origin);
   const keyboard: TelegramButton[][] = sessions.accounts.map((session) => [{
@@ -31,9 +27,7 @@ function accountMenu(req: NextRequest, sessions: Awaited<ReturnType<typeof teleg
   return telegramReply("accounts", title + (url.protocol === "https:" ? "" : "\nTombol login memerlukan deployment HTTPS."), keyboard);
 }
 
-/**
- * Mengikat tombol inline ke session key aktif dan memastikan muatan callback_data berada di bawah batas 64 byte Telegram.
- */
+// Mengikat tombol inline ke session key aktif dan memastikan muatan callback_data berada di bawah batas 64 byte Telegram.
 function bindKeyboard(reply: ReturnType<typeof telegramReply>, key?: string) {
   return reply.replyMarkup && {
     inline_keyboard: reply.replyMarkup.inline_keyboard.map((row) => row.flatMap((button) => {
@@ -46,11 +40,7 @@ function bindKeyboard(reply: ReturnType<typeof telegramReply>, key?: string) {
   };
 }
 
-/**
- * Memeriksa kesiapan konfigurasi webhook bot Telegram tanpa mengirim pesan jaringan.
- *
- * @returns Respons JSON status kesiapan gateway Telegram.
- */
+// Memeriksa kesiapan konfigurasi webhook bot Telegram tanpa mengirim pesan jaringan.
 export async function GET() {
   return NextResponse.json({
     ok: true,
@@ -59,12 +49,7 @@ export async function GET() {
   });
 }
 
-/**
- * Menerima pembaruan webhook privat dari Telegram dan memprosesnya menggunakan akun aktif yang terverifikasi.
- *
- * @param req - Objek NextRequest masuk dari Telegram.
- * @returns Respons JSON konfirmasi status pemrosesan webhook.
- */
+// Menerima pembaruan webhook privat dari Telegram dan memprosesnya menggunakan akun aktif yang terverifikasi.
 export async function POST(req: NextRequest) {
   if (!verifyTelegramWebhookSecret(req.headers.get("x-telegram-bot-api-secret-token"))) {
     return NextResponse.json({ ok: false, error: "Webhook tidak terotorisasi." }, { status: 401 });

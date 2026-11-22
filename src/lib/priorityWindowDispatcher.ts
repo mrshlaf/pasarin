@@ -1,21 +1,15 @@
-/**
- * Modul Pengatur Jendela Waktu Prioritas Dapur Sosial Tier 2 (PSR-23).
- * Menerapkan spesifikasi Invarian 3 (30-Minute Priority Window) dari PRD:
- * 1. Menghitung waktu mundur 30 menit sejak penawaran Tier 2 diterbitkan.
- * 2. Memblokir klaim pihak budidaya maggot selama masa reservasi sosial masih aktif.
- * 3. Memungkinkan pengalihan mandiri (auto-downgrade) ke biomassa pakan maggot jika masa reservasi 30 menit berakhir tanpa klaim.
- */
+// Modul Pengatur Jendela Waktu Prioritas Dapur Sosial Tier 2 (PSR-23).
+// Menerapkan spesifikasi Invarian 3 (30-Minute Priority Window) dari PRD:
+// 1. Menghitung waktu mundur 30 menit sejak penawaran Tier 2 diterbitkan.
+// 2. Memblokir klaim pihak budidaya maggot selama masa reservasi sosial masih aktif.
+// 3. Memungkinkan pengalihan mandiri (auto-downgrade) ke biomassa pakan maggot jika masa reservasi 30 menit berakhir tanpa klaim.
 
 import { RescueOffer } from "@/lib/simulationStore";
 
-/**
- * Durasi default jendela waktu reservasi eksklusif Dapur Sosial (30 menit).
- */
+// Durasi default jendela waktu reservasi eksklusif Dapur Sosial (30 menit).
 export const SOCIAL_RESERVATION_WINDOW_MINUTES = 30;
 
-/**
- * Hasil evaluasi jendela waktu reservasi eksklusif Dapur Sosial (PSR-23 / Invarian 3).
- */
+// Hasil evaluasi jendela waktu reservasi eksklusif Dapur Sosial (PSR-23 / Invarian 3).
 export interface PriorityWindowEvaluationResult {
   offerId: string;
   targetTier: "tier_1" | "tier_2" | "tier_3";
@@ -29,14 +23,7 @@ export interface PriorityWindowEvaluationResult {
   statusMessage: string;
 }
 
-/**
- * Mengevaluasi status keaktifan jendela waktu reservasi prioritas untuk penawaran Tier 2.
- *
- * @param offer - Objek penawaran surplus dari sistem.
- * @param currentClock - Waktu acuan evaluasi (default: Date.now()).
- * @param windowDurationMinutes - Durasi jendela reservasi (default: 30 menit).
- * @returns Objek hasil evaluasi jendela prioritas secara terperinci.
- */
+// Mengevaluasi status keaktifan jendela waktu reservasi prioritas untuk penawaran Tier 2.
 export function evaluateTier2PriorityWindow(
   offer: Pick<RescueOffer, "id" | "targetTier"> & {
     createdAt?: string | Date;
@@ -103,15 +90,8 @@ export function evaluateTier2PriorityWindow(
   };
 }
 
-/**
- * Validasi gerbang etis pemenuhan hak pangan (Invarian 3 Gatekeeper).
- * Menolak klaim peran maggot jika jendela prioritas 30 menit Dapur Sosial masih berlangsung.
- *
- * @param offer - Penawaran yang hendak diklaim.
- * @param claimantRole - Peran aktor yang mencoba melakukan klaim.
- * @param currentClock - Waktu acuan evaluasi.
- * @returns Status kelayakan klaim beserta alasan penolakan jika terblokir.
- */
+// Validasi gerbang etis pemenuhan hak pangan (Invarian 3 Gatekeeper).
+// Menolak klaim peran maggot jika jendela prioritas 30 menit Dapur Sosial masih berlangsung.
 export function validateClaimAgainstPriorityWindow(
   offer: RescueOffer,
   claimantRole: "warteg" | "social_kitchen" | "maggot",
@@ -133,13 +113,7 @@ export function validateClaimAgainstPriorityWindow(
   return { allowed: true };
 }
 
-/**
- * Otomasi pengalihan komoditas Tier 2 ke Tier 3 (Maggot) jika masa reservasi 30 menit telah berakhir.
- *
- * @param offers - Kumpulan seluruh penawaran yang terdaftar di sistem.
- * @param currentClock - Waktu acuan evaluasi.
- * @returns Daftar penawaran termutakhir beserta jumlah tiket yang dialihkan.
- */
+// Otomasi pengalihan komoditas Tier 2 ke Tier 3 (Maggot) jika masa reservasi 30 menit telah berakhir.
 export function processPriorityWindowDowngrades(
   offers: RescueOffer[],
   currentClock: Date = new Date()

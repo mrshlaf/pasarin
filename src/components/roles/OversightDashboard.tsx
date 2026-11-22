@@ -1,7 +1,5 @@
-/**
- * Dasbor pengawas operasional: penawaran, buku besar pembayaran, evaluasi stok,
- * dan laporan uji skenario metabolisme pasar yang terpisah dari data operasional.
- */
+// Dasbor pengawas operasional: penawaran, buku besar pembayaran, evaluasi stok,
+// dan laporan uji skenario metabolisme pasar yang terpisah dari data operasional.
 
 "use client";
 
@@ -25,9 +23,7 @@ type MetabolismTrialResponse = {
   error?: string;
 };
 
-/**
- * Komponen antarmuka pengawas yang menampilkan inventaris langsung, buku besar transaksi, dan audit trail operasional.
- */
+// Komponen antarmuka pengawas yang menampilkan inventaris langsung, buku besar transaksi, dan audit trail operasional.
 export function OversightDashboard() {
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();

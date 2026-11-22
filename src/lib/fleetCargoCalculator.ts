@@ -1,25 +1,19 @@
-/**
- * Modul Kalkulator Optimasi Armada Logistik & Ambang Batas Muatan (PSR-27).
- * Mengimplementasikan:
- * 1. Aturan Penugasan Muatan (Weight Dispatch Rule):
- *    - Muatan ringan <= 300 kg: Motor Viar Roda Tiga (kelincahan lorong sempit).
- *    - Muatan menengah 301 - 1.000 kg: Mobil GranMax Pikap (multi-stop warteg & panti).
- *    - Muatan massal > 1.000 kg: Truk Isuzu Elf (reject organik massal ke TPS 3R / Maggot).
- * 2. Generator Manifes Perjalanan (Delivery Manifest) dengan rute penjemputan terurut (Blok A -> B -> C).
- * 3. Estimasi konsumsi bahan bakar (BBM), jarak tempuh, dan durasi pengantaran.
- */
+// Modul Kalkulator Optimasi Armada Logistik & Ambang Batas Muatan (PSR-27).
+// Mengimplementasikan:
+// 1. Aturan Penugasan Muatan (Weight Dispatch Rule):
+// - Muatan ringan <= 300 kg: Motor Viar Roda Tiga (kelincahan lorong sempit).
+// - Muatan menengah 301 - 1.000 kg: Mobil GranMax Pikap (multi-stop warteg & panti).
+// - Muatan massal > 1.000 kg: Truk Isuzu Elf (reject organik massal ke TPS 3R / Maggot).
+// 2. Generator Manifes Perjalanan (Delivery Manifest) dengan rute penjemputan terurut (Blok A -> B -> C).
+// 3. Estimasi konsumsi bahan bakar (BBM), jarak tempuh, dan durasi pengantaran.
 
-/**
- * Klasifikasi armada logistik penyelamatan pangan pasar (PSR-27).
- * - viar_trike: Motor roda tiga kapasitas muatan ringan <= 300 kg.
- * - granmax_pickup: Mobil pikap bak kapasitas muatan menengah 301 - 1.000 kg.
- * - isuzu_truck: Truk engkel kapasitas muatan massal > 1.000 kg.
- */
+// Klasifikasi armada logistik penyelamatan pangan pasar (PSR-27).
+// - viar_trike: Motor roda tiga kapasitas muatan ringan <= 300 kg.
+// - granmax_pickup: Mobil pikap bak kapasitas muatan menengah 301 - 1.000 kg.
+// - isuzu_truck: Truk engkel kapasitas muatan massal > 1.000 kg.
 export type VehicleClass = "viar_trike" | "granmax_pickup" | "isuzu_truck";
 
-/**
- * Spesifikasi teknis dan operasional armada pengangkut logistik (PSR-27).
- */
+// Spesifikasi teknis dan operasional armada pengangkut logistik (PSR-27).
 export interface VehicleSpec {
   type: VehicleClass;
   displayName: string;
@@ -33,9 +27,7 @@ export interface VehicleSpec {
   licensePlate: string;
 }
 
-/**
- * Parameter spesifikasi baku armada logistik resmi Pasar Induk Kramat Jati (PSR-27).
- */
+// Parameter spesifikasi baku armada logistik resmi Pasar Induk Kramat Jati (PSR-27).
 export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
   viar_trike: {
     type: "viar_trike",
@@ -72,9 +64,7 @@ export const VEHICLE_SPECIFICATIONS: Record<VehicleClass, VehicleSpec> = {
   },
 };
 
-/**
- * Hasil perhitungan penugasan muatan dan optimasi armada logistik (PSR-27).
- */
+// Hasil perhitungan penugasan muatan dan optimasi armada logistik (PSR-27).
 export interface FleetAllocationResult {
   vehicleType: VehicleClass;
   vehicleSpec: VehicleSpec;
@@ -87,9 +77,7 @@ export interface FleetAllocationResult {
   dispatchDescription: string;
 }
 
-/**
- * Titik henti penjemputan komoditas di los kios pasar (PSR-27).
- */
+// Titik henti penjemputan komoditas di los kios pasar (PSR-27).
 export interface CargoStop {
   kioskStall: string;
   kioskName: string;
@@ -99,9 +87,7 @@ export interface CargoStop {
   orderId?: string;
 }
 
-/**
- * Manifes perjalanan pengiriman barang terstruktur ke mitra sirkular (PSR-27).
- */
+// Manifes perjalanan pengiriman barang terstruktur ke mitra sirkular (PSR-27).
 export interface DeliveryManifest {
   manifestId: string;
   allocatedVehicle: VehicleSpec;
@@ -121,13 +107,7 @@ export interface DeliveryManifest {
   createdAt: string;
 }
 
-/**
- * Menentukan alokasi armada angkut optimal berdasarkan bobot muatan total (Weight Dispatch Rule).
- *
- * @param totalWeightKg - Total bobot komoditas yang harus diangkut (kilogram).
- * @param targetCategory - Kategori peruntukan penerima (warteg, panti sosial, maggot, atau campuran).
- * @returns Objek alokasi armada beserta spesifikasi kendaraan dan pemanfaatan kapasitas.
- */
+// Menentukan alokasi armada angkut optimal berdasarkan bobot muatan total (Weight Dispatch Rule).
 export function calculateFleetAllocation(
   totalWeightKg: number,
   targetCategory: "warteg" | "social_kitchen" | "maggot" | "mixed" = "mixed"
@@ -177,13 +157,7 @@ export function calculateFleetAllocation(
   };
 }
 
-/**
- * Menyusun manifes perjalanan pengiriman dengan rute penjemputan los yang terurut (Blok A -> B -> C).
- *
- * @param stops - Daftar kios penjemputan komoditas.
- * @param destination - Tujuan pengantaran (Warteg, Dapur Sosial, atau Maggot).
- * @returns Manifes perjalanan lengkap beserta rute terurut, konsumsi BBM, dan durasi.
- */
+// Menyusun manifes perjalanan pengiriman dengan rute penjemputan los yang terurut (Blok A -> B -> C).
 export function generateDeliveryManifest(
   stops: CargoStop[],
   destination: {

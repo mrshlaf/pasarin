@@ -1,9 +1,7 @@
-/**
- * Rute API Validasi Gerbang Kendali Mutu & Anti-Moral Hazard (PSR-21).
- * Menyediakan endpoint HTTP POST dan GET untuk memvalidasi tiket penawaran surplus,
- * menguji kepatuhan terhadap Invarian 1 (Zero Edible Food to Feed),
- * serta mencatat upaya manipulasi moral hazard ke audit trail sistem.
- */
+// Rute API Validasi Gerbang Kendali Mutu & Anti-Moral Hazard (PSR-21).
+// Menyediakan endpoint HTTP POST dan GET untuk memvalidasi tiket penawaran surplus,
+// menguji kepatuhan terhadap Invarian 1 (Zero Edible Food to Feed),
+// serta mencatat upaya manipulasi moral hazard ke audit trail sistem.
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -15,10 +13,8 @@ import { QualityGateRequestPayload, CircularRescueTier } from "@/types/api";
 // Evaluasi bergantung pada body atau kueri tiap permintaan dan dapat menulis audit, jadi selalu dinamis.
 export const dynamic = "force-dynamic";
 
-/**
- * Skema validasi Zod untuk payload permintaan verifikasi gerbang mutu.
- * Foto base64 dibatasi sekitar 1,5 MB agar body permintaan tidak membebani server.
- */
+// Skema validasi Zod untuk payload permintaan verifikasi gerbang mutu.
+// Foto base64 dibatasi sekitar 1,5 MB agar body permintaan tidak membebani server.
 const qualityGatePayloadSchema = z.object({
   commodityId: z.string().min(1, "ID komoditas tidak boleh kosong"),
   hoursOnDisplay: z.number().min(0, "Jam pajang komoditas harus bernilai non-negatif"),
@@ -30,13 +26,8 @@ const qualityGatePayloadSchema = z.object({
   chlorophyllRatio: z.number().min(0).max(1).optional(),
 });
 
-/**
- * Menangani evaluasi gerbang kendali mutu via HTTP POST berbasis body JSON.
- * Digunakan oleh form penerbitan tiket penawaran pedagang dan alur cron otomatis.
- *
- * @param req - Objek NextRequest pembawa payload JSON pengajuan penawaran surplus.
- * @returns Respons JSON QualityGateEvaluationResult dengan rincian status kelulusan.
- */
+// Menangani evaluasi gerbang kendali mutu via HTTP POST berbasis body JSON.
+// Digunakan oleh form penerbitan tiket penawaran pedagang dan alur cron otomatis.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const auth = await requireApiRole(req, ["vendor", "admin"]);
   if (auth.response) return auth.response;
@@ -68,13 +59,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani evaluasi gerbang kendali mutu via HTTP GET berbasis parameter kueri URL.
- * Mempermudah pengujian inspeksi visual dan integrasi ReAct Tool Calling Agent.
- *
- * @param req - Objek NextRequest pembawa query params (?commodityId=...&hoursOnDisplay=...&requestedTier=...).
- * @returns Respons JSON QualityGateEvaluationResult.
- */
+// Menangani evaluasi gerbang kendali mutu via HTTP GET berbasis parameter kueri URL.
+// Mempermudah pengujian inspeksi visual dan integrasi ReAct Tool Calling Agent.
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -112,11 +98,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 }
 
-/**
- * Menangani pemeriksaan ketersediaan ringan (health probe) endpoint validasi gerbang mutu.
- *
- * @returns Respons HTTP kosong dengan status 200 OK.
- */
+// Menangani pemeriksaan ketersediaan ringan (health probe) endpoint validasi gerbang mutu.
 export async function HEAD(): Promise<NextResponse> {
   return new NextResponse(null, { status: 200 });
 }
