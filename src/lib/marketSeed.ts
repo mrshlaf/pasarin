@@ -100,6 +100,7 @@ function accountName(username: string) {
 // - Tier 2 (Dapur Sosial): Diskon sosial masif (15% harga grosir awal, min Rp 1.000/kg).
 // - Tier 1 (Warteg): Harga dinamis terdiskon hasil evaluasi kinetika Arrhenius, terkunci batas dasar (price floor).
 function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: number) {
+  // Aturan harga seed: tier 3 gratis; tier 2 sekitar 15 persen harga grosir (dibulatkan Rp500, minimal Rp1.000); tier 1 mengikuti evaluasi dengan harga lantai.
   if (tier === "tier_3") return 0;
   if (tier === "tier_2") return Math.max(1000, Math.round((commodity.baseWholesalePricePerKg * 0.15) / 500) * 500);
   return Math.max(commodity.minimumSalvagePricePerKg, evaluationPrice);
@@ -113,12 +114,15 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
   const nowIso = new Date().toISOString();
   const nowClock = wibClockFromOffset(0);
 
+  // Tiap kios mendapat beberapa komoditas; urutan lot menentukan tahap umur simpan lewat STAGES.
   KIOSKS.forEach((kiosk, kioskIndex) => {
     const commodities = selectCommodities(kiosk, kioskIndex);
     commodities.forEach((commodity, lotIndex) => {
       const stage = STAGES[lotIndex];
+      // Jam pajang dihitung mundur dari skor susut target tahap sehingga mutu lot sesuai tier yang diinginkan.
       const hoursOffset = hoursForDecay(commodity, stage.decayTarget);
       const stockId = `stk_seed_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`;
+      // Berat dibuat deterministik dari indeks kios dan lot, jadi seed selalu sama tiap dijalankan.
       const remainingKg = 20 + ((kioskIndex * 7 + lotIndex * 13) % 46);
       const initialKg = remainingKg + 10 + ((kioskIndex + lotIndex) % 16);
       const stock: StockItem = {
@@ -126,6 +130,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
         vendorId: kiosk.id,
         commodityId: commodity.id,
         initialKg,
+        // Lot yang punya penawaran sudah ditimbang (verifiedAt terisi) dan sisanya = berat penawaran; lot tanpa penawaran belum ditimbang.
         remainingKg: stage.offerTier ? remainingKg : initialKg,
         arrivalClock: wibClockFromOffset(hoursOffset),
         lotNumber: `LOT-${kiosk.stallNumber}-D${lotIndex + 1}`,
@@ -134,12 +139,14 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
         verifiedAt: stage.offerTier ? nowIso : undefined,
       };
       stocks.push(stock);
+      // Lot tahap pertama tidak punya penawaran: tetap berupa stok yang belum ditimbang.
       if (!stage.offerTier) return;
 
       const evaluation = calculateDecay(
         commodity, SEED_WEATHER.temperatureC, SEED_WEATHER.humidityPercent, hoursOffset,
       );
       const salvagePricePerKg = priceForTier(commodity, stage.offerTier, evaluation.estimatedSalvagePrice);
+      // Diskon dihitung dari harga seed terhadap harga grosir dan dibatasi 0 sampai 100.
       const discountPercentage = Math.max(0, Math.min(100,
         Math.round(100 * (1 - salvagePricePerKg / commodity.baseWholesalePricePerKg))));
       offers.push({
@@ -154,6 +161,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
         salvagePricePerKg,
         discountPercentage,
         totalAmountIdr: Math.round(salvagePricePerKg * remainingKg),
+        // Penawaran tier 3 berlaku lebih lama (12 jam) daripada tier lain (6 jam).
         expiresInMinutes: stage.offerTier === "tier_3" ? 720 : 360,
         createdAt: nowIso,
         status: "active",
@@ -184,6 +192,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
     offer.claimedBy = accountName(username);
     offer.claimedById = actorId(username);
     offer.claimedAt = nowClock;
+    // Lot maggot gratis tidak memerlukan pembayaran.
     offer.paymentStatus = offer.targetTier === "tier_3" ? "not_required" : paymentStatus;
     if (settled) offer.deliveredOn = nowIso;
     const transaction: EscrowTransaction = {
@@ -205,6 +214,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
     }
   };
 
+  // Skenario demo yang selalu ada: satu pesanan Warteg belum dibayar, dapur sosial sedang diantar dan satu selesai, maggot satu selesai dan satu sedang diantar.
   const wartegUnpaid = findOffer(10, "tier_1");
   claimOffer(wartegUnpaid, "warteg1", "unpaid");
 
@@ -220,6 +230,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
   const maggotInTransit = findOffer(21, "tier_3");
   claimOffer(maggotInTransit, "maggot2", "held_in_escrow");
 
+  // Satu usulan menunggu pedagang (lot dikembalikan ke belum ditimbang) dan satu penawaran ditolak, agar semua status punya contoh.
   const vendorPending = findOffer(22, "tier_2");
   vendorPending.status = "pending_vendor";
   const pendingStock = stocks.find((item) => item.id === vendorPending.stockId);
@@ -231,6 +242,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
   const vendorRejected = findOffer(23, "tier_1");
   vendorRejected.status = "rejected";
 
+  // Saldo dompet awal = total transaksi yang sudah cair; statistik dampak diturunkan dari pesanan selesai (4 porsi per kg).
   const released = transactions.filter((transaction) => transaction.status === "released");
   return {
     stocks,

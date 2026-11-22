@@ -25,6 +25,7 @@ export const WEATHER_CACHE_TTL_MS = 15 * 60 * 1000;
 // Mengacu pada rata-rata empiris iklim mikro los pasar tradisional Jakarta:
 // suhu 32,0°C dan kelembapan relatif 75% RH.
 export const TROPICAL_FALLBACK_PROFILE: Readonly<WeatherTelemetryData> = Object.freeze({
+  // Nilai tetap profil cadangan: suhu, kelembapan, tanpa hujan; field kembar (temperatureCelsius dan sejenisnya) menjaga dua penamaan yang dipakai modul lain.
   temperatureC: 32.0,
   humidityPercent: 75.0,
   rainfallMm: 0.0,
@@ -55,6 +56,7 @@ let memoryCache: CachedWeatherEntry | null = null;
 // Mengambil telemetri cuaca pasar terkini dari OpenWeatherMap atau cache in-memory.
 // Mengimplementasikan mekanisme fail-safe: beralih ke profil cadangan saat terjadi galat jaringan.
 export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<WeatherTelemetryData> {
+  // Cache segar dipakai lebih dulu supaya kuota API gratis aman; label sumbernya diganti CACHE.
   const now = Date.now();
 
   // Return dari cache jika masih valid
@@ -65,6 +67,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
     };
   }
 
+  // Tanpa kunci API valid, langsung memakai profil cadangan tanpa panggilan jaringan.
   const env = getEnv();
   const apiKey = env.OPENWEATHER_API_KEY;
 
@@ -74,15 +77,18 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
   }
 
   const { latitude, longitude, locationName } = KRAMAT_JATI_COORDINATES;
+  // Koordinat tetap Pasar Induk Kramat Jati; satuan metrik (derajat Celsius).
   const targetUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${apiKey}&units=metric`;
 
   try {
     const response = await fetch(targetUrl, {
       method: "GET",
       headers: { Accept: "application/json" },
+      // Cache fetch Next.js 15 menit, selaras dengan TTL cache memori.
       next: { revalidate: 900 },
     });
 
+    // Respons non-200 (kuota habis, kunci salah) dianggap kegagalan dan jatuh ke profil cadangan.
     if (!response.ok) {
       console.warn(`[WeatherAgent] OpenWeather error ${response.status}, beralih ke fallback.`);
       return returnFallbackProfile(now, "FALLBACK");
@@ -90,6 +96,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
 
     const payload = await response.json();
 
+    // Nilai dibulatkan: suhu satu desimal, kelembapan bilangan bulat; nilai bawaan dipakai bila field hilang.
     const temperatureC = Math.round(Number(payload.main?.temp ?? 32.0) * 10) / 10;
     const humidityPercent = Math.round(Number(payload.main?.humidity ?? 75));
     const weatherCondition = String(payload.weather?.[0]?.main ?? "Clouds");
@@ -121,12 +128,14 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
       location: { latitude, longitude, name: locationName },
     };
 
+    // Simpan hasil sukses agar permintaan berikutnya dalam 15 menit tidak memanggil API.
     memoryCache = {
       data: freshData,
       expiresAtTimestamp: now + WEATHER_CACHE_TTL_MS,
     };
 
     return freshData;
+  // Jaringan gagal: pakai profil cadangan alih-alih membiarkan halaman error.
   } catch (networkError) {
     console.warn("[WeatherAgent] Gagal terhubung ke OpenWeatherMap:", networkError);
     return returnFallbackProfile(now, "FALLBACK");
@@ -139,6 +148,7 @@ function returnFallbackProfile(
   currentTimestampMs: number,
   sourceLabel: "FALLBACK" | "fallback_offline" = "FALLBACK"
 ): WeatherTelemetryData {
+  // Profil cadangan ditandai isEstimated agar antarmuka dan chatbot menyebutnya estimasi.
   const fallbackData: WeatherTelemetryData = {
     ...TROPICAL_FALLBACK_PROFILE,
     recordedAt: new Date(currentTimestampMs).toISOString(),
@@ -154,6 +164,7 @@ function returnFallbackProfile(
     },
   };
 
+  // Profil cadangan ikut di-cache supaya API yang sedang gagal tidak dipanggil tiap permintaan.
   memoryCache = {
     data: fallbackData,
     expiresAtTimestamp: currentTimestampMs + WEATHER_CACHE_TTL_MS,
@@ -180,6 +191,7 @@ export const weatherAgent = {
       return returnFallbackProfile(Date.now(), "fallback_offline");
     }
     const res = await getHyperlocalMarketWeather(options?.forceRefresh ?? false);
+    // Label sumber dinormalkan ke huruf kecil untuk antarmuka.
     const normalizedSource =
       res.source === "CACHE" ? "cache" : res.source === "LIVE_API" ? "live_api" : "fallback_offline";
     return {
