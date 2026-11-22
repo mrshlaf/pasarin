@@ -165,6 +165,7 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
     return run;
   }
 
+  // Jalur Postgres langsung (SUPABASE_DB_URL): baca, ubah, tulis dengan nomor revisi. Bila revisi berubah di tengah jalan, ulangi hingga 5 kali lalu menyerah dengan 409.
   if (databaseConfigured()) {
     for (let attempt = 0; attempt < 5; attempt++) {
       const snapshot = await readPostgresState();
@@ -174,6 +175,7 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
       state.lastUpdated = new Date().toISOString();
       const pool = getDatabasePool();
       if (!snapshot) {
+        // Belum ada baris state: sisipkan revisi 1; on conflict do nothing menandakan ada permintaan lain yang menyisipkan lebih dulu.
         const inserted = await pool.query(
           `insert into public.pasarin_simulation_state (id, revision, state)
            values ($1, 1, $2::jsonb)
@@ -183,6 +185,7 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
         );
         if (inserted.rowCount) return result;
       } else {
+        // Perbarui hanya bila revisi masih sama dengan yang dibaca (compare-and-swap).
         const updated = await pool.query(
           `update public.pasarin_simulation_state
            set state = $1::jsonb, revision = $2
@@ -196,6 +199,7 @@ async function updateState(mutate: (state: ServerState) => MutationResult): Prom
     return { success: false, status: 409, message: "Data pasar baru berubah. Coba lagi." };
   }
 
+  // Jalur klien Supabase (REST) memakai pola yang sama; kode 23505 berarti baris sudah dibuat permintaan lain, jadi ulangi.
   const client = databaseClient();
   // Predikat nomor revisi mencegah dua permintaan konkurensi saling menimpa data (Compare-And-Swap)
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -233,7 +237,9 @@ export async function seedMarketStateServer(actorIds: Record<string, string> = {
 export function visibleMarketState(state: ServerState, user: Pick<AuthUser, "id" | "role" | "vendorId">) {
   const { role } = user;
   const supervisor = role === "admin" || role === "manager";
+  // Lot yang sudah ditimbang; pembeli hanya melihat penawaran dari lot yang sudah ditimbang.
   const weighed = new Set(state.stocks.filter((stock) => stock.verifiedAt).map((stock) => stock.id));
+  // Aturan visibilitas penawaran: pengelola dan admin semua, pedagang hanya kiosnya, kurir hanya yang sudah lunas atau gratis, pembeli hanya klaimnya sendiri atau lot aktif di tier-nya.
   const visible = state.offers.filter((offer) => {
     if (supervisor) return true;
     if (role === "vendor") return offer.vendorId === user.vendorId;
@@ -243,12 +249,14 @@ export function visibleMarketState(state: ServerState, user: Pick<AuthUser, "id"
   const visibleIds = new Set(visible.map((offer) => offer.id));
   const stockIds = new Set(visible.map((offer) => offer.stockId));
   const transactions = state.transactions.filter((item) => visibleIds.has(item.offerId));
+  // Saldo dompet: pedagang hanya dari transaksinya yang sudah cair, pengelola total, peran lain 0.
   const vendorWalletIdr = role === "vendor" ? transactions
     .filter((item) => item.status === "released")
     .reduce((total, item) => total + item.amountIdr, 0) : supervisor ? state.vendorWalletIdr : 0;
   return {
     ...state,
     vendorWalletIdr,
+    // Stok ikut disaring; pembeli hanya melihat stok yang terkait penawaran yang terlihat.
     stocks: state.stocks.filter((stock) => supervisor || (role === "vendor" ? stock.vendorId === user.vendorId : stockIds.has(stock.id))),
     offers: visible.map((offer) => marketOfferForUser(offer, user.id)),
     transactions,
@@ -257,6 +265,7 @@ export function visibleMarketState(state: ServerState, user: Pick<AuthUser, "id"
 
 // Membersihkan ID internal pemilik dan kunci reservasi dari respons penawaran publik.
 export function marketOfferForUser(offer: RescueOffer, userId: string) {
+  // isMine menandai klaim milik pengguna ini; ID pemilik dan kunci reservasi dihapus agar tidak bocor ke pihak lain.
   const visible = { ...offer, isMine: offer.claimedById === userId };
   delete visible.claimedById;
   delete visible.reservationKey;
@@ -294,6 +303,7 @@ export async function claimOfferServer(
 ) {
   const weather = await getHyperlocalMarketWeather();
   return updateState((state) => {
+    // Permintaan dengan kunci reservasi yang sama dianggap pengulangan: kembalikan hasil sebelumnya bila isinya sama, atau 409 bila berbeda.
     const prior = reservationKey && state.offers.find((item) => item.reservationKey === reservationKey && item.claimedById === buyer.id);
     if (prior) {
       return (prior.listingId ?? prior.id) === offerId && (quantityKg === undefined || prior.quantityKg === quantityKg)
@@ -302,6 +312,7 @@ export async function claimOfferServer(
     }
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
+    // Pembeli hanya boleh mengklaim penawaran di tier perannya.
     if (BUYER_TIERS[buyer.role] !== offer.targetTier) {
       return { success: false, status: 403, message: "Peran ini tidak dapat mengklaim penawaran tersebut." };
     }
@@ -310,15 +321,18 @@ export async function claimOfferServer(
     }
     const stock = state.stocks.find((item) => item.id === offer.stockId);
     const requested = quantityKg ?? offer.quantityKg;
+    // Berat yang diminta harus positif dan tidak melebihi kuota penawaran.
     if (!validWeight(requested) || requested === 0 || requested > offer.quantityKg) {
       return { success: false, status: 422, message: "Pilih berat yang tersedia pada penawaran." };
     }
+    // Cek ulang saat klaim: lot sudah ditimbang, sisa stok cukup, dan mutu terkini masih cocok dengan tier penawaran.
     if (!stock?.verifiedAt || roundKg(stock.remainingKg - reservedStockKg(state, stock.id)) < requested ||
       !isOfferSuitable(offer, evaluateMarketStock(stock, weather)?.decayScore)) {
       return { success: false, status: 422, message: "Stok atau mutu lot sudah berubah. Pilih penawaran lain." };
     }
     const donation = isDonation(offer);
     const free = isFreeMaggotOffer(offer);
+    // Klaim sebagian memecah penawaran: pesanan baru dibuat untuk bagian yang diklaim, penawaran asal berkurang.
     const order = requested === offer.quantityKg
       ? offer
       : { ...offer, id: randomUUID(), listingId: offer.id, quantityKg: requested };
@@ -328,9 +342,11 @@ export async function claimOfferServer(
       state.offers.unshift(order);
     }
     order.distributionMode = free ? "free" : donation ? "donation" : "sale";
+    // Total dihitung ulang untuk bagian yang diklaim; donasi dan lot maggot gratis bernilai 0.
     order.totalAmountIdr = donation || free ? 0 : Math.round(order.salvagePricePerKg * requested);
     order.reservationKey = reservationKey;
     reserveOffer(order, buyer);
+    // Lot maggot tidak perlu bayar; donasi dicatat langsung sebagai dana tertahan; lot berbayar menunggu pembayaran pembeli.
     if (free) order.paymentStatus = "not_required";
     else if (donation) holdPayment(state, order);
     const message = free ? "Lot Maggot gratis diklaim dan siap diantar."
@@ -344,6 +360,7 @@ export function payOfferServer(offerId: string, buyerId: string) {
   return updateState((state) => {
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
+    // Pembayaran hanya boleh oleh pemilik pesanan.
     if (offer.claimedById !== buyerId) return { success: false, status: 403, message: "Pesanan ini milik akun lain." };
     if (offer.targetTier === "tier_3") return { success: false, status: 403, message: "Lot Maggot gratis dan tidak memerlukan pembayaran." };
     if (offer.status !== "claimed" || offer.paymentStatus !== "unpaid") {
@@ -359,11 +376,13 @@ export function confirmDeliveryServer(offerId: string) {
   return updateState((state) => {
     const offer = state.offers.find((item) => item.id === offerId);
     if (!offer) return { success: false, status: 404, message: "Penawaran tidak ditemukan." };
+    // Serah terima yang diulang dijawab sukses tanpa menggandakan pencairan dana.
     if (offer.status === "settled") return { success: true, message: "Pengantaran sudah dikonfirmasi." };
 
     if (!isReadyForDelivery(offer)) {
       return { success: false, status: 409, message: "Pesanan belum siap diserahterimakan." };
     }
+    // Dana escrow dicairkan ke dompet pedagang sebesar nilai yang lolos penyelesaian.
     if (offer.paymentStatus === "held_in_escrow") {
       const transaction = state.transactions.find((item) => item.offerId === offerId && item.status === "held_in_escrow");
       if (!transaction) return { success: false, status: 409, message: "Catatan pembayaran belum tersedia." };
@@ -375,10 +394,12 @@ export function confirmDeliveryServer(offerId: string) {
       state.vendorWalletIdr += result.creditedAmountIdr;
     }
 
+    // Pesanan selesai: catat tanggal antar dan tambahkan ke statistik dampak (biomassa tier 3, porsi tier 2 dengan asumsi 4 porsi per kg).
     offer.status = "settled";
     offer.deliveredOn = new Date().toISOString();
     if (offer.targetTier === "tier_3") state.biomassProcessedKg += offer.quantityKg;
     if (offer.targetTier === "tier_2") state.socialMealsServed += offer.quantityKg * 4;
+    // Stok fisik lot berkurang sebesar berat yang diserahterimakan.
     const stock = state.stocks.find((item) => item.id === offer.stockId);
     if (stock) stock.remainingKg = Math.max(0, roundKg(stock.remainingKg - offer.quantityKg));
     return { success: true, message: isFreeMaggotOffer(offer) ? "Serah terima lot Maggot gratis dikonfirmasi." : isDonation(offer)
@@ -395,9 +416,11 @@ export function addVendorStockServer(commodityId: string, quantityKg: number, ve
       !validWeight(quantityKg) || quantityKg === 0) {
       return { success: false, status: 422, message: "Pasokan harus memiliki kios, komoditas, dan berat yang valid." };
     }
+    // ID sumber (misalnya dari update Telegram) membuat pencatatan idempoten.
     if (sourceId && state.stocks.some((stock) => stock.id === sourceId)) {
       return { success: true, message: "Pasokan ini sudah tercatat." };
     }
+    // Nomor lot: LOT, nomor lapak, dan tiga byte acak dalam heksadesimal.
     state.stocks.unshift({
       id: sourceId ?? randomUUID(), vendorId, commodityId, initialKg: quantityKg, remainingKg: quantityKg,
       arrivalClock: getRealtimeWIBTimeString(), lotNumber: "LOT-" + kiosk.stallNumber + "-" + randomBytes(3).toString("hex").toUpperCase(),
@@ -411,6 +434,7 @@ export function addVendorStockServer(commodityId: string, quantityKg: number, ve
 export function evaluateMarketStock(stock: StockItem, weather: { temperatureC: number; humidityPercent: number }, now = Date.now()) {
   const commodity = COMMODITIES.find((item) => item.id === stock.commodityId);
   if (!commodity) return null;
+  // Lama pajang = jam sejak pasokan dibuat ditambah offset jam bawaan seed.
   const created = Date.parse(stock.createdAt ?? "");
   const elapsed = Number.isFinite(created) ? Math.max(0, (now - created) / 3_600_000) : 0;
   return calculateDecay(commodity, weather.temperatureC, weather.humidityPercent, (stock.hoursOffset ?? 0) + elapsed);
@@ -420,6 +444,7 @@ export function evaluateMarketStock(stock: StockItem, weather: { temperatureC: n
 export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "vendorId">) {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const now = Date.now();
+  // Skor peluruhan dihitung ulang saat dibaca; bila tier penawaran bergeser, perubahan disimpan.
   const changed = syncOffersWithDecay(state, weather, now);
   if (changed) {
     // Ditunggu, bukan fire-and-forget: di Vercel proses dibekukan setelah respons terkirim sehingga
@@ -429,14 +454,17 @@ export async function readMarketSnapshot(user: Pick<AuthUser, "id" | "role" | "v
       : { success: false, status: 409, message: "Tidak ada perubahan tier." })
       .catch((err) => console.error("Decay sync update failed:", err));
   }
+  // Data disaring menurut peran dulu, baru dievaluasi dan dikirim.
   const visible = visibleMarketState(state, user);
   const stockHealth = Object.fromEntries(visible.stocks.map((stock) => [stock.id, evaluateMarketStock(stock, weather, now)]));
+  // Perkiraan sisa belum ditimbang hanya untuk pedagang dan pengawas.
   const estimatesVisible = user.role === "vendor" || user.role === "admin" || user.role === "manager";
   const { footfallDropPercentage } = calculateRainFootfallAttenuation(weather.rainfallMm);
   const estimatedUnsoldKg = estimatesVisible
     ? Object.fromEntries(visible.stocks.filter((stock) => !stock.verifiedAt)
       .map((stock) => [stock.id, estimateUnsoldStockKg(state, stock, footfallDropPercentage)]))
     : {};
+  // Pembeli tidak melihat penawaran aktif yang stok atau mutunya sudah tidak layak diklaim.
   if (user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot") {
     const stockById = new Map(visible.stocks.map((stock) => [stock.id, stock]));
     visible.offers = visible.offers.filter((offer) => offer.status !== "active" ||
@@ -471,11 +499,13 @@ async function generateOverviewAiAnalysis(
   couriersCount: number,
   vehiclesList: string
 ): Promise<{ summary: string; recommendation: string; model: string; source: "gemini" | "heuristik" }> {
+  // Kunci cache dari angka yang memengaruhi ramalan; berubah angka berarti ramalan dibuat ulang.
   const cacheKey = `${temperatureC}_${wartegKg}_${socialKg}_${maggotKg}_${couriersCount}`;
   if (aiForecastCache && aiForecastCache.key === cacheKey && Date.now() < aiForecastCache.expiresAt) {
     return aiForecastCache.data;
   }
 
+  // Ringkasan bawaan tanpa model, dipakai bila kunci Gemini tidak ada atau panggilan gagal.
   const defaultHeuristic = {
     summary: `Suhu los ${temperatureC}°C (${humidityPercent}% RH). Total ${roundKg(wartegKg + socialKg + maggotKg)} kg komoditas siap salur (${wartegKg} kg Warteg, ${socialKg} kg Dapur Sosial, ${maggotKg} kg Maggot).`,
     recommendation: `Prioritas penjemputan sayuran daun Blok A sebelum 15:00 WIB menggunakan ${couriersCount} kurir armada (${vehiclesList}).`,
@@ -483,6 +513,7 @@ async function generateOverviewAiAnalysis(
     source: "heuristik" as const,
   };
 
+  // Kunci terlalu pendek dianggap tidak valid (placeholder).
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey || apiKey.length < 15) {
     aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 5 * 60 * 1000, data: defaultHeuristic };
@@ -536,6 +567,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
           model: forecastModel(),
           source: "gemini" as const,
         };
+        // Jawaban model sukses disimpan 10 menit.
         aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 10 * 60 * 1000, data: geminiResult };
         return geminiResult;
       }
@@ -544,6 +576,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
     // Bila model gagal, beralih ke perkiraan heuristik tanpa menghambat respons.
   }
 
+  // Gagal atau tanpa model: ramalan heuristik disimpan 3 menit supaya model tidak dipanggil berulang.
   aiForecastCache = { key: cacheKey, expiresAt: Date.now() + 3 * 60 * 1000, data: defaultHeuristic };
   return defaultHeuristic;
 }
@@ -554,6 +587,7 @@ export async function readPublicCatalog() {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const now = Date.now();
   const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+  // Hanya field etalase yang disalin; pembeli, pesanan, dan dana sengaja tidak ikut.
   return state.offers.flatMap((offer) => {
     if (offer.status !== "active") return [];
     const stock = stockById.get(offer.stockId);
@@ -574,6 +608,7 @@ export async function readPublicMarketOverview() {
   const [state, weather] = await Promise.all([getServerSimulationState(), getHyperlocalMarketWeather()]);
   const now = Date.now();
   const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
+  // Penghitung per jalur untuk penawaran yang masih bisa diklaim; pengantaran selesai dihitung terpisah.
   const lanes = { tier_1: { lots: 0, kg: 0 }, tier_2: { lots: 0, kg: 0 }, tier_3: { lots: 0, kg: 0 } };
   const commodities = new Map<string, number>();
   let availableLots = 0;
@@ -597,6 +632,7 @@ export async function readPublicMarketOverview() {
     availableKg += offer.quantityKg;
     commodities.set(commodity.localName, (commodities.get(commodity.localName) ?? 0) + offer.quantityKg);
   }
+  // Lima komoditas dengan volume terbesar; seri diurutkan menurut nama.
   const topCommodities = [...commodities].map(([name, kg]) => ({ name, kg }))
     .sort((a, b) => b.kg - a.kg || a.name.localeCompare(b.name, "id")).slice(0, 5);
 
@@ -608,6 +644,7 @@ export async function readPublicMarketOverview() {
   const maggotLots = lanes.tier_3.lots;
 
   // Alokasi armada logistik berdasarkan ambang batas bobot muatan (Weight Dispatch Rule PSR-27)
+  // Perkiraan armada publik: Viar untuk Warteg (300 kg per unit), GranMax untuk dapur sosial dan kelebihan Warteg (1.000 kg), Isuzu untuk maggot (4.000 kg).
   const viarUnits = wartegKg > 0 ? Math.max(1, Math.ceil(wartegKg / 300)) : 1;
   const granmaxUnits = (socialKg > 0 || wartegKg > 300) ? Math.max(1, Math.ceil((socialKg + Math.max(0, wartegKg - 300)) / 1000)) : 1;
   const isuzuUnits = maggotKg > 300 ? Math.max(1, Math.ceil(maggotKg / 4000)) : (availableKg > 800 ? 1 : 0);
@@ -648,6 +685,7 @@ export async function readPublicMarketOverview() {
     }] : []),
   ];
 
+  // Jumlah unit seluruh armada dan ringkasannya dikirim ke analisis AI.
   const totalCouriers = vehicles.reduce((sum, v) => sum + v.units, 0);
   const vehicleSummary = vehicles.map((v) => `${v.units} ${v.name}`).join(", ");
 
@@ -661,6 +699,7 @@ export async function readPublicMarketOverview() {
     vehicleSummary
   );
 
+  // Paket ramalan untuk beranda; porsi dihitung dengan asumsi 1 kg bahan menjadi 4 porsi.
   const forecast = {
     weather: {
       temperatureC: weather.temperatureC,
@@ -679,6 +718,7 @@ export async function readPublicMarketOverview() {
         lots: socialLots,
         kg: socialKg,
         partnerCount: 3,
+        // Untuk dapur sosial angka 4 per kg adalah perkiraan penerima manfaat.
         estimatedBeneficiaries: Math.round(socialKg * 4),
         description: "Bahan pangan bernutrisi terlindungi jendela 30 menit untuk dapur sosial dan panti asuhan.",
       },
