@@ -166,18 +166,16 @@ export function DecayMeter({ score }: { score: number }) {
   );
 }
 
-// Tampilan status kosong (empty state) yang memberikan instruksi aksi berikutnya kepada pengguna.
+// Tampilan status kosong (empty state) yang memberikan instruksi aksi berikutnya kepada pengguna. Tanpa kotak putus-putus agar tetap ringan.
 export function EmptyState({ icon: Icon, title, description }: {
   icon: LucideIcon;
   title: string;
   description?: string;
 }) {
   return (
-    <div className="grid place-items-center rounded-2xl border border-dashed border-line-strong/60 bg-canvas/50 px-5 py-7 text-center">
-      <span aria-hidden className="grid size-8 place-items-center rounded-full bg-brand-soft text-brand">
-        <Icon size={16} />
-      </span>
-      <p className="mt-2.5 text-sm font-semibold">{title}</p>
+    <div className="flex flex-col items-center px-4 py-8 text-center">
+      <Icon size={18} aria-hidden className="text-ink-muted" />
+      <p className="mt-2 text-sm font-medium text-ink">{title}</p>
       {description && <p className="mt-1 max-w-[44ch] text-[13px] leading-5 text-ink-muted">{description}</p>}
     </div>
   );

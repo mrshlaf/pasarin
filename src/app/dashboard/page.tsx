@@ -5,6 +5,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -146,9 +147,18 @@ function DashboardContent() {
           </main>
         </div>
 
-        <footer className="mt-10 flex flex-wrap justify-between gap-2 border-t border-line pt-4 text-xs text-ink-muted">
-          <span className="font-semibold tracking-wide">PASARIN</span>
-          <span>Pasokan, penawaran, dan distribusi dalam satu ruang kerja.</span>
+        {/* Kaki halaman: nama merek dan lokasi di kiri, dua tautan di kanan. */}
+        <footer className="mt-12 border-t border-line/70 py-4 text-xs text-ink-muted">
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+            <p>
+              <span className="font-semibold tracking-[0.18em] text-ink-soft">PASARIN</span>
+              <span aria-hidden className="mx-2">·</span>Pasar Induk Kramat Jati
+            </p>
+            <nav aria-label="Tautan kaki halaman" className="flex items-center gap-5">
+              <Link href="/" className="inline-flex min-h-11 items-center transition-colors hover:text-ink">Dasbor publik</Link>
+              <a href="https://t.me/agent_pasarin_bot" target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center transition-colors hover:text-ink">Bot Telegram</a>
+            </nav>
+          </div>
         </footer>
       </div>
       {/* Asisten tanya jawab yang membaca data sesuai peran akun. */}
