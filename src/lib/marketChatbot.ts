@@ -536,7 +536,7 @@ function overviewAnswer(view: View) {
 
 // Contoh pertanyaan per peran untuk jawaban "bisa apa" dan fallback. Tiga contoh pertama tampil di fallback.
 const EXAMPLES: Record<AppRole, string[]> = {
-  vendor: ["Sayur saya bisa dijual ke mana?", "Berapa pendapatan saya?", "Apa yang perlu ditimbang?", "Lot mana yang paling cepat busuk?", "Berapa harga jual bayam saya?", "Siapa yang membeli stok saya?"],
+  vendor: ["Sayur saya bisa dijual ke mana?", "Berapa pendapatan saya hari ini?", "Apa yang perlu ditimbang?", "Lot mana yang paling cepat busuk?", "Berapa harga jual bayam saya?", "Siapa yang membeli stok saya?"],
   warteg: ["Apa penawaran yang tersedia?", "Bagaimana status pesanan saya?", "Berapa pengeluaran saya?", "Sayur apa yang paling murah?", "Kapan pesanan saya diantar?", "Berapa penghematan saya?"],
   social_kitchen: ["Apa donasi yang tersedia?", "Bagaimana status pesanan saya?", "Berapa pengeluaran saya?", "Sayur apa yang paling murah?", "Kapan pesanan saya diantar?", "Apakah sayurnya aman dimasak?"],
   maggot: ["Apa biomassa yang tersedia?", "Bagaimana status pesanan saya?", "Bahan apa yang boleh diklaim?", "Kapan pesanan saya diantar?", "Berapa kg biomassa yang sudah saya terima?"],
@@ -606,6 +606,7 @@ function evaluationAnswer(ops: Operations) {
     (ops.workstreams.length ? ` Alur yang perlu ditangani: ${ops.workstreams.join(", ")}.` : " Tidak ada alur yang perlu ditangani saat ini.");
 }
 
+// Pendapatan atau pengeluaran sesuai peran. Pedagang dan pengelola mendapat angka hari ini (WIB) dan akumulasi; pembeli mendapat total pesanan.
 // Pendapatan atau pengeluaran sesuai peran. Saldo pedagang sama dengan kartu "Saldo dompet" (dana yang sudah cair);
 // laba bersih tidak dihitung karena modal tidak dicatat.
 function earningsAnswer(role: AppRole, snapshot: Snapshot) {
@@ -618,8 +619,17 @@ function earningsAnswer(role: AppRole, snapshot: Snapshot) {
     (total, item) => total + (item.status === status ? item.amountIdr : 0), 0,
   );
   const held = sumByStatus("held_in_escrow");
+  // Pendapatan harian: dana yang sudah cair dari pesanan yang selesai diantar hari ini (tanggal WIB).
+  const jakartaDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
+  const todayKey = jakartaDay.format(new Date());
+  const settledToday = new Set(snapshot.offers
+    .filter((item) => item.status === "settled" && item.deliveredOn && jakartaDay.format(Date.parse(item.deliveredOn)) === todayKey)
+    .map((item) => item.id));
+  const releasedToday = transactions.filter((item) => item.status === "released" && settledToday.has(item.offerId));
+  const todayIdr = releasedToday.reduce((total, item) => total + item.amountIdr, 0);
   if (role === "vendor") {
-    return `Saldo dompet Anda ${rupiah(snapshot.vendorWalletIdr)} dari dana yang sudah cair. ` +
+    return `Pendapatan hari ini ${rupiah(todayIdr)} dari ${releasedToday.length} pesanan yang selesai diantar hari ini. ` +
+      `Saldo dompet Anda ${rupiah(snapshot.vendorWalletIdr)} adalah akumulasi seluruh dana yang sudah cair, bukan hanya hari ini. ` +
       `${rupiah(held)} masih ditahan di escrow sampai serah terima. ${netProfitUnavailable}`;
   }
   if (buyer) {
@@ -633,7 +643,8 @@ function earningsAnswer(role: AppRole, snapshot: Snapshot) {
     return `Lot biomassa Maggot disalurkan gratis (Rp0), jadi tidak ada tagihan. Biomassa yang sudah Anda terima ${kg(received)}.`;
   }
   if (role === "manager" || role === "admin") {
-    return `Dana yang sudah cair ke pedagang ${rupiah(sumByStatus("released"))}. ` +
+    return `Dana yang cair hari ini ${rupiah(todayIdr)} dari ${releasedToday.length} pesanan. ` +
+      `Dana yang sudah cair ke pedagang ${rupiah(sumByStatus("released"))} adalah akumulasi seluruh waktu. ` +
       `${rupiah(held)} masih ditahan di escrow sampai serah terima. ${netProfitUnavailable}`;
   }
   return "Data pendapatan kurir belum tercatat di PASARIN. Anda bisa memeriksa antrean dan riwayat pengantaran.";

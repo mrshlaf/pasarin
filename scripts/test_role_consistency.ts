@@ -188,6 +188,17 @@ async function run() {
       check(earnings.includes(`Saldo dompet Anda Rp${vendor.vendorWalletIdr.toLocaleString("id-ID")}`) &&
         earnings.includes(`Rp${heldIdr.toLocaleString("id-ID")} masih ditahan di escrow`),
         `${label}: saldo dompet dan dana tertahan di asisten sesuai snapshot pedagang`);
+      // Pendapatan harian: dana cair dari pesanan yang selesai diantar hari ini (tanggal WIB), dihitung ulang dari snapshot pedagang.
+      const dayFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
+      const todayKey = dayFormat.format(new Date());
+      const settledToday = new Set(vendor.offers
+        .filter((offer) => offer.status === "settled" && offer.deliveredOn && dayFormat.format(Date.parse(offer.deliveredOn)) === todayKey)
+        .map((offer) => offer.id));
+      const todayIdr = vendor.transactions.filter((item) => item.status === "released" && settledToday.has(item.offerId))
+        .reduce((sum, item) => sum + item.amountIdr, 0);
+      check(earnings.includes(`Pendapatan hari ini Rp${todayIdr.toLocaleString("id-ID")} dari ${settledToday.size === 0 ? 0 : vendor.transactions.filter((item) => item.status === "released" && settledToday.has(item.offerId)).length} pesanan`) &&
+        earnings.includes("akumulasi seluruh dana yang sudah cair"),
+        `${label}: pendapatan hari ini (Rp${todayIdr.toLocaleString("id-ID")}) terpisah dari saldo akumulasi`);
 
       const courier = await snapshot("kurir1");
       const queue = courier.offers.filter(isReadyForDelivery).length;
