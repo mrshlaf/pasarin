@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { completedDonationLots, distributionTierForDecay, isDonation, roundKg, type DistributionMode } from "@/types/market";
 import { MarketDialog } from "@/components/common/MarketDialog";
+import { DecayExplainer } from "@/components/common/DecayExplainer";
 import {
   DecayMeter, EmptyState, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskInfo, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
@@ -248,6 +249,8 @@ export function VendorDashboard() {
                               {health.condition === "layu_sedang" && "Kondisi layu sedang (Tier 2: Dapur Sosial). Tentukan jual subsidi atau donasi."}
                               {health.condition === "tidak_layak" && "Kondisi afkir non-pangan (Tier 3: Sentra Maggot BSF gratis)."}
                             </p>
+                            {/* Penjelasan skor: langkah rumus dan kalimat dari AI atau template. */}
+                            <DecayExplainer stockId={item.id} />
                           </div>
                         )}
                       </div>

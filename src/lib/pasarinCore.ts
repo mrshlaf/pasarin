@@ -394,6 +394,65 @@ export function evaluateArrheniusDecay(
   };
 }
 
+// Rincian langkah perhitungan skor peluruhan, untuk dijelaskan ke pengguna.
+// Semua nilai dihitung dengan rumus yang sama seperti evaluateArrheniusDecay; tidak ada AI di sini.
+export interface DecayBreakdown {
+  commodityName: string;
+  temperatureCelsius: number;
+  relativeHumidityPercent: number;
+  hoursElapsed: number;
+  // Batas jam sampai tidak layak konsumsi pada suhu baku.
+  horizonHours: number;
+  // Jam pajang dibagi batas jam; 1 berarti tepat di batas.
+  exposure: number;
+  // Laju sekarang dibagi laju pada 20 C dengan kelembapan yang sama.
+  accelerationRatio: number;
+  // Pengali tambahan bila suhu di atas sekitar 33 C; minimal 1.
+  thermalScaling: number;
+  // Skor sebelum dibulatkan dan dibatasi 0 sampai 1.
+  rawScore: number;
+  decayScore: number;
+  condition: ProduceCondition;
+  recommendedTier: RescueTier;
+  tierLabel: string;
+  hoursRemaining: number;
+}
+
+// Menghitung rincian faktor di balik skor peluruhan satu lot.
+// Skor akhirnya diambil dari evaluateArrheniusDecay agar selalu sama dengan angka di dasbor.
+export function explainArrheniusDecay(
+  commodity: Commodity,
+  temperatureCelsius: number,
+  relativeHumidityPercent: number,
+  hoursElapsed: number
+): DecayBreakdown {
+  const q10 = commodity.q10Coefficient || ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
+  const rateK = calculateArrheniusRateConstant(temperatureCelsius, relativeHumidityPercent, q10);
+  const baselineRate = calculateArrheniusRateConstant(ARRHENIUS_CONSTANTS.BASELINE_TEMP_CELSIUS, relativeHumidityPercent, q10);
+  const accelerationRatio = rateK / (baselineRate || 1.0);
+  const horizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
+  const exposure = hoursElapsed / horizonHours;
+  const thermalScaling = Math.max(1.0, Math.pow(accelerationRatio / 2.2, 0.4));
+  const rawScore = Math.pow(exposure, 1.15) * 0.82 * thermalScaling;
+  const result = evaluateArrheniusDecay(commodity, temperatureCelsius, relativeHumidityPercent, hoursElapsed);
+  return {
+    commodityName: commodity.localName,
+    temperatureCelsius,
+    relativeHumidityPercent,
+    hoursElapsed,
+    horizonHours,
+    exposure,
+    accelerationRatio,
+    thermalScaling,
+    rawScore,
+    decayScore: result.decayScore,
+    condition: result.condition,
+    recommendedTier: result.recommendedTier,
+    tierLabel: result.tierLabel,
+    hoursRemaining: result.hoursRemaining,
+  };
+}
+
 // Kontrak struktur data simulasi redaman pengunjung akibat hujan dan kebecekan lorong pasar (PSR-15).
 export interface FootfallSimulationResult {
   rainfallMm: number;
