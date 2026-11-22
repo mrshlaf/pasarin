@@ -784,6 +784,7 @@ export function syncOffersWithDecay(
     const stock = stockById.get(offer.stockId);
     if (!stock) continue;
 
+    // Skor peluruhan terbaru menentukan tier sebenarnya; bila berbeda dari tier penawaran, penawaran dipindah dan harganya dihitung ulang.
     const health = evaluateMarketStock(stock, weather, now);
     if (!health) continue;
 
@@ -793,6 +794,7 @@ export function syncOffersWithDecay(
       offer.targetTier = liveTier;
 
       if (liveTier === "tier_3") {
+        // Tier 3: gratis, khusus biokonversi.
         offer.distributionMode = "free";
         offer.salvagePricePerKg = 0;
         offer.totalAmountIdr = 0;
@@ -800,6 +802,7 @@ export function syncOffersWithDecay(
         // paymentStatus sengaja tetap "unpaid": "not_required" baru diberikan saat lot diklaim,
         // agar lot yang belum diklaim tidak masuk antrean kurir (yang memfilter paymentStatus !== "unpaid").
       } else if (liveTier === "tier_2") {
+        // Tier 2: harga mengikuti estimasi salvage tanpa harga lantai; donasi yang sudah dipilih pedagang tetap donasi.
         const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
         if (commodity) {
           const price = Math.max(0, health.estimatedSalvagePrice);
@@ -811,6 +814,7 @@ export function syncOffersWithDecay(
           offer.distributionMode = "sale";
         }
       } else if (liveTier === "tier_1") {
+        // Tier 1: harga tidak boleh di bawah harga lantai komoditas; lot kembali berbayar.
         const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
         if (commodity) {
           const floor = commodity.minimumSalvagePricePerKg;
@@ -840,14 +844,17 @@ function evaluateStockOffer(stock: StockItem, weather: { temperatureC: number; h
   const commodity = COMMODITIES.find((item) => item.id === stock.commodityId);
   const evaluation = evaluateMarketStock(stock, weather);
   if (!commodity || !evaluation || stock.remainingKg <= 0) return null;
+  // Usulan otomatis hanya dibuat untuk lot yang skornya sudah 0,35 ke atas; yang masih segar tidak perlu diselamatkan.
   if (automatic && evaluation.decayScore < 0.35) return null;
   const tier = distributionTierForDecay(evaluation.decayScore);
+  // Harga lantai hanya berlaku di tier 1; tier 2 boleh sangat murah, tier 3 gratis.
   const floor = tier === "tier_1" ? commodity.minimumSalvagePricePerKg : 0;
   const price = tier === "tier_3" ? 0 : Math.max(floor, evaluation.estimatedSalvagePrice);
   return {
     id: randomUUID(), stockId: stock.id, vendorId: stock.vendorId, commodityId: commodity.id,
     targetTier: tier, quantityKg: stock.remainingKg, originalPricePerKg: commodity.baseWholesalePricePerKg,
     salvagePricePerKg: price, discountPercentage: Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg)),
+    // Penawaran berlaku 30 menit; usulan otomatis menunggu pedagang, penawaran manual langsung aktif.
     totalAmountIdr: Math.round(price * stock.remainingKg), expiresInMinutes: 30,
     createdAt: new Date().toISOString(), status: automatic ? "pending_vendor" : "active", paymentStatus: "unpaid",
   };
@@ -858,18 +865,21 @@ function publishConfirmedStock(
   state: ServerState, stock: StockItem, weather: { temperatureC: number; humidityPercent: number },
   confirmation: StockConfirmation | undefined, proposal?: RescueOffer,
 ): MutationResult {
+  // Batas sisa fisik: stok awal dikurangi yang sudah diserahterimakan dan yang sedang dipesan.
   const reserved = reservedStockKg(state, stock.id);
   const max = Math.max(0, roundKg(stock.initialKg - distributedStockKg(state, stock.id) - reserved));
   if (!confirmation || !validWeight(confirmation.confirmedKg) || confirmation.confirmedKg > max) {
     return { success: false, status: 422, message: "Konfirmasi berat sisa yang belum dipesan, maksimal " + max.toLocaleString("id-ID") + " kg." };
   }
   const { confirmedKg, mode } = confirmation;
+  // Sisa nol: hasil timbang disimpan dan usulan ditutup tanpa menerbitkan penawaran.
   if (confirmedKg === 0) {
     stock.remainingKg = reserved;
     stock.verifiedAt = new Date().toISOString();
     if (proposal) proposal.status = "rejected";
     return { success: true, message: "Hasil timbang tersimpan. Tidak ada penawaran yang diterbitkan." };
   }
+  // Tier ditentukan dari mutu lot saat ini; tier 2 wajib memilih jual atau donasi, donasi tidak boleh di tier lain.
   const listing = evaluateStockOffer({ ...stock, remainingKg: confirmedKg }, weather, false);
   if (!listing) return { success: false, status: 422, message: "Mutu lot belum dapat dievaluasi." };
   if (listing.targetTier === "tier_2" && !mode) {
@@ -878,12 +888,14 @@ function publishConfirmedStock(
   if (listing.targetTier !== "tier_2" && mode === "donation") {
     return { success: false, status: 422, message: "Donasi hanya berlaku untuk lot dapur sosial." };
   }
+  // Lot maggot selalu gratis; donasi berharga nol dan diskon 100 persen.
   listing.distributionMode = listing.targetTier === "tier_3" ? "free" : mode ?? "sale";
   if (listing.distributionMode === "donation") {
     listing.salvagePricePerKg = 0;
     listing.totalAmountIdr = 0;
     listing.discountPercentage = 100;
   }
+  // Sisa fisik terkonfirmasi ditambah berat yang sudah dipesan menjadi sisa stok baru.
   stock.remainingKg = roundKg(confirmedKg + reserved);
   stock.verifiedAt = new Date().toISOString();
   if (proposal) Object.assign(proposal, listing, { id: proposal.id });
@@ -897,6 +909,7 @@ function publishConfirmedStock(
 export async function publishMarketOffers(vendorId?: string, stockId?: string, confirmation?: StockConfirmation) {
   const weather = await getHyperlocalMarketWeather();
   return updateState((state) => {
+    // Pedagang menerbitkan satu lot; tanpa argumen, ini adalah sapuan terjadwal untuk semua kios.
     if (vendorId || stockId) {
       const stock = state.stocks.find((item) => item.id === stockId && item.vendorId === vendorId);
       if (!stock || state.offers.some((offer) => offer.stockId === stock.id && (offer.status === "active" || offer.status === "pending_vendor"))) {
@@ -905,6 +918,7 @@ export async function publishMarketOffers(vendorId?: string, stockId?: string, c
       return publishConfirmedStock(state, stock, weather, confirmation);
     }
 
+    // Sapuan terjadwal: sinkronkan tier, kembalikan penawaran aktif yang lotnya belum ditimbang menjadi menunggu pedagang.
     const stockById = new Map(state.stocks.map((stock) => [stock.id, stock]));
     syncOffersWithDecay(state, weather);
     for (const offer of state.offers) {
@@ -913,6 +927,7 @@ export async function publishMarketOffers(vendorId?: string, stockId?: string, c
       if (stock && !stock.verifiedAt) offer.status = "pending_vendor";
     }
 
+    // Lot yang sudah punya penawaran aktif dilewati; sisanya dinilai ulang dari perkiraan sisa tak terjual.
     const active = new Set(state.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));
     const pending = new Map(state.offers.filter((offer) => offer.status === "pending_vendor").map((offer) => [offer.stockId, offer]));
     const { footfallDropPercentage } = calculateRainFootfallAttenuation(weather.rainfallMm);
@@ -923,6 +938,7 @@ export async function publishMarketOffers(vendorId?: string, stockId?: string, c
       const proposedKg = estimateUnsoldStockKg(state, stock, footfallDropPercentage);
       const proposal = evaluateStockOffer({ ...stock, remainingKg: proposedKg }, weather, true);
       const existing = pending.get(stock.id);
+      // Usulan lama diperbarui, usulan baru ditambahkan, dan usulan yang tidak lagi layak ditolak.
       if (proposal && existing) {
         Object.assign(existing, proposal, { id: existing.id, createdAt: existing.createdAt });
         updated++;
@@ -939,8 +955,10 @@ export async function publishMarketOffers(vendorId?: string, stockId?: string, c
 
 // Memproses keputusan pedagang atas usulan penawaran (menyetujui atau menolak/menarik penawaran aktif).
 export async function decideVendorOffer(offerId: string, vendorId: string, approved: boolean, confirmation?: StockConfirmation) {
+  // Cuaca hanya dibutuhkan saat menyetujui, karena persetujuan menerbitkan penawaran.
   const weather = approved ? await getHyperlocalMarketWeather() : undefined;
   return updateState((state) => {
+    // Pedagang hanya bisa memutuskan penawaran kiosnya sendiri.
     const offer = state.offers.find((item) => item.id === offerId && item.vendorId === vendorId);
     if (!offer) return { success: false, status: 404, message: "Penawaran kios tidak ditemukan." };
     if (offer.status !== "pending_vendor" && offer.status !== "active") {
@@ -954,6 +972,7 @@ export async function decideVendorOffer(offerId: string, vendorId: string, appro
       }
       return publishConfirmedStock(state, stock, weather, confirmation, offer);
     }
+    // Menolak atau menarik tidak memerlukan penimbangan.
     offer.status = "rejected";
     return { success: true, message: "Penawaran ditarik atau ditolak." };
   });
