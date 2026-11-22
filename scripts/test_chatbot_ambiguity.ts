@@ -1,6 +1,7 @@
 /**
  * Uji Pertanyaan Ambigu & Privasi Asisten PASARIN.
- * 50 pertanyaan per dashboard (Pedagang, Warteg, Dapur Sosial, Maggot, Kurir, Pengelola, Admin) dengan tingkat
+ * 50 pertanyaan per dashboard (Pedagang, Warteg, Dapur Sosial, Maggot, Kurir, Pengelola, Admin) dan 50 untuk
+ * pengunjung landing page tanpa akun ("publik"), dengan tingkat
  * ketidakjelasan beragam: singkatan, salah ketik, satu kata, pertanyaan menggantung, dan pertanyaan tentang pihak lain.
  *
  * Harapan per pertanyaan:
@@ -125,6 +126,22 @@ const QUESTIONS: Record<string, Array<[string, Expect]>> = {
     ["warteg mana paling sering beli", D(/Pembeli dengan pesanan terbanyak/)], ["username pasar5 apa", R], ["kios paling laris", D(/Kios dengan penjualan/)],
     ["sayur paling laku", D(/Komoditas dengan penjualan/)], ["makasih", D(/Sama-sama/)], ["warteg1 belanja berapa", D(/Rp/)],
   ],
+  // Pengunjung landing page tanpa akun: hanya etalase publik dan panduan.
+  publik: [
+    ["?", C], ["gimana", C], ["terus?", C], ["berapa", C], ["info dong", C], ["hmm", C], ["tolong cek", C], ["kapan", C], ["yang tadi gimana", C],
+    ["halo", D(/asisten publik/)], ["makasih", D(/Sama-sama/)], ["kamu bisa apa", D(/asisten publik PASARIN/)],
+    ["apa itu pasarin", D(/menyalurkan sisa sayur/)], ["cara kerja pasarin gimana", D(/menyalurkan sisa sayur/)], ["gmn cara daftar", D(/Pendaftaran mitra/)],
+    ["login dimana", D(/Masuk/)], ["siapa aja yg bisa nerima sayur", D(/Penerima dibagi/)], ["bedanya tier 1 dan 2 apa", D(/Penerima dibagi/)],
+    ["bayam", D(/Bayam/)], ["bayam paling murah di kios mana", D(/etalase publik/)], ["harga cabe brp/kg", D(/etalase publik|Belum ada penawaran/)],
+    ["kios A-05 jual apa", D(/Kios A-05/)], ["bu siti jual apa aja", D(/Kios A-31/)], ["sayur apa yg tersedia hari ini", D(/siap disalurkan/)],
+    ["ada apa aja hari ini", D(/siap disalurkan/)], ["total sayur yg udh tersalurkan", D(/tersalurkan/)], ["dampaknya apa", D(/tersalurkan/)],
+    ["cuaca", D(/Suhu/)], ["aman dimakan ga", D(/pemeriksaan fisik/)], ["kurir pake mobil apa", D(/armada/)], ["donasi ada?", D(/etalase publik/)],
+    ["yg gratis apa aja", D(/etalase publik/)], ["kangkung msh ada?", D(/Kangkung/)], ["termahal apa", D(/Termahal/)], ["tomat", D(/Tomat/)],
+    ["stok", D(/siap disalurkan/)], ["berapa pendapatan kios A-05", R], ["saldo pak rohmat", R], ["pesanan warteg1 apa aja", R],
+    ["siapa pembeli bayam", R], ["nomor hp pedagang", R], ["password admin", R], ["transaksi hari ini brp", R], ["omzet pasar", R],
+    ["berapa uang yg masuk", R], ["pesanan saya udah sampe?", R], ["menu apa yg enak dari sayur murah", O], ["ada yg baru?", O],
+    ["bikinin pantun", O], ["siapa presiden", D(/seputar PASARIN/)],
+  ],
   admin1: [
     ...common(/Bayam/),
     ["brp pendapatan bu siti", D(/Kios A-31/)], ["saldo kios B-14", D(/Kios B-14/)], ["evaluasi dong", D(/menunggu timbang/)],
@@ -174,10 +191,19 @@ async function run() {
   try {
     const { buildMarketSeedState } = await import("../src/lib/marketSeed");
     const chatRoute = await import("../src/app/api/orchestrator/query/route");
+    const publicRoute = await import("../src/app/api/market/assistant/route");
+    let visitor = 0;
     const state = buildMarketSeedState();
     writeFileSync(stateFile, JSON.stringify(state));
     const ask = async (username: string, query: string, forceHeuristic: boolean) => {
-      const response = await chatRoute.POST(new NextRequest("http://localhost/api/orchestrator/query", {
+      // "publik" = pengunjung landing page tanpa akun; IP berbeda tiap pertanyaan agar pembatas tidak ikut teruji di sini.
+      visitor++;
+      const response = username === "publik"
+        ? await publicRoute.POST(new NextRequest("http://localhost/api/market/assistant", {
+          method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": `10.0.${visitor >> 8}.${visitor & 255}` },
+          body: JSON.stringify({ query, forceHeuristic }),
+        }))
+        : await chatRoute.POST(new NextRequest("http://localhost/api/orchestrator/query", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${username}` },
         body: JSON.stringify({ query, forceHeuristic }),
       }));
@@ -189,7 +215,8 @@ async function run() {
     const phones = KIOSKS.map((kiosk) => kiosk.phone);
     const usernames = /(?<![a-z])(?:pasar|warteg|sosial|maggot|kurir|pengelola|admin)\d+(?![0-9])/;
     const privateNamesFor = (username: string) => {
-      const account = MARKET_ACCOUNT_BY_USERNAME.get(username)!;
+      const account = MARKET_ACCOUNT_BY_USERNAME.get(username);
+      if (!account) return [...new Set(state.offers.filter((offer) => offer.claimedBy).map((offer) => offer.claimedBy!))];
       const self = localActorId(username);
       if (account.role === "vendor") {
         const own = new Set(state.offers.filter((offer) => offer.vendorId === account.vendorId).map((offer) => offer.claimedBy));
@@ -208,7 +235,7 @@ async function run() {
     resetEnvCache();
     for (const [username, cases] of Object.entries(QUESTIONS)) {
       const hidden = privateNamesFor(username);
-      const role = MARKET_ACCOUNT_BY_USERNAME.get(username)!.role;
+      const role = MARKET_ACCOUNT_BY_USERNAME.get(username)?.role ?? "public";
       let passed = 0;
       for (const [query, expect] of cases) {
         total++;
@@ -240,6 +267,16 @@ async function run() {
       }
       console.log(`  ${passed === cases.length ? "✅" : "❌"} ${username}: ${passed}/${cases.length} pertanyaan sesuai harapan`);
     }
+    // Pembatas landing page: pertanyaan ke-13 dari IP yang sama dalam 5 menit ditolak dengan 429.
+    const statuses: number[] = [];
+    for (let i = 0; i < 13; i++) {
+      const response = await publicRoute.POST(new NextRequest("http://localhost/api/market/assistant", {
+        method: "POST", headers: { "Content-Type": "application/json", "x-forwarded-for": "203.0.113.7" }, body: JSON.stringify({ query: "halo", forceHeuristic: true }),
+      }));
+      statuses.push(response.status);
+    }
+    if (statuses.slice(0, 12).some((status) => status !== 200) || statuses[12] !== 429) failures.push(`pembatas landing page tidak bekerja: ${statuses.join(",")}`);
+    else console.log("  ✅ publik: pertanyaan ke-13 dalam 5 menit dari IP yang sama ditolak (429)");
     if (failures.length) console.error(`\n${failures.join("\n")}`);
     assert.equal(failures.length, 0, `${failures.length} dari ${total} pertanyaan tidak sesuai harapan`);
     console.log(`\nHasil akhir uji pertanyaan ambigu & privasi: ${total} pertanyaan lulus, 0 gagal`);

@@ -21,7 +21,7 @@ const SLANG: Record<string, string> = {
   jualan: "jual", dagangan: "stok", tx: "transaksi", trx: "transaksi",
   ngapain: "apa yang harus saya lakukan", ongkir: "ongkos kirim", cuan: "keuntungan", gpp: "tidak apa",
   jelasin: "jelaskan", jelasi: "jelaskan", bedain: "bedakan", bayarin: "bayar", beliin: "beli", batalin: "batalkan", terbitin: "terbitkan", klaimin: "klaim", dateng: "datang", pake: "pakai", gede: "besar", bgt: "banget", dapet: "dapat",
-  kasi: "kasih", cepet: "cepat", seger: "segar", skrg: "sekarang", skrang: "sekarang", hrini: "hari ini",
+  msh: "masih", mash: "masih", nerima: "menerima", kasi: "kasih", cepet: "cepat", seger: "segar", skrg: "sekarang", skrang: "sekarang", hrini: "hari ini",
   td: "tadi", trs: "terus", sampe: "sampai", nyampe: "sampai", nyampai: "sampai", terimakasih: "terima kasih", trimakasih: "terima kasih",
   thx: "terima kasih", makasih: "terima kasih", makasi: "terima kasih", trims: "terima kasih", tq: "terima kasih",
 };

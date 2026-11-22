@@ -40,6 +40,25 @@ const ORDERS = /\b(?:pesanan|pesan|memesan|order|pembeli|pelanggan|terjual|laku|
 const CONTACT = /\b(?:nomor (?:hp|handphone|telepon|telp|wa|whatsapp|kontak|rekening|ktp|induk)|no hp|hp|handphone|telepon|telp|whatsapp|wa|kontak|email|surel|rekening|ktp|nik|alamat rumah|instagram)\b/;
 const CREDENTIAL = /\b(?:password|kata sandi|sandi|pin|otp|token|kredensial|username)\b|\bcara (?:masuk|login) (?:ke )?akun (?:orang|lain|pasar|warteg|sosial|maggot|kurir|admin|pengelola)/;
 
+/** Kios yang disebut dalam pertanyaan (kode lapak, nama kios, atau nama pemilik). */
+export function mentionedKioskIds(raw: string) {
+  return KIOSK_PATTERNS.filter((item) => item.pattern.test(raw)).map((item) => item.id);
+}
+
+/**
+ * Batas privasi untuk pengunjung landing page yang belum masuk:
+ * semua data akun (keuangan, pesanan, pembeli, kontak, kredensial) ditolak, termasuk "milik saya".
+ */
+export function publicPrivacyRefusal(text: string) {
+  if (CREDENTIAL.test(text)) return "Maaf, saya tidak bisa memberikan kata sandi, PIN, atau data login akun mana pun.";
+  if (CONTACT.test(text)) return "Maaf, nomor telepon, email, rekening, dan identitas pribadi tidak dibagikan lewat asisten.";
+  if (MONEY.test(text) || ORDERS.test(text)) {
+    return "Data pendapatan, saldo, pesanan, dan pembeli bersifat pribadi. Masuk ke akun PASARIN Anda untuk melihat data milik Anda sendiri. " +
+      "Di sini saya bisa membantu info etalase publik: komoditas, harga, berat tersedia, dan kios penjual.";
+  }
+  return null;
+}
+
 export type PrivacyCheck =
   | { kind: "allow"; otherKioskIds: string[]; accountNames: string[] }
   | { kind: "refuse"; message: string }

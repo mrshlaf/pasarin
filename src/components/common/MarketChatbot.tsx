@@ -20,13 +20,34 @@ const suggestions: Record<AppRole, string[]> = {
   admin: ["Ringkas operasional pasar", "Berapa pesanan belum dibayar?", "Apa yang perlu dievaluasi?"],
 };
 
+/** Saran untuk pengunjung landing page yang belum masuk. */
+const publicSuggestions = ["Sayur apa yang tersedia hari ini?", "Bayam paling murah di kios mana?", "Bagaimana cara kerja PASARIN?"];
+
 export function MarketChatbot() {
   const { user } = useAuth();
   // A different account gets a new conversation, including after switching role.
-  return user ? <ChatWorkspace key={`${user.id}:${user.role}`} name={user.name} role={user.role} /> : null;
+  return user ? <ChatWorkspace key={`${user.id}:${user.role}`} greeting={`Halo, ${user.name}.`} subtitle={`Ruang kerja ${ROLE_LABELS[user.role]}`}
+    intro="Tanyakan data ruang kerja atau cara menggunakan PASARIN. Asisten membantu menjelaskan; tindakan tetap Anda konfirmasi di dashboard."
+    suggestions={suggestions[user.role]} endpoint="/api/orchestrator/query" authenticated /> : null;
 }
 
-function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
+/** Asisten landing page: hanya etalase publik dan panduan, tanpa data akun. */
+export function PublicMarketAssistant() {
+  return <ChatWorkspace greeting="Halo!" subtitle="Info publik pasar"
+    intro="Tanyakan komoditas, harga, dan kios penjual di etalase pasar, atau cara kerja PASARIN. Data akun seperti pesanan dan saldo hanya terlihat setelah masuk."
+    suggestions={publicSuggestions} endpoint="/api/market/assistant" authenticated={false} />;
+}
+
+interface WorkspaceProps {
+  greeting: string;
+  subtitle: string;
+  intro: string;
+  suggestions: string[];
+  endpoint: string;
+  authenticated: boolean;
+}
+
+function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoint, authenticated }: WorkspaceProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -73,7 +94,7 @@ function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
     controller.current = request;
     const timeout = window.setTimeout(() => request.abort(), 25000);
     try {
-      const response = await apiFetch("/api/orchestrator/query", {
+      const response = await (authenticated ? apiFetch : fetch)(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: question }),
@@ -111,7 +132,7 @@ function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><MessageCircle size={21} aria-hidden /></span>
               <div><h2 id="market-assistant-title" className="font-serif text-xl text-ink">Asisten PASARIN</h2>
-                <p className="mt-0.5 text-xs text-ink-muted">Ruang kerja {ROLE_LABELS[role]}</p></div>
+                <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p></div>
             </div>
             <button type="button" onClick={close} aria-label="Tutup asisten" className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-brand-soft"><X size={20} aria-hidden /></button>
           </header>
@@ -120,10 +141,10 @@ function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
             {messages.length === 0 ? (
               <div className="py-4">
                 <p className="text-xs font-semibold text-brand">Bantuan untuk aktivitas pasar</p>
-                <h3 className="mt-3 font-serif text-3xl leading-tight text-ink">Halo, {name}.<br />Ada yang ingin ditanyakan?</h3>
-                <p className="mt-3 text-sm leading-6 text-ink-muted">Tanyakan data ruang kerja atau cara menggunakan PASARIN. Asisten membantu menjelaskan; tindakan tetap Anda konfirmasi di dashboard.</p>
+                <h3 className="mt-3 font-serif text-3xl leading-tight text-ink">{greeting}<br />Ada yang ingin ditanyakan?</h3>
+                <p className="mt-3 text-sm leading-6 text-ink-muted">{intro}</p>
                 <div className="mt-6 grid gap-2">
-                  {suggestions[role].map((text) => <button key={text} type="button" onClick={() => void send(text)}
+                  {prompts.map((text) => <button key={text} type="button" onClick={() => void send(text)}
                     className="flex min-h-12 items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 text-left text-sm text-ink hover:border-line-strong hover:bg-brand-soft">
                     <span>{text}</span><ArrowRight size={16} className="shrink-0 text-brand" aria-hidden />
                   </button>)}
@@ -136,7 +157,7 @@ function ChatWorkspace({ name, role }: { name: string; role: AppRole }) {
                   <div className={`whitespace-pre-wrap break-words rounded-2xl px-4 py-3 text-sm leading-6 ${message.sender === "user" ? "bg-brand text-cream" : "border border-line bg-surface text-ink"}`}>
                     {message.text}
                   </div>
-                  {message.source && <p className="mt-1.5 text-xs text-ink-muted">{message.source === "gemini" ? "Jawaban AI berdasarkan data ruang kerja" : "Ringkasan data dan panduan PASARIN"}</p>}
+                  {message.source && <p className="mt-1.5 text-xs text-ink-muted">{message.source === "gemini" ? `Jawaban AI berdasarkan ${authenticated ? "data ruang kerja" : "etalase publik"}` : "Ringkasan data dan panduan PASARIN"}</p>}
                 </div>)}
               </div>
             )}

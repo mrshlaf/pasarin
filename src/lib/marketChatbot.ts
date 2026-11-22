@@ -13,7 +13,10 @@ import { distributionTierForDecay, isDonation, isReadyForDelivery, roundKg, type
 type Snapshot = Awaited<ReturnType<typeof readMarketSnapshot>>;
 type Operations = Awaited<ReturnType<typeof getMarketOperations>>;
 type Tier = RescueOffer["targetTier"];
-type Offer = Snapshot["offers"][number];
+export type Offer = Snapshot["offers"][number];
+
+/** Komoditas dan kios yang ditanyakan, untuk menyaring etalase. */
+export type CatalogScope = Pick<View, "commodityId" | "commodityName" | "kioskIds">;
 
 /** Data yang sudah disaring sesuai hak akses dan komoditas yang ditanyakan. */
 interface View {
@@ -367,7 +370,7 @@ export async function answerDashboardQuestion(user: AuthUser, question: string, 
 }
 
 /** Chat menampilkan teks biasa, jadi format Markdown dari model diubah menjadi teks yang rapi. */
-function plainText(text: string) {
+export function plainText(text: string) {
   return text
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/^#+\s*/gm, "")
@@ -376,7 +379,7 @@ function plainText(text: string) {
     .trim();
 }
 
-const OPEN_QUESTION_INSTRUCTION = [
+export const OPEN_QUESTION_INSTRUCTION = [
   "Kamu Asisten PASARIN, platform penyaluran surplus sayur dan buah Pasar Induk Kramat Jati.",
   "Jawab pertanyaan pengguna dalam bahasa Indonesia yang alami, langsung ke inti, dan ringkas (maksimal sekitar 8 kalimat atau daftar pendek).",
   "Gunakan hanya `aturan` dan `data` yang diberikan. Data sudah disaring sesuai hak akses peran pengguna.",
@@ -398,7 +401,7 @@ const ROLE_LABELS: Record<AppRole, string> = {
   logistics: "Kurir & Logistik", manager: "Pengelola Pasar", admin: "Admin",
 };
 
-const DESTINATION: Record<Tier, string> = { tier_1: "Warteg & UMKM", tier_2: "Dapur Sosial", tier_3: "Sentra Maggot" };
+export const DESTINATION: Record<Tier, string> = { tier_1: "Warteg & UMKM", tier_2: "Dapur Sosial", tier_3: "Sentra Maggot" };
 const BUYER_TIER: Partial<Record<AppRole, Tier>> = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" };
 
 /** Contoh pertanyaan per peran untuk jawaban "bisa apa" dan fallback. Tiga contoh pertama tampil di fallback. */
@@ -414,16 +417,16 @@ const EXAMPLES: Record<AppRole, string[]> = {
 
 const rupiah = (value: number) => `Rp${Math.round(value).toLocaleString("id-ID")}`;
 const netProfitUnavailable = "PASARIN belum mencatat modal dan biaya usaha, sehingga keuntungan bersih belum bisa dihitung.";
-const commodityName = (id: string) => COMMODITIES.find((item) => item.id === id)?.localName ?? id;
-const kioskLabel = (id: string) => {
+export const commodityName = (id: string) => COMMODITIES.find((item) => item.id === id)?.localName ?? id;
+export const kioskLabel = (id: string) => {
   const kiosk = KIOSKS.find((item) => item.id === id);
   return kiosk ? `Kios ${kiosk.stallNumber} (${kiosk.name})` : id;
 };
-const kg = (value: number) => `${roundKg(value)} kg`;
+export const kg = (value: number) => `${roundKg(value)} kg`;
 const score = (value: number) => value.toFixed(2).replace(".", ",");
 const sumKg = (items: Array<{ quantityKg: number }>) => roundKg(items.reduce((total, item) => total + item.quantityKg, 0));
 const limit = (lines: string[], max = 6) => lines.length > max ? [...lines.slice(0, max), `…dan ${lines.length - max} lainnya di dashboard.`] : lines;
-const subjectOf = (view: View) => view.commodityName ? ` ${view.commodityName}` : "";
+const subjectOf = (view: { commodityName?: string }) => view.commodityName ? ` ${view.commodityName}` : "";
 
 function shelfLife(hours: number, decayScore: number) {
   if (decayScore >= 0.85 || !(hours > 0)) return "sudah melewati batas konsumsi";
@@ -591,7 +594,7 @@ function vendorPriceAnswer(view: View) {
   return `Harga lot${subjectOf(view)} di kios Anda (yang paling cepat rusak lebih dulu):\n${limit(lines).join("\n")}\nPerkiraan harga berasal dari estimasi mutu dan bisa berubah saat ditimbang; Tier 1 tidak turun di bawah harga minimum komoditas.`;
 }
 
-function listOffers(view: View, source: Offer[], order: "cheap" | "expensive", where: string, footer: string, showDestination: boolean) {
+function listOffers(view: CatalogScope, source: Offer[], order: "cheap" | "expensive", where: string, footer: string, showDestination: boolean) {
   const list = [...source].sort((a, b) => order === "cheap"
     ? a.salvagePricePerKg - b.salvagePricePerKg || b.quantityKg - a.quantityKg
     : b.salvagePricePerKg - a.salvagePricePerKg);
@@ -609,7 +612,7 @@ function catalogAnswer(view: View, order: "cheap" | "expensive", source: Offer[]
 }
 
 /** Etalase publik seluruh pasar: hanya komoditas, kios, harga, berat, dan tujuan. */
-function publicCatalogAnswer(view: View, catalog: Offer[], order: "cheap" | "expensive") {
+export function publicCatalogAnswer(view: CatalogScope, catalog: Offer[], order: "cheap" | "expensive") {
   const source = catalog.filter((offer) => (!view.commodityId || offer.commodityId === view.commodityId) &&
     (view.kioskIds.length === 0 || view.kioskIds.includes(offer.vendorId)));
   return listOffers(view, source, order, "di etalase publik pasar",
@@ -644,7 +647,7 @@ function clarifyAnswer(role: AppRole) {
 }
 
 /** Kata umum yang tidak cukup untuk menebak maksud bila berdiri sendiri. */
-const VAGUE = new Set([
+export const VAGUE = new Set([
   "gimana", "bagaimana", "terus", "lalu", "trus", "jadi", "yang", "tadi", "itu", "ini", "berapa", "kapan", "dimana", "kemana",
   "kenapa", "mengapa", "apa", "siapa", "info", "informasi", "tolong", "bantu", "cek", "lihat", "dong", "deh", "sih", "ya", "kak",
   "min", "hmm", "hm", "eh", "lho", "kok", "data", "test", "tes", "coba", "mana", "bisa", "boleh", "mau", "dan", "atau", "di", "ke",
@@ -655,7 +658,7 @@ const VAGUE = new Set([
 ]);
 
 /** Kata pengisi yang boleh menyertai nama sayur ("cek bayam dong", "bayam gimana"). */
-const FILLERS = new Set(["tentang", "kabar", "kondisi", "update", "terbaru", "punya", "masih", "tersedia", "sisa", "kalau", "harini"]);
+export const FILLERS = new Set(["tentang", "kabar", "kondisi", "update", "terbaru", "punya", "masih", "tersedia", "sisa", "kalau", "harini"]);
 
 function vendorOrdersAnswer(view: View) {
   const orders = view.offers.filter((offer) => offer.status === "claimed" || offer.status === "settled")
