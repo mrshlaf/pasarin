@@ -43,15 +43,20 @@ const loginWindow = 15 * 60_000;
 export function telegramLoginChat(initData: string, botToken: string, now = Date.now()) {
   const params = new URLSearchParams(initData);
   const entries = [...params.entries()];
+  // Parameter ganda di initData ditolak; penyerang tidak boleh menyisipkan nilai kedua untuk field yang sama.
   if (new Set(params.keys()).size !== entries.length) return null;
   const hash = params.get("hash");
+  // auth_date harus masuk akal: tidak lebih dari 30 detik di masa depan dan tidak lebih tua dari 15 menit (loginWindow).
   const issued = Number(params.get("auth_date")) * 1000;
   if (!hash || !Number.isSafeInteger(issued) || issued > now + 30_000 || issued < now - loginWindow) return null;
+  // String data-check sesuai aturan Telegram: pasangan key=value tanpa hash, diurutkan menurut key dan dipisah baris baru.
   const data = entries.filter(([key]) => key !== "hash")
     .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
     .map(([key, value]) => key + "=" + value).join("\n");
+  // Kunci HMAC diturunkan dari token bot dengan konstanta WebAppData, lalu dipakai menandatangani data; hasilnya dibandingkan timing-safe dengan hash.
   const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
   if (!matchesSecret(hash, createHmac("sha256", secret).update(data).digest("hex"))) return null;
+  // Hanya ID pengguna Telegram yang dikembalikan; harus bilangan bulat positif.
   const rawUser = params.get("user");
   if (!rawUser) return null;
   try {
@@ -65,6 +70,7 @@ export function telegramLoginChat(initData: string, botToken: string, now = Date
 // Membaca rekaman sesi obrolan Telegram dari penyimpanan persisten (PostgreSQL, Supabase REST, atau memori lokal).
 async function readChat(chatId: number) {
   const id = "telegram:" + chatId;
+  // Urutan penyimpanan: Postgres langsung, lalu Supabase REST di produksi, lalu memori lokal untuk pengembangan.
   if (databaseConfigured()) {
     const { rows } = await getDatabasePool().query<{ revision: string; state: ChatState }>(
       "select revision::text, state from public.pasarin_simulation_state where id = $1", [id],
@@ -83,13 +89,16 @@ async function readChat(chatId: number) {
 // Memperbarui state obrolan Telegram secara atomik dengan protokol penguncian revisi optimistik (CAS).
 async function changeChat<T>(chatId: number, change: (state: ChatState) => T): Promise<T> {
   const id = "telegram:" + chatId;
+  // Penyimpanan jarak jauh dipakai bila ada database, di produksi, atau saat backend supabase dipaksa.
   const remote = databaseConfigured() || process.env.NODE_ENV === "production" || process.env.PASARIN_STATE_BACKEND === "supabase";
+  // Tanpa penyimpanan jarak jauh: ubah langsung di memori proses.
   if (!remote) {
     const state = local.get(chatId) ?? { active: null, accounts: [] };
     const result = change(state);
     local.set(chatId, state);
     return result;
   }
+  // Baca, ubah, tulis dengan nomor revisi; bila revisi sudah berganti, ulangi hingga 5 kali.
   for (let attempt = 0; attempt < 5; attempt++) {
     const current = await readChat(chatId);
     const state = current?.state ?? { active: null, accounts: [] };
@@ -97,6 +106,7 @@ async function changeChat<T>(chatId: number, change: (state: ChatState) => T): P
     const revision = current?.revision ?? 0;
     if (databaseConfigured()) {
       const pool = getDatabasePool();
+      // Revisi 0 berarti baris belum ada: sisipkan; selain itu perbarui hanya bila revisi masih sama.
       const saved = revision
         ? await pool.query("update public.pasarin_simulation_state set revision = revision + 1, state = $2 where id = $1 and revision = $3",
           [id, state, revision])
@@ -117,7 +127,9 @@ async function changeChat<T>(chatId: number, change: (state: ChatState) => T): P
 // Menegakkan pembatasan laju (rate limiting) percobaan masuk: maksimal 10 kali per 15 menit per chat.
 export function allowTelegramLogin(chatId: number, now = Date.now()) {
   return changeChat(chatId, (state) => {
+    // Jendela hitungan baru dimulai bila belum ada atau sudah lewat 15 menit.
     if (!state.attempts || state.attempts.until <= now) state.attempts = { count: 0, until: now + loginWindow };
+    // Percobaan ke-11 dalam satu jendela ditolak.
     if (state.attempts.count >= 10) return false;
     state.attempts.count++;
     return true;
@@ -126,6 +138,7 @@ export function allowTelegramLogin(chatId: number, now = Date.now()) {
 
 // Memverifikasi kredensial akun pasar yang diajukan melalui Telegram terhadap otoritas autentikasi aktif.
 export async function authenticateTelegramAccount(identifier: string, password: string, allowLocalTest: boolean) {
+  // Mode sesi server memakai database akun; mode uji lokal menerima akun demo dengan kata sandi sama dengan username; selain itu Supabase Auth.
   if (serverAuthEnabled()) return authenticateAccount(identifier, password);
   if (allowLocalTest) {
     const username = identifier.toLowerCase();
