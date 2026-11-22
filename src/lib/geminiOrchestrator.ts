@@ -64,6 +64,7 @@ function buildStallStockInputs(): KioskStockInput[] {
 
   KIOSKS.forEach((kiosk, idx) => {
     // Setiap kios memiliki 2 lot komoditas: 1 lot pasokan subuh (04:00 WIB) & 1 lot carryover
+    // Dua komoditas per kios dipilih bergantian dari katalog agar sampel stok beragam.
     const primaryComm = COMMODITIES[idx % COMMODITIES.length];
     const secondaryComm = COMMODITIES[(idx + 5) % COMMODITIES.length];
 
@@ -77,6 +78,7 @@ function buildStallStockInputs(): KioskStockInput[] {
     });
 
     // Lot 2: Stok dengan jam paparan lebih lama untuk menghasilkan distribusi 3-tier realistis
+    // Waktu tiba lot kedua digeser (-2, 1, atau 4 jam) supaya ada campuran lot segar, layu, dan lama.
     const shiftedArrival = idx % 3 === 0 ? -2.0 : idx % 3 === 1 ? 1.0 : 4.0;
     inputs.push({
       kioskId: kiosk.id,
@@ -98,6 +100,7 @@ export async function executeAutonomousOrchestration(options?: {
   forceHeuristic?: boolean;
   recordResult?: boolean;
 }): Promise<OrchestratorRunResult> {
+  // Mode eksekusi dicatat di audit: jadwal cron otomatis atau simulasi manual.
   const executionMode = options?.executionMode || "scheduled_autonomous_cron";
   const executedAt = new Date().toISOString();
   const thoughtProcess: ReActStep[] = [];
@@ -113,8 +116,10 @@ export async function executeAutonomousOrchestration(options?: {
   });
 
   // Akuisisi telemetri mikroklimat cuaca aktual dan perhitungan redaman pengunjung akibat hujan
+  // forceHeuristic memaksa cuaca cadangan offline sehingga hasil tidak bergantung jaringan.
   const weather = await weatherAgent.getMarketWeather({ simulateOffline: options?.forceHeuristic });
   // Evaluasi redaman pengunjung: perhitungkan curah hujan aktual atau profil konvektif sore hari (12.5 mm)
+  // Sapuan sore selalu mengasumsikan hujan minimal 12,5 mm (profil sore konvektif), kecuali cuaca nyata lebih deras.
   const effectiveRainfallMm = Math.max(12.5, weather.rainfallMm);
   const footfall = calculateRainFootfallAttenuation(effectiveRainfallMm, true);
 
@@ -128,6 +133,7 @@ export async function executeAutonomousOrchestration(options?: {
   });
 
   // Agregasi inventaris 30 kios dan proyeksi surplus komposit menggunakan pemodelan kinetika Arrhenius
+  // Stok 30 kios disimulasikan, lalu surplus komposit dihitung dengan suhu, kelembapan, hujan, dan jam sapuan 14.5.
   const stallInputs = buildStallStockInputs();
   const compositeSurplus = calculateCompositeMarketSurplus(
     stallInputs,
@@ -147,6 +153,7 @@ export async function executeAutonomousOrchestration(options?: {
 
   // Penegakan gerbang kendali mutu Invarian 1 (Zero Edible Food to Feed) untuk mencegah moral hazard
   const ethicalViolationsBlocked: string[] = [];
+  // Gerbang aturan 1: lot layak makan yang terlanjur dialokasikan ke tier 3 dipindahkan ke tier 1 atau 2 menurut skornya.
   compositeSurplus.items.forEach((item: StallSurplusPrediction) => {
     if (item.decayScore < qualityGateAgent.HUMAN_CONSUMABLE_DECAY_THRESHOLD && item.allocatedTier === "tier_3") {
       ethicalViolationsBlocked.push(item.commodityId);
@@ -168,12 +175,15 @@ export async function executeAutonomousOrchestration(options?: {
   });
 
   // Penetapan alokasi sirkular 3-Tier dan penugasan armada logistik berdasarkan tonase muatan
+  // Alokasi akhir per tier dari hasil komposit setelah gerbang mutu.
   const tier1Kg = compositeSurplus.summary.tier1WartegAllocatedKg;
   const tier2Kg = compositeSurplus.summary.tier2SocialKitchenAllocatedKg;
   const tier3Kg = compositeSurplus.summary.tier3MaggotAllocatedKg;
 
   // Logika penugasan armada: muatan <= 300 kg menggunakan Viar Roda Tiga; > 300 kg menggunakan GranMax/Pikap
+  // Perkiraan jumlah armada: satu unit per 450 kg surplus, minimal satu.
   const totalFleetRequired = Math.max(1, Math.ceil(compositeSurplus.summary.totalPredictedSurplusKg / 450));
+  // Jumlah notifikasi kios dibatasi 30, sebanyak kios yang punya surplus.
   const telegramNotificationsDispatched = Math.min(30, compositeSurplus.items.filter((i) => i.estimatedSurplusKg > 0).length);
 
   thoughtProcess.push({
@@ -185,6 +195,7 @@ export async function executeAutonomousOrchestration(options?: {
     observation: `Alokasi terfinalisasi: Tier 1 Warteg (${tier1Kg} kg), Tier 2 Dapur Sosial (${tier2Kg} kg), Tier 3 Sentra Maggot (${tier3Kg} kg). Ditugaskan ${totalFleetRequired} armada dan ${telegramNotificationsDispatched} notifikasi Telegram disiarkan.`,
   });
 
+  // Ringkasan eksekutif bawaan (deterministik); diganti teks model bila Gemini tersedia dan menjawab.
   let executiveSummary =
     `Siklus otonom sapuan pukul 14:30 WIB berhasil mengorkestrasi penyelamatan ${compositeSurplus.summary.totalPredictedSurplusKg} kg ` +
     `surplus pangan dari 30 kios Pasar Induk Kramat Jati. Alokasi sirkular terdistribusi ke Tier 1 Warteg (${tier1Kg} kg), ` +
@@ -194,6 +205,7 @@ export async function executeAutonomousOrchestration(options?: {
   // Hubungkan ke Google Gemini 2.0 Flash live untuk sintesis orkestrator otonom jika API key tersedia
   const env = getEnv();
   const apiKey = env.GEMINI_API_KEY;
+  // Model hanya dipanggil bila kunci valid (bukan placeholder), tidak dipaksa heuristik, dan hasilnya cukup panjang untuk dipakai.
   if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
     try {
       const ai = new GoogleGenAI({ apiKey });
@@ -221,6 +233,7 @@ export async function executeAutonomousOrchestration(options?: {
   }
 
   // Rekam riwayat siklus orkestrasi ke audit trail sistem
+  // Audit dilewati pada pratinjau (recordResult false) supaya simulasi tidak mengotori catatan.
   const auditRecord = options?.recordResult === false ? undefined : await recordAuditLog({
     subsystem: "ORCHESTRATOR",
     action_type: "AUTONOMOUS_SWEEP_EXECUTED",
@@ -256,6 +269,7 @@ export async function executeAutonomousOrchestration(options?: {
     executedAt,
   };
 
+  // Hanya sapuan yang dicatat yang menjadi hasil terakhir di panel admin.
   if (options?.recordResult !== false) latestOrchestratorRun = result;
   return result;
 }
@@ -272,6 +286,7 @@ export async function processManagerialNaturalQuery(
   const env = getEnv();
   const apiKey = env.GEMINI_API_KEY;
 
+  // Jalur model: mengirim kueri dan memakai teks balasan sebagai ringkasan.
   // 1. Coba eksekusi melalui Google Gemini 2.0 Flash Live API jika API key tersedia dan tidak dipaksa heuristik
   if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
     try {
@@ -319,6 +334,7 @@ export async function processManagerialNaturalQuery(
           generatedAt,
         };
 
+        // Riwayat kueri disimpan di memori, maksimal 20 terakhir.
         if (options?.recordResult !== false) {
           latestQueryHistory.unshift(queryResult);
           if (latestQueryHistory.length > 20) latestQueryHistory.pop();

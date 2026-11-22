@@ -39,28 +39,34 @@ export interface PhaseLogEntry {
 // Merangkum efisiensi pengalihan sampah DLH (>= 90%), audit 3 invarian etis,
 // penyelesaian finansial escrow QRIS, dan reduksi emisi metana/karbon IPCC 2006.
 export interface MetabolismTrialReport {
+  // ID percobaan dari enam digit terakhir waktu; executedAt dan durationMs mencatat kapan dan berapa lama simulasi berjalan.
   trialId: string;
   executedAt: string;
   durationMs: number;
+  // True bila kelima fase tercatat.
   allPhasesCompleted: boolean;
   phasesCount: number;
+  // Total pasokan skenario, proyeksi surplus, dan biomassa terselamatkan dalam kg.
   totalMarketIntakeKg: number;
   totalProjectedSurplusKg: number;
   totalRescuedKg: number;
   // Persentase surplus terproyeksi yang berhasil dialihkan (0-100).
   wasteDiversionEfficiencyPct: number;
   meetsDlhThreshold: boolean; // Ambang batas target DLH DKI >= 90%
+  // Hasil uji tiga aturan: pangan layak makan tidak ke pakan, urutan harga tier, dan jendela reservasi 30 menit.
   invariantsAudit: {
     invariant1ZeroEdibleToFeed: boolean;
     invariant2StrictPriceOrdering: boolean;
     invariant3ThirtyMinuteWindow: boolean;
     allInvariantsPassed: boolean;
   };
+  // Angka keuangan skenario; nilainya tetap, bukan hasil transaksi sungguhan.
   financialSettlement: {
     totalEscrowProcessedIdr: number;
     totalVendorWalletCreditedIdr: number;
     disputesCount: number;
   };
+  // Dampak lingkungan dari biomassa terselamatkan, memakai faktor IPCC 2006.
   environmentalImpact: {
     biomassDivertedFromLandfillKg: number;
     methaneAvoidedKg: number;
@@ -77,6 +83,7 @@ export interface MetabolismTrialReport {
 // 4. Hujan Sore (15:30 WIB) - Redaman pengunjung pasar 48%, alokasi 30m prioritas dapur sosial, dan pembayaran QRIS Escrow.
 // 5. Logistik Malam (17:30 - 21:00 WIB) - Penugasan armada, pelepasan escrow dompet pedagang, dan audit karbon IPCC 2006.
 export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialReport> {
+  // Waktu mulai untuk mengukur durasi simulasi.
   const trialStartTime = Date.now();
   const trialId = `TRL-24H-${Date.now().toString().slice(-6)}`;
   const phaseLogs: PhaseLogEntry[] = [];
@@ -106,6 +113,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Fase 2: Puncak Suhu Los Terik Siang (12:00 WIB)
+  // Berapa kios yang komoditas contohnya sudah melewati skor 0,35 pada suhu puncak.
   let highDecayStallsCount = 0;
   KIOSKS.forEach((kiosk, idx) => {
     const c = COMMODITIES[idx % COMMODITIES.length];
@@ -128,6 +136,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Fase 3: Evaluasi Mutu Harian & ReAct AI Cron Sweep (14:30 WIB)
+  // Orkestrasi dijalankan dengan heuristik dan tanpa menyimpan hasil, jadi simulasi tidak mengubah data pasar.
   const orchestrationDossier = await executeAutonomousOrchestration({ forceHeuristic: true, recordResult: false });
   // Angka surplus dan alokasi tier memakai nilai acuan tetap, bukan hasil orkestrasi di atas.
   const projectedSurplusKg = 1329.0;
@@ -152,6 +161,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Fase 4: Hujan Sore, Redaman Pengunjung & Klaim 3-Tier (15:30 WIB)
+  // Hujan 18,5 mm sebagai skenario; penawaran contoh tier 2 baru dibuat sehingga jendela 30 menit penuh.
   const rainEffect = calculateRainFootfallAttenuation(18.5, true);
   const sampleT2Offer = {
     id: "ofr_trial_t2",
@@ -160,6 +170,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     createdAt: new Date().toISOString(),
   };
   const windowEval = evaluateTier2PriorityWindow(sampleT2Offer);
+  // Klaim maggot pada lot tier 2 saat jendela aktif harus ditolak (aturan 3).
   const maggotClaimCheck = validateClaimAgainstPriorityWindow(
     {
       id: "ofr_trial_t2",
@@ -195,6 +206,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Fase 5: Distribusi Armada Logistik & Handover PoD (17:30 - 21:00 WIB)
+  // Tiga titik jemput contoh di blok A dan B untuk membangun manifes ke satu Warteg.
   const stopsSample = [
     { kioskStall: "A-12", kioskName: "Kios H. Rohmat", block: "A" as const, commodityName: "Kangkung", weightKg: 45 },
     { kioskStall: "A-18", kioskName: "Kios Pak Asep", block: "A" as const, commodityName: "Pakcoy", weightKg: 40 },
@@ -207,6 +219,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Simulasi serah terima oleh kurir dan settlement QRIS escrow
+  // Serah terima disimulasikan dengan escrow Rp112.500.
   const podSettlement = executeEscrowSettlement(112500, "held_in_escrow");
 
   phaseLogs.push({
@@ -233,10 +246,12 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   const p3 = 1500;
 
   const inv1 = !maggotClaimCheck.allowed;
+  // Aturan 2 lulus bila harga tier 1 lebih besar dari tier 2, tier 2 tidak kurang dari tier 3, dan tier 3 tidak di bawah Rp1.500.
   const inv2 = p1 > p2 && p2 >= p3 && p3 >= 1500;
   // Penawaran contoh baru dibuat, jadi jendela harus aktif dengan sisa tepat 30 menit.
   const inv3 = windowEval.isWindowActive && windowEval.remainingMinutes === 30;
 
+  // Efisiensi pengalihan = biomassa terselamatkan dibagi proyeksi surplus; ambang DLH 90 persen.
   const totalRescuedKg = tier1WartegKg + tier2SocialKg + tier3MaggotKg;
   const wasteDiversionEfficiencyPct = Number(((totalRescuedKg / projectedSurplusKg) * 100).toFixed(1));
   const meetsDlhThreshold = wasteDiversionEfficiencyPct >= 90.0;
@@ -247,6 +262,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
 
   const durationMs = Date.now() - trialStartTime;
 
+  // Angka surplus, alokasi tier, dan penyelesaian escrow adalah nilai skenario tetap; hanya total pasokan, hasil aturan, dan faktor emisi yang dihitung.
   return {
     trialId,
     executedAt: new Date().toISOString(),
