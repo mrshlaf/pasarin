@@ -147,6 +147,7 @@ async function answerTelegramQuestion(text: string, chatId: number | string, use
 
 // Memproses perintah teks masuk dari obrolan Telegram ke operasi transaksi pasar yang bersangkutan.
 export async function handleTelegramCommand(text: string, chatId: number | string, user?: TelegramActor, updateId?: number) {
+  // Format pesan: /perintah argumen. Akhiran @namabot dibuang agar perintah di grup tetap dikenali.
   const [rawCommand, ...args] = text.trim().split(/\s+/);
   const command = rawCommand.toLowerCase().split("@")[0];
   if (!user) return telegramReply(command === "/start" ? "welcome_new_user" : "auth_required", "Masuk dengan akun Pasarin untuk membuka ruang kerja.");
@@ -157,6 +158,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     return telegramReply("welcome_existing_user", account + "\nPilih tugas di bawah, atau ketik pertanyaan biasa, misalnya \"" +
       QUESTION_EXAMPLE[user.role] + "\"", workspaceMenu(user));
   }
+  // Peran diturunkan sekali: vendor berisi ID kios (hanya untuk pedagang), supervisor untuk pengelola dan admin, buyer untuk tiga peran pembeli.
   const vendor = user.role === "vendor" ? user.vendorId : undefined;
   const supervisor = user.role === "manager" || user.role === "admin";
   const buyer = user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot";
@@ -280,6 +282,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     return telegramReply(result.success ? "offer_rejected" : "action_failed", result.message);
   }
 
+  // Catat pasokan: /pasok NAMA KG. Berat adalah argumen terakhir; sisanya nama komoditas, yang dicocokkan dengan ID atau nama lokal.
   if (command === "/pasok" && vendor) {
     const quantity = Number(args.at(-1)?.replace(",", "."));
     const label = args.slice(0, -1).join(" ").toLowerCase();
@@ -289,12 +292,15 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     if (!commodity || !Number.isFinite(quantity) || quantity <= 0) {
       return telegramReply("stock_rejected", "Periksa komoditas dan berat. Lihat /komoditas untuk daftar bahan.");
     }
+    // Kunci idempoten dari ID update Telegram agar pesan yang terkirim ulang tidak mencatat pasokan dua kali.
     const result = await addVendorStockServer(commodity.id, quantity, vendor, updateId === undefined ? undefined : "tg-" + chatId + "-" + updateId);
     return telegramReply(result.success ? "stock_added" : "stock_rejected", result.message, [[{ text: "Lihat inventaris", callback_data: "menu:stok" }]]);
   }
+  // Daftar komoditas yang bisa dicatat.
   if (command === "/komoditas" && vendor) {
     return telegramReply("commodity_list", COMMODITIES.map((item) => item.localName + " (" + item.id + ")").join("\n"));
   }
+  // Terbitkan lot atau setujui usulan dengan sisa fisik hasil timbang; pilihan jual atau donasi hanya berlaku untuk dapur sosial.
   if ((command === "/terbitkan" || command === "/setujui") && vendor) {
     const [id, amount, choice] = args;
     if (!id || !amount || args.length > 3 || (choice && choice !== "jual" && choice !== "donasi")) {
@@ -307,6 +313,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       : await decideVendorOffer(id, vendor, true, confirmation);
     return telegramReply(result.success ? "offer_published" : "offer_rejected", result.message);
   }
+  // Klaim lot oleh pembeli; kunci idempoten dari ID update agar tidak terklaim ganda.
   if (command === "/klaim" && (user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot")) {
     const [id, amount] = args;
     if (!id || !amount || args.length !== 2) return telegramReply("claim_usage", "Pilih lot dari /surplus, lalu ketik /klaim ID KG.");
@@ -316,10 +323,12 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       result.success && result.offer?.paymentStatus === "unpaid"
         ? [[{ text: "Lihat tagihan", callback_data: "invoice:" + result.offer.id }]] : []);
   }
+  // Evaluasi stok manual, hanya admin.
   if (command === "/evaluasi" && user.role === "admin") {
     const result = await publishMarketOffers();
     return telegramReply(result.success ? "market_evaluated" : "evaluation_failed", result.message);
   }
+  // Pengelola dan admin melihat ruang kerja peran lain, hanya baca.
   if (command === "/pratinjau" && supervisor) {
     const [preview, page] = args;
     if (!isAppRole(preview)) {
@@ -336,8 +345,10 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     return telegramReply("preview_workspace", view.text, view.keyboard);
   }
 
+  // Inventaris kios: sisa fisik, perkiraan sebelum ditimbang, kondisi mutu, dan tombol timbang.
   if (command === "/stok" && vendor) {
     const state = await readMarketSnapshot(user);
+    // Penawaran aktif atau menunggu persetujuan per ID stok.
     const lotOffer = new Map(state.offers.filter((offer) => offer.status === "active" || offer.status === "pending_vendor")
       .map((offer) => [offer.stockId, offer]));
     // Sisa stok yang belum diklaim pembeli, dalam kg.
@@ -369,6 +380,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       if (freeKg(stock) <= 0 || (linked?.status === "active" && stock.verifiedAt)) return [];
       return [{ text: "Timbang lot " + index, callback_data: linked ? "approve_offer:" + linked.id : "publish:" + stock.id }];
     });
+    // Ringkasan sisa fisik terkonfirmasi dan jumlah yang sudah dipesan.
     const stockKg = state.stocks.reduce((total, stock) => total + (stock.verifiedAt ? stock.remainingKg : 0), 0);
     const reserved = state.offers.filter((offer) => offer.status === "claimed").reduce((total, offer) => total + offer.quantityKg, 0);
     const summary = "Sisa fisik terkonfirmasi " + weight.format(stockKg) + " kg · Dipesan " + weight.format(reserved) + " kg";
@@ -377,6 +389,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     return telegramReply("stock_list", summary + reputation + "\n\n" + view.text, [...view.keyboard,
       [{ text: "Catat pasokan", callback_data: "menu:pasok" }]]);
   }
+  // Penawaran aktif yang stoknya masih punya perkiraan sisa ditampilkan sebagai menunggu timbang.
   if (command === "/penawaran" && (vendor || supervisor)) {
     const state = await readMarketSnapshot(user);
     const offers = state.offers.map((offer) => {
@@ -395,6 +408,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
     });
     return telegramReply("offers_list", view.text, view.keyboard);
   }
+  // Riwayat pembayaran; pedagang juga melihat saldo dompet.
   if (command === "/transaksi") {
     const state = await readMarketSnapshot(user);
     const view = paged("transaksi", "Riwayat transaksi & pembayaran", "Belum ada transaksi.", state.transactions, args[0], (item) =>
@@ -402,6 +416,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       (item.status === "released" ? "Selesai" : item.status === "refunded" ? "Dikembalikan" : "Ditahan"));
     return telegramReply("payments_list", (vendor ? "Saldo " + money.format(state.vendorWalletIdr) + "\n\n" : "") + view.text, view.keyboard);
   }
+  // Katalog lot aktif untuk pembeli; lot tier 2 diberi catatan jendela reservasi.
   if ((command === "/surplus" || command === "/katalog") && buyer) {
     const state = await readMarketSnapshot(user);
     const activeOffers = state.offers.filter((offer) => offer.status === "active");
@@ -416,6 +431,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       ]);
     return telegramReply("surplus_catalog_viewed", view.text, view.keyboard);
   }
+  // Antrean atau riwayat pengantaran kurir; riwayat tidak punya tombol serah terima.
   if ((command === "/tugas" || command === "/riwayat" || command === "/antar") && user.role === "logistics") {
     const history = command === "/riwayat";
     const state = await readMarketSnapshot(user);
@@ -432,6 +448,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       [{ text: "Manifes armada", callback_data: "menu:armada" }, { text: "3 Tahap pengantaran", callback_data: "menu:tahap" }],
     ]);
   }
+  // Ringkasan: pembeli melihat pesanan dan dampaknya, selain itu ringkasan pasar.
   if (command === "/status" || command === "/ringkasan" || (command === "/pesanan" && buyer)) {
     const state = await readMarketSnapshot(user);
     if (buyer) {
@@ -440,6 +457,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
         args[0], offerLine, (offer, index) => offer.status === "claimed" && offer.paymentStatus === "unpaid"
           ? [{ text: "Bayar " + index, callback_data: "invoice:" + offer.id }] : []);
       const orderedKg = orders.reduce((total, offer) => total + offer.quantityKg, 0);
+      // Hemat belanja = harga grosir normal dikurangi harga tebus.
       const spendSavings = orders.reduce((total, offer) => {
         const comm = COMMODITIES.find((c) => c.id === offer.commodityId);
         const normalPrice = comm ? comm.baseWholesalePricePerKg * offer.quantityKg : offer.totalAmountIdr;
@@ -453,6 +471,7 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
             (spendSavings > 0 ? " · Hemat belanja " + money.format(spendSavings) : "");
       return telegramReply("status_reported", impact + "\n\n" + view.text, view.keyboard);
     }
+    // Lot berisiko: masih bersisa dan skor susut sudah 0,35 atau lebih.
     const risky = state.stocks.filter((item) => item.remainingKg > 0 && (state.stockHealth[item.id]?.decayScore ?? 0) >= 0.35).length;
     return telegramReply("status_reported", [
       account, "Kios aktif " + new Set(state.stocks.map((item) => item.vendorId)).size,
@@ -462,11 +481,13 @@ export async function handleTelegramCommand(text: string, chatId: number | strin
       "Selesai " + state.offers.filter((offer) => offer.status === "settled").length,
     ].join("\n"), workspaceMenu(user));
   }
+  // Perintah tidak dikenal untuk peran ini: kembali ke menu.
   return telegramReply("help_displayed", "Pilih tugas yang tersedia untuk " + telegramRoleName[user.role] + ".", workspaceMenu(user));
 }
 
 // Memproses aksi interaktif klik tombol inline keyboard Telegram dengan validasi kepemilikan peran dan pesanan.
 export async function handleTelegramAction(action: string, id: string | undefined, user: TelegramActor, args: string[] = []) {
+  // Tiap aksi tombol memeriksa peran lagi; callback dari akun yang salah ditolak di bagian akhir.
   const role = user.role;
   const vendor = role === "vendor" ? user.vendorId : undefined;
   const buyer = role === "warteg" || role === "social_kitchen" || role === "maggot";
@@ -496,7 +517,9 @@ export async function handleTelegramAction(action: string, id: string | undefine
       [[{ text: "Lihat penawaran", callback_data: "menu:penawaran" }]]);
   }
 
+  // Terbit massal dinonaktifkan; setiap lot harus ditimbang dulu.
   if (action === "publish_all" && vendor) return telegramReply("publish_usage", "Timbang setiap lot dari /stok sebelum diterbitkan.");
+  // Tombol Timbang lot: menampilkan perkiraan sisa dan cara mengisi sisa fisik.
   if (id && vendor && (action === "publish" || action === "approve_offer")) {
     const state = await readMarketSnapshot(user);
     const proposal = action === "approve_offer" ? state.offers.find((offer) => offer.id === id &&
@@ -528,7 +551,9 @@ export async function handleTelegramAction(action: string, id: string | undefine
     return telegramReply("publish_usage", estimate + "Isi sisa fisik setelah penjualan di pasar, di luar pesanan PASARIN. Seluruh hasil timbang diterbitkan. Isi 0 jika habis.\n\n" +
       example + (social ? " jual\n" + example + " donasi" : "") + "\n\nAtau pilih tombol kilat di bawah:", keyboard);
   }
+  // Tolak atau tarik penawaran.
   if (id && vendor && action === "reject_offer") return telegramReply(action, (await decideVendorOffer(id, vendor, false)).message);
+  // Tombol Pilih jumlah: lot besar ditawarkan dalam tombol jumlah, lot kecil diminta diketik.
   if (id && buyer && (action === "claim" || action === "donate")) {
     const state = await readMarketSnapshot(user);
     const offer = state.offers.find((item) => item.id === id && item.status === "active");
@@ -547,6 +572,7 @@ export async function handleTelegramAction(action: string, id: string | undefine
 
     return telegramReply("claim_usage", offerLine(offer) + "\n\nPilih tombol jumlah di bawah atau ketik manual:\n/klaim " + id + " KG", keyboard);
   }
+  // Tampilkan tagihan QRIS hanya untuk pesanan milik pembeli ini.
   if (id && action === "invoice" && buyer) {
     const state = await readMarketSnapshot(user);
     const offer = state.offers.find((item) => item.id === id && item.isMine && item.status === "claimed" && item.paymentStatus === "unpaid");
@@ -572,7 +598,9 @@ export async function handleTelegramAction(action: string, id: string | undefine
     ].join("\n");
     return telegramReply(action, invoiceText, [[{ text: "Konfirmasi pembayaran QRIS", callback_data: "pay:" + id }]]);
   }
+  // Konfirmasi pembayaran QRIS simulasi.
   if (id && action === "pay" && buyer) return telegramReply(action, (await payOfferServer(id, user.id)).message);
+  // Konfirmasi dua langkah: tombol Serah terima menampilkan ringkasan dulu.
   if (id && action === "handover" && role === "logistics") {
     const state = await readMarketSnapshot(user);
     const offer = state.offers.find((item) => item.id === id && isReadyForDelivery(item));
@@ -587,6 +615,8 @@ export async function handleTelegramAction(action: string, id: string | undefine
     return telegramReply(action, handoverText,
       [[{ text: "Barang sudah diterima (Cairkan escrow)", callback_data: "deliver:" + id }]]);
   }
+  // Serah terima dikonfirmasi; dana escrow dicairkan.
   if (id && action === "deliver" && role === "logistics") return telegramReply(action, (await confirmDeliveryServer(id)).message);
+  // Aksi tidak dikenal atau di luar peran akun.
   return telegramReply("action_denied", "Aksi ini tidak tersedia untuk akun Anda.");
 }

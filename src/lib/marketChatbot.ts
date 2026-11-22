@@ -69,6 +69,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
   const risky = stocks.filter((item) => item.remainingKg > 0 && (snapshot.stockHealth[item.id]?.decayScore ?? 0) >= 0.35);
   const distinctCommodities = Array.from(new Set(stocks.map((item) => commodityName(item.commodityId))));
   const commodityListString = distinctCommodities.length > 0 ? distinctCommodities.join(", ") : "belum ada komoditas tercatat";
+  // Tanggal WIB berformat YYYY-MM-DD untuk menentukan batas hari ini.
   const dateFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
   const today = dateFormat.format(new Date());
   // Apakah stempel waktu jatuh pada hari ini (zona Jakarta).
@@ -76,6 +77,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     const parsed = Date.parse(value ?? "");
     return Number.isFinite(parsed) && dateFormat.format(parsed) === today;
   };
+  // Fakta ringkas dari data yang terlihat akun ini; dipakai jawaban deterministik dan dikirim ke model sebagai dasar.
   const facts = {
     arrivalsToday: stocks.filter((item) => isToday(item.createdAt)).length,
     deliveriesToday: offers.filter((item) => isToday(item.deliveredOn)).length,
@@ -94,11 +96,14 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     orders: orders.length,
     weather: snapshot.weather,
   };
+  // Pengelola dan admin memakai metrik operasional seluruh pasar; peran lain memakai fakta akun sendiri.
   const operations = oversight ? await getMarketOperations() : null;
   const metrics = operations ?? { date: today, ...facts };
+  // Bundel data yang dibagikan ke semua fungsi penjawab di bawah.
   const view: View = { user, snapshot, operations, commodityId: commodity?.id, commodityName: commodity?.localName, kioskIds, stocks, offers, active, orders, buyer, oversight };
   const scope = oversight ? "Data operasional pasar" : "Data yang dapat diakses akun Anda";
   const limitation = "Data mencerminkan snapshot saat ini; waktu lain dan data di luar hak akses tidak tersedia. Asisten hanya membaca data dan tidak menjalankan transaksi.";
+  // Sinyal bahasa untuk memilih cabang jawaban: pertanyaan tujuan, harga, dan peringkat.
   const asksDestination = /\b(?:di\s*mana|ke\s*mana|mana|siapa)\b/.test(text);
   const asksPrice = /\bharga\b|\bberapaan\b|\bper kg\b|\btermurah\b|paling murah|\bterendah\b|\btermahal\b|paling mahal|\bdiskon\b/.test(text);
   const ranks = /\b(?:paling|terbanyak|tertinggi|terbesar|top|ranking|peringkat)\b/.test(text);
@@ -113,76 +118,97 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
   const ownSale = /\bsaya\b/.test(text) && /\b(?:(?:di|men)?jual|(?:di)?salur(?:kan)?|menyalurkan)\b/.test(text);
   const marketWhere = !ownSale && (/\b(?:toko|kios|lapak|pedagang|penjual) (?:mana|apa|lain|sebelah)\b|\bsiapa (?:saja )?(?:yang )?(?:jual|menjual)\b|\byang (?:jual|menjual)\b|\bdi pasar\b|\b(?:beli|cari|dapat) (?:di ?mana|dimana)\b|\b(?:di ?mana|dimana) (?:yang )?(?:jual|beli|ada)\b|\bpasaran\b|\bkatalog\b/.test(text) ||
     (/\btermurah\b|\bpaling murah\b|\bmurah\b|\bterendah\b|\btermahal\b|\bpaling mahal\b/.test(text) && !/\bsaya\b/.test(text)));
+  // Jawaban dipilih lewat rantai cabang berurutan. Cabang awal lebih sensitif atau lebih spesifik (privasi, klarifikasi) sehingga menang atas cabang di bawahnya.
   let answer: string;
   let useModel = true;
   let openQuestion = false;
   if (/^(hi|hai|halo|hello|hey|selamat pagi|selamat siang|selamat sore|selamat malam)( (kak|min|pak|bu|bang))?$/.test(text)) {
+    // Sapaan dijawab tanpa model.
     useModel = false;
     answer = "Halo! Saya bisa membantu memeriksa stok, penawaran, pembayaran, pengantaran, dan cuaca sesuai akses akun Anda. Apa yang ingin Anda periksa?";
   } else if (/^(?:terima kasih|thanks|thank you|oke|ok|okay|sip|siap|mantap|mantul|baik|good)(?: (?:terima kasih|thanks|oke|ok|sip|siap|mantap|baik|banyak|ya|kak|min|pak|bu|bang|deh|sekali))*$/.test(text)) {
+    // Ucapan terima kasih dan penutup dijawab tanpa model.
     useModel = false;
     answer = "Sama-sama! Kalau ada yang ingin dicek lagi, tanyakan saja.";
   } else if (privacy.kind === "refuse") {
+    // Pertanyaan tentang data pihak lain ditolak lebih awal dari cabang lain agar tidak pernah sampai ke jawaban data.
     useModel = false;
     answer = privacy.message;
   } else if (privacy.kind === "kiosk-finance") {
+    // Pengelola yang menanyakan keuangan satu kios dijawab dari data kios itu.
     useModel = false;
     answer = kioskFinanceAnswer(view, privacy.kioskId);
   } else if (vague && !/\b(?:siapa|apa) (?:kamu|anda|ini)\b|\b(?:kamu|anda) bisa (?:apa|bantu)\b|\bbisa (?:bantu|tanya) apa\b/.test(text)) {
+    // Pertanyaan terlalu umum diminta diperjelas, kecuali menanyakan kemampuan asisten.
     useModel = false;
     answer = clarifyAnswer(user.role);
   } else if (!oversight && kioskIds.length > 0) {
+    // Penyebutan kios tertentu oleh non-pengelola hanya dijawab dengan katalog publik kios itu.
     useModel = false;
     answer = buyer ? catalogAnswer(view, "cheap", view.active.filter((offer) => kioskIds.includes(offer.vendorId)))
       : publicCatalogAnswer(view, await readPublicCatalog(), "cheap");
   } else if (commodityOnly) {
+    // Hanya menyebut nama komoditas: tampilkan ringkasan komoditas itu.
     useModel = false;
     answer = await commodityOverview(view);
   } else if ((user.role === "vendor" || user.role === "logistics") && marketWhere) {
+    // Pedagang dan kurir yang menanyakan kios lain dijawab dari etalase publik.
     useModel = false;
     answer = publicCatalogAnswer(view, await readPublicCatalog(), /termahal|paling mahal/.test(text) ? "expensive" : "cheap");
   } else if (/\b(?:siapa|apa) (?:kamu|anda|ini)\b|\b(?:kamu|anda) bisa (?:apa|bantu)\b|\bbisa (?:bantu|tanya) apa\b|\b(?:fitur|fungsi) (?:asisten|chatbot|kamu)\b|\bcara (?:pakai|menggunakan) (?:asisten|chatbot)\b/.test(text)) {
+    // Pertanyaan tentang kemampuan atau cara memakai asisten.
     useModel = false;
     answer = capabilitiesAnswer(user.role);
   } else if (/c\+\+|python|javascript|hello world|kode program|presiden/.test(text)) {
+    // Pertanyaan di luar topik pasar ditolak dengan sopan.
     useModel = false;
     answer = "Saya membantu pertanyaan operasional pasar. Untuk pertanyaan ini, saya belum bisa membantu. Anda bisa menanyakan stok, penawaran, pembayaran, atau pengantaran.";
   } else if (/\b(?:kurir|pengemudi|sopir|driver)(?:nya)? siapa\b|\bsiapa (?:yang )?(?:kurir|mengantar|antar|sopir|pengemudi)\b/.test(text)) {
+    // Nama kurir tidak tercatat; yang tersedia hanya jumlah pesanan siap antar.
     useModel = false;
     answer = `Nama kurir yang mengantar belum tercatat di PASARIN. ${user.role === "logistics" ? "" : `Ada ${facts.ready} pesanan${buyer ? " Anda" : ""} yang siap diantar; status berubah menjadi selesai setelah kurir mengonfirmasi serah terima.`}`.trim();
   } else if (oversight && /\bjumlah (?:pedagang|kios|lapak)\b|\b(?:pedagang|kios|lapak) (?:ada )?berapa\b|\bberapa (?:pedagang|kios|lapak)\b/.test(text)) {
+    // Jumlah kios: hanya untuk pengelola dan admin.
     useModel = false;
     const withStock = new Set(snapshot.stocks.filter((stock) => stock.remainingKg > 0).map((stock) => stock.vendorId)).size;
     const withOffers = new Set(snapshot.offers.filter((offer) => offer.status === "active").map((offer) => offer.vendorId)).size;
     answer = `${KIOSKS.length} kios terdaftar di PASARIN. ${withStock} kios masih punya stok tersisa dan ${withOffers} kios punya penawaran aktif.`;
   } else if (oversight && /\bbelum (?:bayar|dibayar|membayar)\b/.test(text) && /\bsiapa\b|\bdaftar\b|\bmana\b/.test(text)) {
+    // Daftar pembeli yang belum bayar: hanya untuk pengelola dan admin.
     useModel = false;
     const unpaid = offers.filter((offer) => offer.status === "claimed" && offer.paymentStatus === "unpaid");
     answer = unpaid.length
       ? `${unpaid.length} pesanan menunggu pembayaran:\n${limit(unpaid.map((offer) => `• ${offer.claimedBy ?? "Pembeli"}: ${commodityName(offer.commodityId)} ${kg(offer.quantityKg)} dari ${kioskLabel(offer.vendorId)}, ${rupiah(offer.totalAmountIdr)}.`)).join("\n")}`
       : "Tidak ada pesanan yang menunggu pembayaran saat ini.";
   } else if (/evaluasi|perlu (ditinjau|ditangani|dicek|diperiksa)|tindak lanjut|\bpantau\b|\bdipantau\b|\bmonitor\b/.test(text)) {
+    // Pertanyaan evaluasi atau tindak lanjut dijawab menurut peran.
     useModel = false;
     answer = operations ? evaluationAnswer(operations) : user.role === "vendor"
       ? `${facts.unverifiedStockLots} lot perlu ditimbang dan ${facts.pendingProposals} usulan penawaran menunggu persetujuan Anda. ${facts.atRisk} lot berisiko menurut model.`
       : `${facts.unpaid} pesanan menunggu pembayaran dan ${facts.ready} pesanan siap diantar dalam data akun Anda.`;
   } else if (/\bkapan\b.*\b(?:cair|masuk|dibayar|ditransfer|diterima|diteruskan)\b|\b(?:cair|masuk)(?: nya)?\b.*\bkapan\b/.test(text) && /\b(?:uang|dana|saldo|pembayaran|bayaran|cair|duit)\b/.test(text)) {
+    // Kapan dana cair.
     useModel = false;
     answer = payoutAnswer(view);
   } else if (/\b(?:keuntungan|untung|laba|rugi|pendapatan|penghasilan|pemasukan|omzet|omset|saldo|dompet|pengeluaran|belanja|tagihan|uang|penjualan|biaya|gaji|upah|bayaran)\b|\bdana (?:yang )?(?:sudah )?cair\b/.test(text)) {
+    // Keuntungan, pendapatan, saldo, dan biaya: jawabannya menjelaskan apa yang dicatat PASARIN.
     useModel = false;
     answer = earningsAnswer(user.role, snapshot);
   } else if (user.role === "vendor" && ((asksDestination && /\b(?:(?:di|men)?jual|(?:di)?salur(?:kan)?|menyalurkan|(?:di)?donasi(?:kan)?)\b/.test(text)) ||
+    // Pedagang menanyakan ke mana sayurnya cocok disalurkan.
     /\bcocok(?:nya)? (?:untuk|buat|dijual|dikirim|disalurkan)\b|\b(?:masuk|termasuk) tier\b|\btier (?:apa|berapa|mana)\b|\bkategori (?:apa|mana)\b|\b(?:untuk|buat) siapa\b|\b(?:dibuang|buang|dilempar|lempar|dikemanakan)\b/.test(text))) {
     useModel = false;
     answer = salesRouteAnswer(stocks, snapshot, commodity?.localName);
   } else if (asksDestination && buyer && /\b(?:(?:mem|di)?beli|(?:di)?klaim|dapat|cari|(?:men)?jual)\b/.test(text)) {
+    // Pembeli menanyakan di mana bisa membeli.
     useModel = false;
     answer = catalogAnswer(view, "cheap");
   } else if (/berapa.*(kurir|pengemudi|driver|armada)|jumlah.*(kurir|pengemudi|driver|armada)|\b(?:kurir|pengemudi|driver|armada)(?:nya)? (?:ada )?berapa\b/.test(text)) {
+    // Jumlah kurir tidak tercatat.
     useModel = false;
     answer = `Jumlah kurir atau pengemudi yang bertugas belum tercatat dalam data yang tersedia. Ada ${facts.ready} pesanan siap diantar; angka ini adalah jumlah pesanan, bukan jumlah kurir.`;
   } else if ((/bagaimana|cara|apa yang|bahan apa/.test(text) && /diskon|ditimbang|kendaraan|serah terima|prioritas.*dapur|boleh diklaim|membayar/.test(text)) ||
+    // Pertanyaan cara kerja: diskon, timbang, kendaraan, serah terima, klaim, pembayaran.
     (/\bbagaimana\b|\bcara\b/.test(text) && /\bbayar\b|\bklaim\b|\bpesan\b|\bmemesan\b|\bbeli\b|\bmembeli\b/.test(text)) ||
     /\b(?:ditimbang|timbang|menimbang|penimbangan)\b/.test(text) || /\bbayar (?:pakai|lewat|dengan|via) apa\b|\bmetode (?:bayar|pembayaran)\b|\bqris\b/.test(text)) {
     useModel = false;
@@ -195,36 +221,47 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     else if (/boleh diklaim/.test(text)) answer = "Klaim mengikuti peran akun: Warteg untuk Tier 1, dapur sosial untuk Tier 2, dan Maggot untuk Tier 3. Penawaran harus aktif, stok sudah ditimbang, berat masih tersedia, dan estimasi mutu masih sesuai tier. Pilih dari katalog pada dashboard Anda.";
     else answer = "Klaim penawaran yang sesuai akun Anda, buka pesanan milik Anda yang menunggu pembayaran, lalu gunakan pembayaran simulasi di dashboard. Dana dicatat dalam escrow sampai serah terima. Donasi dan lot Maggot gratis tidak memerlukan pembayaran.";
   } else if (/\b(hapus|ubah|bayar|klaim|konfirmasi|transfer|delete|pay|claim|batal|batalkan|cancel|terbitkan|kirimkan)\b/.test(text) && !/berapa|status|bagaimana|cara|siapa|kapan|kenapa|mengapa|apa/.test(text)) {
+    // Permintaan mengubah data ditolak karena asisten hanya membaca.
     useModel = false;
     answer = "Saya tidak menjalankan perubahan stok, pembayaran, klaim, atau pengantaran. Gunakan tindakan yang tersedia di dashboard sesuai hak akses Anda.";
   } else if (/\b(?:kenapa|mengapa)\b.*\b(?:(?:tidak|belum) (?:muncul|ada|tampil|terlihat|kelihatan|masuk|bisa)|hilang|kosong|sedikit|cuma|hanya)\b/.test(text)) {
+    // Mengapa data tidak muncul atau sedikit.
     useModel = false;
     answer = visibilityAnswer(view);
   } else if (/\baman (?:untuk |buat )?(?:dimakan|dikonsumsi|dimasak|pakan|maggot|ternak)\b|\blayak (?:makan|dimakan|konsumsi|dikonsumsi)\b|\b(?:bisa|boleh) (?:dimakan|dikonsumsi)\b|\bberacun\b|\bhigienis\b|\bcara (?:menyimpan|simpan)\b|\btips penyimpanan\b/.test(text)) {
+    // Keamanan pangan: aman dimakan atau dijadikan pakan.
     useModel = false;
     answer = safetyAnswer(view);
   } else if (oversight && ranks && /\bdonasi\b/.test(text)) {
+    // Peringkat donasi per kios (pengelola).
     useModel = false;
     answer = salesRankingAnswer(view, "kiosk", true);
   } else if (oversight && /\b(?:paling|terbanyak|tertinggi|terbesar|top|ranking|peringkat|sering)\b/.test(text) && /\b(?:pembeli|warteg|dapur|panti|penerima|pelanggan)\b/.test(text)) {
+    // Peringkat pembeli (pengelola).
     useModel = false;
     answer = salesRankingAnswer(view, "buyer");
   } else if (buyer && ranks && /\b(?:kios|toko|lapak|pedagang)\b/.test(text)) {
+    // Pembeli membandingkan kios di katalog.
     useModel = false;
     answer = salesRankingAnswer(view, "kiosk", false, view.active);
   } else if (oversight && ranks && /\b(?:laris|laku|terjual|penjualan|omzet|omset)\b/.test(text)) {
+    // Peringkat penjualan per kios atau komoditas (pengelola).
     useModel = false;
     answer = salesRankingAnswer(view, /\b(?:komoditas|sayur|sayuran|barang)\b/.test(text) ? "commodity" : "kiosk");
   } else if (oversight && ranks && /\b(?:kios|pedagang|lapak)\b/.test(text)) {
+    // Peringkat kios menurut risiko.
     useModel = false;
     answer = kioskRankingAnswer(view);
   } else if (oversight && ranks && /\b(?:komoditas|sayur|sayuran|barang)\b/.test(text)) {
+    // Peringkat komoditas.
     useModel = false;
     answer = commodityRankingAnswer(view);
   } else if (asksPrice && user.role !== "logistics") {
+    // Pertanyaan harga; kurir tidak melihat angka uang sehingga dilewati.
     useModel = false;
     answer = user.role === "vendor" ? vendorPriceAnswer(view) : catalogAnswer(view, /termahal|paling mahal/.test(text) ? "expensive" : "cheap");
   } else if ((user.role === "vendor" || oversight) && /\bterjual\b|\blaku\b|\bsudah dibeli\b|\bdibeli (?:siapa|oleh)\b|\bsiapa (?:saja )?(?:yang )?(?:beli|membeli|klaim|mengklaim|ambil|mengambil|pesan|memesan)\b|\bpembeli\b|\bpesanan masuk\b|\bada (?:yang )?(?:pesan|beli|order|klaim)\b/.test(text)) {
+    // Pesanan yang terjual atau dibeli siapa (pedagang dan pengelola).
     useModel = false;
     answer = vendorOrdersAnswer(view);
   } else if (user.role === "logistics" && accountNames.length > 0) {
@@ -235,18 +272,23 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
       ? `Pesanan untuk ${accountNames.join(", ")} di antrean:\n${queue.map((offer) => `• ${commodityName(offer.commodityId)} ${kg(offer.quantityKg)} dari ${kioskLabel(offer.vendorId)} (${offer.paymentStatus === "held_in_escrow" ? "sudah dibayar" : "gratis"}), siap diantar.`).join("\n")}`
       : `Tidak ada pesanan untuk ${accountNames.join(", ")} di antrean siap antar. Pesanan yang belum dibayar belum masuk antrean kurir.`;
   } else if (user.role === "logistics" && !/\b(?:selesai|terkirim|sudah diantar)\b/.test(text) && /\btujuan\b|\balamat\b|\bkemana\b|\bke mana\b|\bjemput\b|\bambil (?:dimana|di mana)\b|\bdari mana\b|\brute\b|\bdaftar\b|\bmuatan\b|\bberat\b|\bberapa kg\b|\btotal kg\b|\bkendaraan\b|\barmada\b|\bmobil\b|\bmotor\b|\btruk\b|\bpakai apa\b|\bantar ke\b|\bpenerima\b|\bkapan\b|\brincian\b|\bdetail\b|\bantar\b|\bdiantar\b|\bantaran\b/.test(text)) {
+    // Kurir menanyakan tujuan, alamat, atau titik jemput.
     useModel = false;
     answer = courierQueueAnswer(view, /\balamat\b/.test(text));
   } else if (/\bkapan\b.*\b(?:diantar|dikirim|sampai|datang|tiba)\b|\bsudah (?:sampai|dikirim|diantar|datang)\b|\bsampai mana\b|\blacak\b|\bposisi pesanan\b|\bpesanan saya (?:dimana|di mana)\b|\b(?:rincian|detail|daftar) pesanan\b|\bpesanan (?:saya )?apa saja\b/.test(text)) {
+    // Pelacakan pesanan.
     useModel = false;
     answer = user.role === "vendor" ? vendorOrdersAnswer(view) : buyer ? buyerOrdersAnswer(view) : user.role === "logistics" ? courierQueueAnswer(view, false) : vendorOrdersAnswer(view);
   } else if (buyer && /\bhemat\b|\bpenghematan\b|\bselisih harga\b|\blebih murah berapa\b/.test(text)) {
+    // Penghematan pembeli dibanding harga normal.
     useModel = false;
     answer = savingsAnswer(view);
   } else if (/\bpaling (?:berisiko|layu|busuk|kritis|rusak|parah|tua|lama|cepat (?:busuk|layu|rusak))\b|\b(?:hampir|mau|akan|cepat|bentar lagi|sebentar lagi) (?:busuk|layu|rusak|afkir)\b|\b(?:jual|salurkan|tawarkan|habiskan) (?:duluan|dulu|lebih dulu)\b|\bdidahulukan\b|\bpaling segar\b|\bmasih segar\b|\byang segar\b/.test(text)) {
+    // Lot paling berisiko atau paling segar.
     useModel = false;
     answer = freshnessAnswer(view, /segar/.test(text) && !/busuk|layu|rusak|berisiko/.test(text));
   } else if (/\bdampak\b|\bdiselamatkan\b|\bterselamatkan\b|\btersalurkan\b|\bporsi\b|\bkontribusi\b|\bcapaian\b|\bpencapaian\b|\bsampah\b|\blimbah\b|\bfood waste\b|\b(?:diterima|terima|dapat)\b.*\bkg\b|\bkg\b.*\b(?:diterima|terima|dapat)\b/.test(text)) {
+    // Dampak lingkungan dan sosial.
     useModel = false;
     answer = impactAnswer(view);
   } else if (advisory) {
@@ -255,6 +297,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     openQuestion = true;
     answer = fallbackAnswer(user.role);
   } else if (/\bapa yang (?:harus|sebaiknya|perlu) (?:saya )?(?:lakukan|kerjakan|dikerjakan|dicek|diperiksa|ditangani)\b|\b(?:saran|rekomendasi|tips)\b|\blangkah (?:selanjutnya|berikutnya)\b|\bharus apa\b|\bprioritas (?:saya|hari ini|sekarang)\b/.test(text)) {
+    // Pertanyaan apa yang sebaiknya dilakukan.
     useModel = false;
     answer = actionAnswer(view);
   } else if (
@@ -278,6 +321,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
           : `Komoditas yang tersedia dalam data ruang kerja Anda: ${commodityListString}.`;
     }
   } else if (commodity && /ada|punya|tersedia|apakah|cek|lihat/.test(text) && !/harga|diskon|layu|risiko|stok/.test(text)) {
+    // Menanyakan ketersediaan satu komoditas.
     useModel = false;
     const matchingStocks = snapshot.stocks.filter((item) => item.commodityId === commodity.id);
     const totalRemaining = roundKg(matchingStocks.reduce((sum, item) => sum + item.remainingKg, 0));
@@ -287,32 +331,42 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
       answer = user.role === "vendor" ? `Ada komoditas ${commodity.localName} di kios Anda: ${matchingStocks.length} lot dengan sisa tercatat ${totalRemaining} kg (${matchingStocks.filter((s) => s.verifiedAt).length} lot terverifikasi).` : `Ada komoditas ${commodity.localName} dalam data akun Anda: ${matchingStocks.length} lot dengan total ${totalRemaining} kg.`;
     }
   } else if (/cuaca|suhu|kelembapan|weather|hujan|panas/.test(text)) {
+    // Cuaca los pasar; angkanya estimasi bila sensor tidak tersedia.
     answer = `Suhu ${facts.weather.temperatureC} °C dan kelembapan ${facts.weather.humidityPercent}%. ${facts.weather.isEstimated ? "Cuaca ini merupakan estimasi, bukan pengukuran langsung." : "Cuaca berasal dari telemetri yang tersedia."}`;
   } else if (/pengantaran|antar|delivery/.test(text) && /hari ini|selesai/.test(text)) {
+    // Jumlah pengantaran selesai hari ini.
     answer = `${metrics.deliveriesToday} pesanan selesai diantar hari ini${oversight ? " di pasar" : " dalam pesanan yang terlihat di akun Anda"}.`;
   } else if (/pasokan.*hari ini|kedatangan|arrivals|\b(?:lot|barang|stok|pasokan) (?:yang )?(?:masuk|datang)\b/.test(text)) {
+    // Jumlah lot pasokan yang masuk hari ini (lot, bukan kg).
     answer = `${metrics.arrivalsToday} lot pasokan masuk hari ini${oversight ? " di pasar" : " dalam data akun Anda"}. Angka ini menghitung lot, bukan berat dalam kg.`;
   } else if (/risiko|berisiko|layu|afkir|busuk/.test(text)) {
+    // Lot berisiko menurut model peluruhan; ini estimasi, bukan pemeriksaan fisik.
     answer = `${facts.commodity}: ${facts.atRisk} lot berisiko, dengan sisa tercatat ${facts.estimatedRiskKg} kg. Risiko merupakan estimasi peluruhan, bukan hasil pemeriksaan mutu fisik.`;
   } else if (/stok|pasokan|inventory/.test(text) && buyer) {
     // Pembeli tidak punya inventaris; "stok" berarti barang yang bisa diklaim.
     useModel = false;
     answer = catalogAnswer(view, "cheap");
   } else if (/stok|pasokan|inventory/.test(text)) {
+    // Pedagang dan pengelola: sisa stok terverifikasi.
     useModel = false;
     answer =`${facts.commodity}${user.role === "vendor" ? " di kios Anda" : " dalam data yang terlihat"}: sisa stok terverifikasi ${facts.verifiedStockKg} kg. Stok yang belum ditimbang tidak termasuk angka terverifikasi. Ada ${facts.unverifiedStockLots} lot yang belum dikonfirmasi timbang.`;
   } else if (/antar|kurir|logistik|delivery/.test(text)) {
+    // Status antrean pengantaran dan pembayaran.
     answer = `${facts.ready} pesanan siap diantar dan ${facts.unpaid} pesanan menunggu pembayaran untuk ${facts.commodity}.`;
   } else if (/settled|selesai|transaksi/.test(text)) {
+    // Jumlah pesanan yang sudah selesai diserahterimakan.
     answer = `${facts.settled} pesanan berstatus settled untuk ${facts.commodity} dalam snapshot yang dapat Anda akses.`;
   } else if (/bayar|pembayaran|escrow/.test(text)) {
+    // Jumlah pesanan yang menunggu pembayaran.
     answer = `${facts.unpaid} pesanan menunggu pembayaran untuk ${facts.commodity}.`;
   } else if (/pesanan|order/.test(text) && !/penawaran/.test(text)) {
+    // Ringkasan pesanan menurut kepemilikan: milik pembeli, kios, atau seluruh pasar.
     const owner = buyer ? "Anda" : user.role === "vendor" ? "kios Anda" : oversight ? "di pasar" : "yang terlihat di akun Anda";
     answer = facts.orders === 0
       ? `Belum ada pesanan ${owner}.`
       : `Ada ${facts.orders} pesanan ${owner}: ${facts.unpaid} menunggu pembayaran, ${facts.ready} siap diantar, dan ${facts.settled} selesai diserahterimakan.`;
   } else if (/penawaran|murah|harga|donasi|alokasi|biomassa|maggot|tersedia|katalog|gratis/.test(text)) {
+    // Pertanyaan penawaran, harga, dan donasi: hitung dari penawaran aktif.
     // Pertanyaan donasi hanya menghitung lot donasi, sama dengan filter "Donasi" di katalog dapur sosial.
     const listed = /donasi/.test(text) ? active.filter((item) => isDonation(item)) : active;
     const listedKg = roundKg(listed.reduce((sum, item) => sum + item.quantityKg, 0));
@@ -320,9 +374,11 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     const lowest = listed.length ? Math.min(...listed.map((item) => item.salvagePricePerKg)) : null;
     answer = `${facts.commodity}: ${listed.length} ${label} dengan total ${listedKg} kg${lowest === null ? ". Belum ada harga penawaran aktif." : lowest === 0 ? ", tanpa biaya (Rp0)." : `, harga terendah Rp${lowest}/kg.`} Ketersediaan perlu diperiksa kembali saat klaim.`;
   } else if (oversight && kioskIds.length > 0) {
+    // Pengelola menyebut kios tertentu: ringkasan kios itu.
     useModel = false;
     answer = kioskSummaryAnswer(view);
   } else if (/ringkas|kondisi|status|halo|bantu|summary|laporan|rekap|update|kabar|keadaan|gambaran/.test(text)) {
+    // Ringkasan umum; kurir mendapat antrean pengantaran, pengelola mendapat metrik pasar.
     if (user.role === "logistics") {
       useModel = false;
       answer = courierQueueAnswer(view, false);
@@ -330,6 +386,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
       const ops = operations;
       answer = `Hari ini ${ops.arrivalsToday} lot pasokan masuk dan ${ops.deliveriesToday} pesanan selesai diantar. Ada ${ops.activeOffers} penawaran aktif, ${ops.pending} menunggu timbang atau konfirmasi pedagang, ${ops.unpaid} pesanan menunggu pembayaran, ${ops.ready} siap diantar, dan ${ops.atRisk} lot berisiko menurut model.`;
     } else {
+      // Peran selain kurir dan pengelola mendapat ringkasan data akunnya sendiri.
       answer = `${facts.activeOffers} penawaran aktif (${facts.availableKg} kg), ${facts.unpaid} pesanan menunggu pembayaran, dan ${facts.ready} siap diantar. Anda dapat bertanya tentang stok, penawaran, pengantaran, transaksi selesai, atau cuaca.`;
     }
   } else {
@@ -339,11 +396,14 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
     answer = fallbackAnswer(user.role);
   }
 
+  // Model hanya dipanggil bila kunci ada, tidak dipaksa heuristik, dan jawaban memang butuh model: pertanyaan terbuka, atau jawaban pasti yang ingin dirapikan.
   const key = getEnv().GEMINI_API_KEY;
   if (!key || forceHeuristic || (!useModel && !openQuestion)) return { summary: answer, source: "data_pasar", metrics };
   const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+  // Galat model apa pun jatuh ke jawaban berbasis data; pengguna tidak melihat kegagalan.
   try {
     const client = new GoogleGenAI({ apiKey: key, httpOptions: { fetch: (input, init) => globalThis.fetch(input, init) } });
+    // Pertanyaan terbuka: model menerima aturan dan data yang sudah disaring peran, ditambah katalog publik untuk pedagang dan kurir.
     const response = openQuestion
       ? await client.models.generateContent({
         model,
@@ -356,6 +416,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
           abortSignal: AbortSignal.timeout(12000),
         },
       })
+      // Jawaban pasti: model hanya merangkai ulang groundedAnswer, dengan satuan tiap angka agar tidak salah tafsir.
       : await client.models.generateContent({
         model,
         contents: JSON.stringify({ question, role: user.role, scope, facts, metrics, groundedAnswer: answer, units: {
@@ -372,6 +433,7 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
           abortSignal: AbortSignal.timeout(10000),
         },
       });
+    // Markdown dari model dibersihkan sebelum tampil di chat.
     const text = plainText(response.text ?? "");
     if (text) return { summary: text, source: "gemini", model, metrics };
   } catch {
@@ -556,8 +618,10 @@ function reservedByStock(offers: Offer[]) {
 // Tujuan penyaluran stok pedagang menurut estimasi mutu (Warteg, Dapur Sosial, atau Maggot).
 // Berat yang sudah dipesan tidak dihitung, dan lot yang belum ditimbang ditandai terpisah.
 function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commodityLabel?: string) {
+  // Lot yang sudah dipesan pembeli dan lot yang sudah punya penawaran aktif, supaya tidak dihitung dua kali.
   const reservedKg = reservedByStock(snapshot.offers);
   const listedStocks = new Set(snapshot.offers.filter((offer) => offer.status === "active").map((offer) => offer.stockId));
+  // Pengelompokan per tier: berat terkonfirmasi, jumlah lot belum ditimbang, dan nama komoditas.
   const groups = new Map<Tier, { kg: number; needsWeighing: number; names: Set<string> }>();
   let unknownQuality = 0;
   let freshLots = 0;
@@ -565,18 +629,23 @@ function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commod
   let unpublishedLots = 0;
   for (const stock of stocks) {
     const availableKg = roundKg(stock.remainingKg - (reservedKg.get(stock.id) ?? 0));
+    // Stok yang seluruhnya sudah dipesan tidak dihitung.
     if (availableKg <= 0) continue;
     const health = snapshot.stockHealth[stock.id];
+    // Lot tanpa skor mutu valid tidak bisa ditentukan tujuannya; dihitung terpisah.
     if (!health || !Number.isFinite(health.decayScore)) {
       unknownQuality++;
       continue;
     }
+    // Tujuan menurut skor susut: Warteg, dapur sosial, atau maggot.
     const tier = distributionTierForDecay(health.decayScore);
     const group = groups.get(tier) ?? { kg: 0, needsWeighing: 0, names: new Set<string>() };
+    // Berat hanya dihitung bila lot sudah ditimbang; selain itu hanya dihitung sebagai lot perlu ditimbang.
     if (stock.verifiedAt) group.kg += availableKg;
     else group.needsWeighing++;
     group.names.add(commodityName(stock.commodityId));
     groups.set(tier, group);
+    // Lot yang belum diterbitkan (atau belum ditimbang) dihitung terpisah; yang masih segar bisa dijual eceran.
     if (stock.verifiedAt && listedStocks.has(stock.id)) {
       listedLots++;
     } else {
@@ -586,6 +655,7 @@ function salesRouteAnswer(stocks: Snapshot["stocks"], snapshot: Snapshot, commod
   }
 
   const subject = commodityLabel ? ` ${commodityLabel}` : "";
+  // Satu baris jawaban per tier yang punya stok.
   const lines = (Object.keys(ROUTES) as Tier[]).flatMap((tier) => {
     const group = groups.get(tier);
     if (!group) return [];
