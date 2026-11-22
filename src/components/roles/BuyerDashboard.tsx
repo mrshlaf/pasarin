@@ -13,6 +13,7 @@ import type { BuyerRole } from "@/lib/serverSimulationState";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { MarketDialog } from "@/components/common/MarketDialog";
+import { DecayExplainer } from "@/components/common/DecayExplainer";
 import {
   DecayMeter, EmptyState, LedgerRow, LotFacts, MarketMetrics, MarketSection, StatusPill,
   commodityName, dateLabel, formatElapsedHours, formatRemainingShelfLife, kg, kioskLabel, marketButton, marketSecondary, offerTitle, orderStatus, rupiah,
@@ -249,6 +250,8 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
                           )}
                         </div>
                         <p className="mt-1 text-xs leading-5 text-ink-muted">Estimasi Arrhenius dari lama dipajang dan kondisi pasar, bukan hasil pemeriksaan fisik.</p>
+                        {/* Penjelasan skor: langkah rumus dan kalimat dari AI atau template. */}
+                        <DecayExplainer stockId={offer.stockId} />
                       </div>
                     ) : <p className="mt-3 text-sm text-ink-muted">Perkiraan mutu belum tersedia.</p>}
                   </div>

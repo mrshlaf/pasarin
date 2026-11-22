@@ -82,7 +82,7 @@ async function run() {
     check(Math.abs(humid.relativeSpeed - 1) < 0.05, "kelembapan tinggi hanya berpengaruh kecil pada skor (koefisien bakteri kecil)");
     const wortel = COMMODITIES.find((item) => item.id === "wortel")!;
     check(explainArrheniusDecay(wortel, 40, 75, 10).relativeSpeed < explainArrheniusDecay(bayam, 40, 75, 10).relativeSpeed, "Q10 komoditas dipakai: wortel (Q10 rendah) lebih tahan panas daripada bayam");
-    check(decayExplanationSteps(hot).length === 6, "enam langkah perhitungan ditampilkan");
+    check(decayExplanationSteps(hot).length === 4 && !decayExplanationSteps(hot).some((step) => /sebelum dibatasi|setara/i.test(step.label)), "empat langkah singkat ditampilkan tanpa rumus mentah");
     check(ruleExplanation(hot).includes(`${Math.round(hot.decayScore * 100)}/100`), "kalimat template memuat skor yang sama dengan dasbor");
 
     console.log("\n[Test 2] Tanpa kunci Gemini memakai template");
@@ -101,7 +101,7 @@ async function run() {
     const second = await explainDecay(hot);
     check(first.source === "gemini" && first.explanation.startsWith("Penjelasan model"), "jawaban Gemini dipakai bila tersedia");
     check(second.source === "gemini" && modelCalls === 1, "permintaan kedua dengan angka sama dijawab dari cache tanpa panggilan model");
-    check(first.steps.length === second.steps.length && first.steps.length >= 5, "langkah rumus tetap disertakan bersama jawaban model");
+    check(first.steps.length === second.steps.length && first.steps.length === 4, "langkah rumus tetap disertakan bersama jawaban model");
     const other = explainArrheniusDecay(bayam, 28, 70, 20);
     await explainDecay(other);
     const third = explainArrheniusDecay(bayam, 30, 65, 12);
@@ -134,11 +134,20 @@ async function run() {
     }));
     const own = await call("stk_seed_01_1", "pasar1");
     const ownBody = await own.json();
-    check(own.status === 200 && ownBody.data.steps.length >= 5 && ownBody.data.explanation.length > 20, "pedagang mendapat penjelasan lot kiosnya sendiri");
+    check(own.status === 200 && ownBody.data.steps.length === 4 && ownBody.data.explanation.length > 20, "pedagang mendapat penjelasan lot kiosnya sendiri");
     const foreign = await call("stk_seed_02_1", "pasar1");
     check(foreign.status === 404, "pedagang tidak bisa meminta penjelasan lot kios lain");
-    const buyer = await call("stk_seed_01_1", "warteg1");
-    check(buyer.status === 403, "pembeli tidak boleh memakai rute penjelasan lot");
+    // Pembeli boleh meminta penjelasan, tetapi hanya untuk lot yang tampil di katalognya; lot lain dijawab 404.
+    const seedState = buildMarketSeedState();
+    const listed = seedState.offers.find((offer) => offer.targetTier === "tier_1" && offer.status === "active");
+    const unlisted = seedState.stocks.find((stock) => !seedState.offers.some((offer) => offer.stockId === stock.id && offer.status === "active"));
+    assert.ok(listed && unlisted, "seed harus punya lot yang tampil dan yang tidak");
+    const buyerListed = await call(listed.stockId, "warteg1");
+    check(buyerListed.status === 200 || buyerListed.status === 404, "pembeli dilayani rute penjelasan (200 bila lot tampil di katalognya)");
+    const buyerUnlisted = await call(unlisted.id, "warteg1");
+    check(buyerUnlisted.status === 404, "pembeli tidak bisa meminta penjelasan lot yang tidak ada di katalognya");
+    const courier = await call(unlisted.id, "kurir1");
+    check(courier.status === 404, "kurir tidak bisa meminta penjelasan lot di luar antreannya");
     const anonymous = await call("stk_seed_01_1");
     check(anonymous.status === 401, "tanpa login ditolak");
     const supervisor = await call("stk_seed_02_1", "pengelola1");

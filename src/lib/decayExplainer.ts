@@ -43,40 +43,33 @@ function shelfLife(b: DecayBreakdown) {
   return `sekitar ${num(b.hoursRemaining, 1)} jam lagi`;
 }
 
-// Kalimat kecepatan peluruhan dibanding kondisi acuan (32,5 °C dan 75%).
+// Kalimat kecepatan peluruhan dibanding kondisi acuan (32,5 °C dan 75%), dalam bahasa sehari-hari.
 function speedSentence(b: DecayBreakdown) {
-  if (b.relativeSpeed >= 1.05) return `${num(b.relativeSpeed)}× lebih cepat dari kondisi acuan 32,5 °C dan 75%.`;
-  if (b.relativeSpeed <= 0.95) return `${num(b.relativeSpeed)}× dari kecepatan acuan, jadi lebih lambat karena lebih sejuk atau kelembapannya lebih baik.`;
-  return "sama dengan kondisi acuan 32,5 °C dan 75%, jadi tidak mempercepat atau memperlambat.";
+  if (b.relativeSpeed >= 1.05) return "lebih cepat dari kondisi acuan (32,5 °C dan 75%), jadi sayur lebih cepat layu.";
+  if (b.relativeSpeed <= 0.95) return "lebih lambat dari kondisi acuan (32,5 °C dan 75%) karena lebih sejuk.";
+  return "sama dengan kondisi acuan (32,5 °C dan 75%), jadi tidak mempercepat atau memperlambat.";
 }
 
-// Langkah perhitungan berurutan, dari lama pajang sampai skor akhir.
+// Lama pajang dibanding batasnya, dalam kalimat pendek: persen bila belum mencapai batas, kelipatan bila sudah lewat.
+function exposureSentence(b: DecayBreakdown) {
+  if (b.exposure < 1) return `${num(b.exposure * 100, 0)}% dari batas ${num(b.horizonHours, 0)} jam.`;
+  if (b.exposure < 1.2) return `Sudah mencapai batas ${num(b.horizonHours, 0)} jam.`;
+  return `Sudah ${num(b.exposure, 1)}× batas ${num(b.horizonHours, 0)} jam.`;
+}
+
+// Langkah perhitungan yang ditampilkan: empat baris pendek, tanpa rumus mentah.
 export function decayExplanationSteps(b: DecayBreakdown): DecayStep[] {
   return [
-    {
-      label: "Lama dipajang",
-      value: `${num(b.hoursElapsed, 1)} jam`,
-      note: `Batas sampai tidak layak pada kondisi acuan ${num(b.horizonHours, 0)} jam, jadi paparan ${num(b.exposure * 100, 0)}% dari batas.`,
-    },
+    { label: "Lama dipajang", value: `${num(b.hoursElapsed, 1)} jam`, note: exposureSentence(b) },
     {
       label: "Suhu dan kelembapan",
       value: `${num(b.temperatureCelsius, 1)} °C, ${num(b.relativeHumidityPercent, 0)}%`,
       note: `Peluruhan ${speedSentence(b)}`,
     },
     {
-      label: "Lama pajang setara",
-      value: `${num(b.hoursElapsed * b.relativeSpeed, 1)} jam`,
-      note: `Lama pajang × kecepatan relatif = setara berapa jam pada kondisi acuan, dibanding batas ${num(b.horizonHours, 0)} jam.`,
-    },
-    {
-      label: "Skor sebelum dibatasi",
-      value: num(b.rawScore, 3),
-      note: `(paparan × kecepatan = ${num(b.exposure * b.relativeSpeed, 3)})^1,15 × 0,82.`,
-    },
-    {
       label: "Skor susut",
       value: `${Math.round(b.decayScore * 100)}/100`,
-      note: `Kategori ${CONDITION[b.condition]}. Batasnya 35 segar, 65 layu ringan, 85 layu sedang.`,
+      note: `Kategori ${CONDITION[b.condition]}. Batasnya 35 segar, 65 layu ringan, 85 layu sedang.${b.rawScore > 1 ? " Hasil hitung melebihi 100, jadi ditampilkan 100." : ""}`,
     },
     {
       label: "Sisa simpan",
@@ -89,7 +82,7 @@ export function decayExplanationSteps(b: DecayBreakdown): DecayStep[] {
 // Kalimat penjelasan dari template, dipakai sebagai cadangan tanpa AI.
 export function ruleExplanation(b: DecayBreakdown) {
   const parts = [
-    `${b.commodityName} sudah dipajang ${num(b.hoursElapsed, 1)} jam dari batas ${num(b.horizonHours, 0)} jam (${num(b.exposure * 100, 0)}% dari umur simpan).`,
+    `${b.commodityName} sudah dipajang ${num(b.hoursElapsed, 1)} jam. ${exposureSentence(b)}`,
     `Suhu ${num(b.temperatureCelsius, 1)} °C dan kelembapan ${num(b.relativeHumidityPercent, 0)}%: peluruhan ${speedSentence(b)}`,
     `Skor susutnya ${Math.round(b.decayScore * 100)}/100, kategori ${CONDITION[b.condition]}, sehingga cocok untuk ${b.tierLabel}.`,
     b.decayScore >= 0.85 ? "Lot ini sudah melewati batas konsumsi manusia." : `Perkiraan sisa simpan ${shelfLife(b)}.`,
@@ -98,28 +91,41 @@ export function ruleExplanation(b: DecayBreakdown) {
   return parts.join(" ");
 }
 
-// Instruksi model: hanya memakai angka yang diberikan dan menulis teks polos.
-const INSTRUCTION = [
-  "Kamu Asisten PASARIN. Jelaskan kepada pedagang pasar mengapa sebuah lot sayur atau buah punya skor susut tertentu.",
-  "Gunakan hanya angka pada data; jangan mengubah, membulatkan ulang, atau mengarang angka. Skor susut berskala 0 sampai 100: di bawah 35 segar, 35-64 layu ringan, 65-84 layu sedang, 85 ke atas tidak layak konsumsi.",
-  "Tulis 3 sampai 5 kalimat bahasa Indonesia yang sederhana: faktor yang paling berpengaruh (lama pajang, suhu, kelembapan), arti skornya untuk tujuan penyaluran, lalu satu saran praktis.",
-  "Sebutkan bahwa skor adalah estimasi model. Tulis teks biasa tanpa Markdown.",
-].join(" ");
+// Audiens penjelasan menentukan jenis saran praktis di akhir kalimat.
+export type ExplainAudience = "pedagang" | "pembeli" | "kurir";
+
+// Saran penutup menurut audiens.
+const ADVICE: Record<ExplainAudience, string> = {
+  pedagang: "satu saran praktis untuk pedagang (misalnya segera ditimbang, dijual, atau dialihkan sesuai tujuannya)",
+  pembeli: "satu saran praktis untuk pembeli mitra (apakah lot ini sebaiknya segera diolah atau diklaim, sesuai tujuannya)",
+  kurir: "satu catatan untuk kurir tentang seberapa mendesak lot ini diantar",
+};
+
+// Instruksi model: hanya memakai angka yang diberikan dan menulis teks polos, langsung ke penjelasan tanpa sapaan.
+function instructionFor(audience: ExplainAudience) {
+  return [
+    "Kamu Asisten PASARIN. Jelaskan mengapa sebuah lot sayur atau buah punya skor susut tertentu.",
+    "Jangan menyapa dan jangan memperkenalkan diri; langsung ke penjelasan. Sebut pembaca dengan Anda, bukan Kak.",
+    "Gunakan hanya angka pada data; jangan mengubah, membulatkan ulang, atau mengarang angka. Skor susut berskala 0 sampai 100: di bawah 35 segar, 35-64 layu ringan, 65-84 layu sedang, 85 ke atas tidak layak konsumsi.",
+    "Tulis 3 sampai 4 kalimat bahasa Indonesia yang sederhana: faktor yang paling berpengaruh (lama pajang, suhu, kelembapan), arti skornya untuk tujuan penyaluran, lalu " + ADVICE[audience] + ".",
+    "Sebutkan bahwa skor adalah estimasi model. Tulis teks biasa tanpa Markdown.",
+  ].join(" ");
+}
 
 // Kunci cache dari angka yang dibulatkan, agar lot dengan kondisi hampir sama memakai jawaban yang sama.
-function cacheKey(b: DecayBreakdown) {
-  return [b.commodityName, Math.round(b.decayScore * 100), Math.round(b.temperatureCelsius), Math.round(b.relativeHumidityPercent),
+function cacheKey(b: DecayBreakdown, audience: ExplainAudience) {
+  return [audience, b.commodityName, Math.round(b.decayScore * 100), Math.round(b.temperatureCelsius), Math.round(b.relativeHumidityPercent),
     Math.round(b.hoursElapsed * 2)].join("|");
 }
 
 // Menyusun penjelasan lengkap: langkah dari rumus, lalu kalimat dari Gemini atau template.
-export async function explainDecay(b: DecayBreakdown, forceHeuristic = false): Promise<DecayExplanation> {
+export async function explainDecay(b: DecayBreakdown, forceHeuristic = false, audience: ExplainAudience = "pedagang"): Promise<DecayExplanation> {
   const steps = decayExplanationSteps(b);
   const fallback: DecayExplanation = { steps, explanation: ruleExplanation(b), source: "rumus" };
   const key = getEnv().GEMINI_API_KEY;
   if (!key || forceHeuristic || key.includes("your-gemini") || key.length < 10) return fallback;
 
-  const cached = cachedAnswer(cacheKey(b));
+  const cached = cachedAnswer(cacheKey(b, audience));
   if (cached) return { steps, explanation: cached, source: "gemini" };
   // Batas harian atau masa jeda 429 berlaku: pakai template tanpa memanggil model.
   if (!reserveAiCall()) return fallback;
@@ -140,11 +146,11 @@ export async function explainDecay(b: DecayBreakdown, forceHeuristic = false): P
         tujuan: b.tierLabel,
         sisaSimpanJam: b.decayScore >= 0.85 ? 0 : Number(b.hoursRemaining.toFixed(1)),
       }),
-      config: { systemInstruction: INSTRUCTION, temperature: 0.2, maxOutputTokens: 700, abortSignal: AbortSignal.timeout(10000) },
+      config: { systemInstruction: instructionFor(audience), temperature: 0.2, maxOutputTokens: 700, abortSignal: AbortSignal.timeout(10000) },
     });
     const text = plainText(response.text ?? "");
     if (text.length > 20) {
-      storeAnswer(cacheKey(b), text, CACHE_TTL_MS);
+      storeAnswer(cacheKey(b, audience), text, CACHE_TTL_MS);
       return { steps, explanation: text, source: "gemini" };
     }
   } catch (error) {

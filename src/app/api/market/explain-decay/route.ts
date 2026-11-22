@@ -6,7 +6,8 @@ import { z } from "zod";
 import { COMMODITIES } from "@/data/commodities";
 import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-response";
 import { requireApiRole } from "@/lib/apiAuth";
-import { explainDecay } from "@/lib/decayExplainer";
+import { APP_ROLES } from "@/data/accounts";
+import { explainDecay, type ExplainAudience } from "@/lib/decayExplainer";
 import { explainArrheniusDecay } from "@/lib/pasarinCore";
 import { allowRequest } from "@/lib/rateLimit";
 import { readMarketSnapshot } from "@/lib/serverSimulationState";
@@ -14,8 +15,8 @@ import { readMarketSnapshot } from "@/lib/serverSimulationState";
 // Selalu dihitung saat diminta karena bergantung pada waktu dan cuaca.
 export const dynamic = "force-dynamic";
 
-// Hanya pemilik stok (pedagang) dan pengawas yang boleh melihat penjelasan lot.
-const roles = ["vendor", "manager", "admin"] as const;
+// Semua peran yang melihat skor susut boleh meminta penjelasan; data lot tetap disaring menurut peran di snapshot.
+const roles = APP_ROLES;
 // Body hanya berisi ID lot; strictObject menolak field tambahan.
 const body = z.strictObject({ stockId: z.string().trim().min(1).max(100) });
 
@@ -38,7 +39,9 @@ export async function POST(req: NextRequest) {
     const commodity = stock ? COMMODITIES.find((item) => item.id === stock.commodityId) : undefined;
     if (!stock || !health || !commodity) return errorResponse("Lot tidak ditemukan atau belum bisa dievaluasi.", 404);
     const breakdown = explainArrheniusDecay(commodity, health.temperatureC, health.humidityPercent, health.hoursElapsed);
-    return successResponse(await explainDecay(breakdown));
+    // Saran penutup menyesuaikan peran: pedagang dan pengawas, pembeli, atau kurir.
+    const audience: ExplainAudience = user.role === "logistics" ? "kurir" : user.role === "warteg" || user.role === "social_kitchen" || user.role === "maggot" ? "pembeli" : "pedagang";
+    return successResponse(await explainDecay(breakdown, false, audience));
   } catch (error) {
     console.error("Cannot explain decay", error);
     return errorResponse("Penjelasan sedang tidak tersedia.", 503);

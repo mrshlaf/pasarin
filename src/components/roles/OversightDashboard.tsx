@@ -10,6 +10,7 @@ import { apiFetch } from "@/lib/apiFetch";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import type { MetabolismTrialReport } from "@/lib/marketMetabolismSimulator";
 import { MarketDialog } from "@/components/common/MarketDialog";
+import { DecayExplainer } from "@/components/common/DecayExplainer";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
   EmptyState, LedgerRow, LotFacts, MarketMetrics, MarketSection, StatusPill, TierChip,
@@ -155,6 +156,8 @@ export function OversightDashboard() {
                           <span>Estimasi mutu: {stockHealth[offer.stockId]?.tierLabel || stockHealth[offer.stockId]?.condition} · Estimasi sisa simpan: <strong className="font-semibold text-ink">{formatRemainingShelfLife(stockHealth[offer.stockId]?.hoursRemaining ?? 0, stockHealth[offer.stockId]?.decayScore)}</strong></span>
                         </p>
                       )}
+                      {/* Penjelasan skor susut lot ini untuk pengawas. */}
+                      {stockHealth[offer.stockId] && <DecayExplainer stockId={offer.stockId} />}
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <StatusPill label={pending ? "Perlu timbang" : orderStatus(offer)} />

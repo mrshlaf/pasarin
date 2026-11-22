@@ -26,6 +26,7 @@ import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { MarketDialog } from "@/components/common/MarketDialog";
+import { DecayExplainer } from "@/components/common/DecayExplainer";
 import {
   EmptyState,
   LedgerRow,
@@ -380,6 +381,8 @@ export function LogisticsDashboard() {
                           </span>
                         </p>
                       )}
+                      {/* Penjelasan skor susut lot ini untuk kurir. */}
+                      {stockHealth[offer.stockId] && <DecayExplainer stockId={offer.stockId} />}
                     </div>
 
                     {isFreeMaggotOffer(offer) ? (
