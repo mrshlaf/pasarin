@@ -61,15 +61,21 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const role = workspace.userId === userId ? workspace.role : user?.role ?? "vendor";
   // Mengganti peran tampilan dashboard; server tetap menolak aksi di luar peran akun.
   const setRole = (next: AppRole) => setWorkspace({ userId, role: next });
+  // Snapshot terakhir dari server; hanya dipakai bila milik akun yang sedang masuk.
   const [snapshot, setSnapshot] = useState<MarketSnapshot | null>(null);
   const [feedback, setFeedback] = useState<(MarketActionResult & { userId: string }) | null>(null);
   const [syncError, setSyncError] = useState<{ userId: string; message: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // Penanda state UI: sedang bermutasi, akun yang sedang disinkronkan, dan penghitung pemicu muat ulang.
   const [syncingUserId, setSyncingUserId] = useState<string | null>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+  // Jam klien, dihitung ulang tiap detik agar skor susut tampak bergerak antar sinkronisasi.
   const [now, setNow] = useState(() => Date.now());
+  // generation menolak respons polling yang lebih tua dari mutasi terakhir; changing mencegah dua mutasi berjalan bersamaan.
   const generation = useRef(0);
+  // Detak satu detik untuk jam klien.
   const changing = useRef(false);
+// Data pasar milik akun saat ini; kosong bila snapshot masih milik akun lain (misalnya setelah berganti akun).
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -82,6 +88,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const transactions = data?.transactions ?? [];
   const vendorWalletBalanceIdr = data?.vendorWalletIdr ?? 0;
 
+  // Skor susut disesuaikan di klien: waktu sejak sinkronisasi terakhir ditambahkan sehingga sisa simpan terus berkurang tanpa memanggil server.
   // Kalkulasi peluruhan dinamis berbasis detik jam aktual peramban klien
   const liveStockHealth = data?.stockHealth
     ? Object.fromEntries(
@@ -90,6 +97,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
           const deltaHours = Math.max(0, (now - (snapshot?.syncedAt ?? now)) / 3_600_000);
           const liveHoursElapsed = health.hoursElapsed + deltaHours;
           const liveHoursRemaining = Math.max(0, health.hoursRemaining - deltaHours);
+          // Lot yang sisa simpannya habis di klien langsung dianggap tidak layak (tier 3) sambil menunggu data server.
           const isSpoiled = health.decayScore >= 0.85 || (health.hoursRemaining > 0 && liveHoursRemaining <= 0);
           return [
             stockId,
@@ -109,6 +117,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       )
     : {};
 
+  // Sinkronisasi berkala: saat pertama dimuat, tiap 15 detik, dan saat jendela kembali fokus.
   useEffect(() => {
     if (!userId) return;
     const controller = new AbortController();
@@ -116,6 +125,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
     // Mengabaikan respons polling jika ada mutasi data lokal yang lebih mutakhir
     async function sync() {
+      // Lewati bila permintaan sebelumnya masih berjalan atau sedang ada mutasi.
       if (inFlight || changing.current || !userId) return;
       inFlight = true;
       setSyncingUserId(userId);
@@ -123,6 +133,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       try {
         const response = await apiFetch("/api/simulation/state", { signal: controller.signal, cache: "no-store" });
         const payload: ApiResponse<ServerState> = await response.json();
+        // Respons yang datang setelah komponen dilepas atau setelah ada mutasi baru dibuang.
         if (controller.signal.aborted || generation.current !== version) return;
         if (response.ok && payload.data) {
           setSnapshot({ userId, state: payload.data, syncedAt: Date.now() });
@@ -152,6 +163,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
 
   // Mengalirkan aksi mutasi peran ke endpoint API server dan memperbarui snapshot pasar secara atomik.
   async function mutate(body: Record<string, unknown>, endpoint = "/api/simulation/state"): Promise<MarketActionResult> {
+    // Hanya satu mutasi pada satu waktu.
     if (!userId || changing.current) return { success: false, message: "Tunggu tindakan sebelumnya selesai." };
     changing.current = true;
     generation.current++;
@@ -167,6 +179,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       result = response.ok && payload.data
         ? { success: true, message: payload.data.message, offer: payload.data.offer }
         : { success: false, message: payload.error ?? "Tindakan tidak dapat diproses." };
+      // Server mengembalikan snapshot terbaru bersama hasil aksi sehingga tampilan langsung benar.
       if (payload.data?.state) {
         setSnapshot({ userId, state: payload.data.state, syncedAt: Date.now() });
         setSyncError((error) => error?.userId === userId ? null : error);
@@ -174,6 +187,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     } catch {
       result = { success: false, message: "Koneksi terputus. Periksa data sebelum mencoba lagi." };
     } finally {
+      // Setelah mutasi, muat ulang dari server untuk memastikan data akhir.
       changing.current = false;
       setBusy(false);
       setRefreshTick((tick) => tick + 1);
@@ -199,6 +213,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   const confirmDelivery = (offerId: string) => mutate({ action: "delivery", offerId });
   // Menjalankan sapuan sore secara manual.
   const triggerCronSweepNow = () => mutate({}, "/api/orchestrator/run");
+  // Nilai konteks: data dari server dan aksi mutasi.
   return (
     <SimulationContext.Provider
       value={{

@@ -58,16 +58,19 @@ interface WorkspaceProps {
 // Dialog percakapan satu pertanyaan per kirim, dengan batas 1.000 karakter, batas waktu 25 detik, dan tombol coba lagi.
 // Permintaan dashboard memakai token sesi; landing page memakai fetch biasa tanpa kredensial.
 function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoint, authenticated }: WorkspaceProps) {
+  // State percakapan: dialog terbuka, isi kolom, status memuat, galat, pertanyaan terakhir untuk coba lagi, dan riwayat pesan.
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [retryQuery, setRetryQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  // Ref ke elemen dialog, kolom input, tombol pemicu (untuk mengembalikan fokus), dan area gulir.
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const transcript = useRef<HTMLDivElement>(null);
+  // controller membatalkan permintaan berjalan; inFlight mencegah kirim ganda; nextId memberi ID unik tiap pesan.
   const controller = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
   const nextId = useRef(0);
@@ -99,6 +102,7 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
   // Saat `retry`, pertanyaan tidak ditambahkan lagi ke transkrip karena sudah tampil sebelumnya.
   async function send(text: string, retry = false) {
     const question = text.trim();
+    // Pertanyaan kosong atau lebih dari 1.000 karakter diabaikan, begitu juga bila permintaan sebelumnya belum selesai.
     if (!question || question.length > 1000 || inFlight.current) return;
     inFlight.current = true;
     setLoading(true);
@@ -108,8 +112,10 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
     if (!retry) setMessages((previous) => [...previous, { id: ++nextId.current, sender: "user", text: question }]);
     const request = new AbortController();
     controller.current = request;
+    // Permintaan dibatalkan setelah 25 detik agar pengguna tidak menunggu tanpa akhir.
     const timeout = window.setTimeout(() => request.abort(), 25000);
     try {
+      // Dashboard memakai apiFetch (membawa token sesi); landing page memakai fetch biasa tanpa kredensial.
       const response = await (authenticated ? apiFetch : fetch)(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -125,6 +131,7 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
         id: ++nextId.current, sender: "assistant", ...answer,
       }]);
     } catch (cause) {
+      // Pembatalan karena batas waktu diberi pesan khusus; galat lain memakai pesan dari server.
       setError(request.signal.aborted ? "Permintaan terlalu lama. Silakan coba lagi." : cause instanceof Error ? cause.message : "Koneksi terputus. Silakan coba lagi.");
     } finally {
       window.clearTimeout(timeout);
@@ -136,14 +143,17 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
 
   return (
     <>
+      {/* Tombol melayang pembuka asisten. */}
       <button ref={trigger} type="button" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-expanded={open}
         aria-controls="market-assistant" className="market-chat-trigger">
         <MessageCircle size={19} aria-hidden /> <span>Tanya asisten</span>
       </button>
+      {/* Dialog modal native; Escape dan klik di luar kotak menutupnya. */}
       <dialog ref={dialog} id="market-assistant" aria-labelledby="market-assistant-title" className="market-chat-dialog"
         onCancel={(event) => { event.preventDefault(); close(); }}
         onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
         <div className="flex h-full min-h-0 flex-col">
+          {/* Kepala dialog: judul, subjudul peran, dan tombol tutup. */}
           <header className="flex shrink-0 items-center justify-between gap-4 border-b border-line px-5 py-4">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><MessageCircle size={21} aria-hidden /></span>
@@ -153,7 +163,9 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
             <button type="button" onClick={close} aria-label="Tutup asisten" className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-muted hover:bg-brand-soft"><X size={20} aria-hidden /></button>
           </header>
 
+          {/* Area percakapan yang bisa digulir. */}
           <div ref={transcript} className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-5 py-5">
+            {/* Sebelum ada pesan: sapaan, penjelasan singkat, dan contoh pertanyaan yang bisa langsung diklik. */}
             {messages.length === 0 ? (
               <div className="py-4">
                 <p className="text-xs font-semibold text-brand">Bantuan untuk aktivitas pasar</p>
@@ -177,11 +189,13 @@ function ChatWorkspace({ greeting, subtitle, intro, suggestions: prompts, endpoi
                 </div>)}
               </div>
             )}
+            {/* Status memuat dan galat dengan tombol coba lagi. */}
             {loading && <p role="status" className="mt-5 text-sm text-ink-muted">Menyiapkan jawaban…</p>}
             {error && <div role="alert" className="mt-4 rounded-xl border border-danger/30 bg-danger-soft p-3 text-sm text-danger">
               <p>{error}</p><button type="button" disabled={loading} onClick={() => void send(retryQuery, true)} className="mt-1 min-h-11 font-semibold underline underline-offset-4">Coba lagi</button>
             </div>}
           </div>
+          {/* Kolom pertanyaan; tombol kirim nonaktif saat kosong atau sedang memuat. */}
           <footer className="shrink-0 border-t border-line bg-surface px-4 pb-4 pt-3">
             <form onSubmit={(event) => { event.preventDefault(); void send(query); }} className="flex items-center gap-2">
               <label htmlFor="market-chat-input" className="sr-only">Pertanyaan untuk asisten</label>
