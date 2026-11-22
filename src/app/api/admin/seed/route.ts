@@ -29,6 +29,7 @@ function seedSecret(req: NextRequest) {
 // Memvalidasi otorisasi administratif untuk rute penyemaian (seeding) massal.
 // Di luar produksi cukup sesi admin; di produksi wajib kunci PASARIN_SEED_SECRET (401) dan kredensial basis data (503).
 async function authorizeSeed(req: NextRequest) {
+  // Di luar produksi cukup sesi admin; ID aktor lokal diturunkan dari username.
   if (process.env.NODE_ENV !== "production") {
     const auth = await requireApiRole(req, ["admin"]);
     if ("response" in auth) return { response: auth.response } as const;
@@ -36,6 +37,7 @@ async function authorizeSeed(req: NextRequest) {
       MARKET_ACCOUNTS.map((account) => [account.username, localActorId(account.username)]),
     ) } as const;
   }
+  // Di produksi hanya pemegang kunci server yang boleh menyemai; dibandingkan timing-safe.
   if (!matchesSecret(seedSecret(req), process.env.PASARIN_SEED_SECRET)) {
     return { response: errorResponse("Seed hanya dapat dijalankan dengan kunci server.", 401) } as const;
   }
@@ -50,11 +52,14 @@ export async function GET(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;
 
+  // Jalur Postgres: periksa tabel state dan hitung akun yang sudah ada.
   if (databaseConfigured()) {
+    // Kegagalan membaca tabel tidak menggagalkan respons; galatnya dilaporkan di marketTableError.
     try {
       const pool = getDatabasePool();
       let marketTableReady = false;
       let marketTableError: string | null = null;
+      // Jalur Supabase REST: baca baris state dan daftar pengguna lewat API admin (maksimal 1.000).
       try {
         await pool.query("select id from public.pasarin_simulation_state where id = $1", ["market"]);
         marketTableReady = true;
@@ -94,9 +99,11 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await authorizeSeed(req);
   if (auth.response) return auth.response;
+  // Body kosong atau bukan JSON diperlakukan sebagai objek kosong.
   const input = await bodySchema.safeParseAsync(await req.json().catch(() => ({})));
   if (!input.success) return errorResponse("Format permintaan seed tidak valid.", 400);
   try {
+    // actorIds memetakan username ke ID akun, dipakai seed state agar klaim terkait akun yang benar.
     let actorIds = auth.actorIds;
     if (databaseConfigured()) {
       actorIds = await seedAccounts();
@@ -105,6 +112,7 @@ export async function POST(req: NextRequest) {
       const client = getServiceRoleClient();
       const { data: list, error: listError } = await client.auth.admin.listUsers({ page: 1, perPage: 1000 });
       if (listError) throw listError;
+      // Indeks akun yang sudah ada menurut email supaya dibuat atau diperbarui, bukan diduplikasi.
       const existing = new Map(list.users.map((user) => [user.email?.toLowerCase(), user]));
       actorIds = {};
       for (const account of MARKET_ACCOUNTS) {
@@ -130,6 +138,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Seed state dijalankan setelah semua akun siap; hasilnya satu revisi atomik.
     if (!actorIds) throw new Error("Daftar akun pasar belum tersedia.");
     const seeded = await seedMarketStateServer(actorIds);
     if (!seeded.success) return errorResponse(seeded.message, seeded.status);
