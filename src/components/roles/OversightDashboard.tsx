@@ -3,6 +3,7 @@
 
 "use client";
 
+// Impor: state React, ikon, klien API, konteks sesi dan pasar, tipe laporan simulasi, serta komponen bersama.
 import { useState } from "react";
 import { Boxes, Clock, FileCheck, Receipt, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
@@ -46,6 +47,7 @@ export function OversightDashboard() {
     setDlhError("");
     setDlhReport(null);
     // Panggilan ke API dibungkus agar galat jaringan tampil sebagai pesan, bukan layar kosong.
+    // Mengambil laporan simulasi 24 jam (hanya pengelola dan admin yang diizinkan server); galat ditampilkan sebagai pesan.
     try {
       const res = await apiFetch("/api/simulation/metabolism-trial");
       const json: MetabolismTrialResponse = await res.json();
@@ -93,6 +95,7 @@ export function OversightDashboard() {
           </div>
           <div className="flex flex-col gap-2 sm:flex-row lg:flex-col">
             {/* Evaluasi stok manual hanya untuk admin; manajer hanya memantau. */}
+            {/* Tombol evaluasi stok hanya untuk admin; pengelola hanya memantau. */}
             {user?.role === "admin" && (
               <button className={marketButton + " justify-center"} type="button" disabled={busy} onClick={runStockEvaluation}>
                 <RefreshCw size={16} aria-hidden /> {busy ? "Memproses evaluasi…" : "Evaluasi stok sekarang"}
@@ -131,6 +134,7 @@ export function OversightDashboard() {
             ) : (
               <ul>{visibleOffers.map((offer) => {
                 // Penawaran perlu timbang bila menunggu vendor atau lotnya belum ditimbang.
+                // Penawaran dianggap menunggu bila masih diusulkan, atau aktif tetapi stoknya belum ditimbang pedagang.
                 const stock = stockById.get(offer.stockId);
                 const pending = offer.status === "pending_vendor" || (offer.status === "active" && !stock?.verifiedAt);
                 return (
@@ -157,6 +161,7 @@ export function OversightDashboard() {
                         </p>
                       )}
                       {/* Penjelasan skor susut lot ini untuk pengawas. */}
+                      {/* Penjelasan skor untuk lot penawaran bila lot itu punya evaluasi mutu. */}
                       {stockHealth[offer.stockId] && <DecayExplainer stockId={offer.stockId} />}
                     </div>
                     <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -177,6 +182,7 @@ export function OversightDashboard() {
 
         <div className="col-start-1 row-start-2 min-w-0 xl:sticky xl:top-20 xl:col-start-2 xl:row-start-1 xl:self-start">
           {/* Buku besar pembayaran per transaksi. */}
+          {/* Buku besar transaksi: status dana per transaksi (ditahan, dicairkan, dikembalikan). */}
           <MarketSection title="Buku Besar Transaksi & Escrow" description="Pantau status dana per transaksi, pengamanan dana di rekening penampung (escrow), hingga pencairan ke pedagang.">
             {transactions.length === 0 ? (
               <EmptyState icon={Receipt} title="Belum ada pembayaran" description="Transaksi simulasi akan tercatat di sini." />
@@ -206,6 +212,7 @@ export function OversightDashboard() {
               </div>
             )}
             {/* Laporan: angka pengalihan, ringkasan, pemeriksaan aturan, lalu catatan tiap fase. */}
+            {/* Laporan simulasi 24 jam: hasil uji skenario model, bukan data langsung pasar. */}
             {dlhReport && (
               <>
                 <div className="rounded-xl border border-line bg-brand-soft p-4">
@@ -221,6 +228,7 @@ export function OversightDashboard() {
 
                 {/* Ringkasan angka skenario. */}
                 <dl className="grid gap-4 border-y border-line py-4 sm:grid-cols-2">
+                  {/* Angka kunci skenario: pasokan, surplus, dan seterusnya, ditampilkan sebagai daftar definisi. */}
                   {[
                     { label: "Pasokan skenario", value: kg(dlhReport.totalMarketIntakeKg) },
                     { label: "Proyeksi surplus", value: kg(dlhReport.totalProjectedSurplusKg) },
@@ -236,6 +244,7 @@ export function OversightDashboard() {
 
                 <section>
                   {/* Hasil uji tiga aturan (invarian) dalam skenario beserta ringkasan escrow. */}
+                  {/* Pemeriksaan aturan dalam skenario, misalnya gerbang mutu dan jendela prioritas. */}
                   <h3 className="font-semibold">Pemeriksaan aturan dalam skenario</h3>
                   <ul className="mt-3 grid gap-3 text-sm">
                     {[
@@ -259,6 +268,7 @@ export function OversightDashboard() {
                 <section>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     {/* Catatan tiap fase simulasi sepanjang 24 jam. */}
+                    {/* Catatan tiap fase simulasi beserta status selesai. */}
                     <h3 className="font-semibold">Catatan fase simulasi</h3>
                     <StatusPill label={dlhReport.allPhasesCompleted ? `${dlhReport.phasesCount} fase selesai` : "Fase belum lengkap"} tone={dlhReport.allPhasesCompleted ? "success" : "warning"} />
                   </div>

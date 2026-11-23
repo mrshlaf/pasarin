@@ -26,6 +26,7 @@ export const WEATHER_CACHE_TTL_MS = 15 * 60 * 1000;
 // suhu 32,0°C dan kelembapan relatif 75% RH.
 export const TROPICAL_FALLBACK_PROFILE: Readonly<WeatherTelemetryData> = Object.freeze({
   // Nilai tetap profil cadangan: suhu, kelembapan, tanpa hujan; field kembar (temperatureCelsius dan sejenisnya) menjaga dua penamaan yang dipakai modul lain.
+  // Profil cadangan iklim tropis (32 C, 75 persen RH, tanpa hujan) dipakai bila semua sumber gagal; hasilnya ditandai sebagai sumber cadangan, bukan pengukuran.
   temperatureC: 32.0,
   humidityPercent: 75.0,
   rainfallMm: 0.0,
@@ -63,6 +64,7 @@ function openMeteoEnabled() {
 }
 
 // Kondisi cuaca (bahasa OpenWeather) dari kode cuaca WMO yang dipakai Open-Meteo.
+// Kode cuaca WMO dari Open-Meteo diubah ke kata kunci seperti OpenWeather (Clear, Clouds, Fog, Drizzle, dan seterusnya) agar deteksi hujan satu jalur.
 function conditionFromWmoCode(code: number) {
   if (code === 0) return "Clear";
   if (code >= 1 && code <= 3) return "Clouds";
@@ -76,6 +78,7 @@ function conditionFromWmoCode(code: number) {
 
 // Membaca cuaca terkini dari Open-Meteo. Mengembalikan null bila dimatikan, gagal, atau datanya tidak masuk akal,
 // supaya pemanggil jatuh ke profil cadangan alih-alih memakai angka yang rusak.
+// Sumber kedua tanpa kunci: Open-Meteo untuk koordinat Kramat Jati; mengembalikan null bila dimatikan lewat PASARIN_WEATHER_OPEN_METEO atau gagal.
 async function fetchOpenMeteo(now: number): Promise<WeatherTelemetryData | null> {
   if (!openMeteoEnabled()) return null;
   const { latitude, longitude, locationName } = KRAMAT_JATI_COORDINATES;
@@ -90,6 +93,7 @@ async function fetchOpenMeteo(now: number): Promise<WeatherTelemetryData | null>
     const rainfallMm = Number(current?.precipitation ?? 0);
     const code = Number(current?.weather_code ?? 3);
     // Nilai di luar rentang fisik dianggap data rusak.
+    // Validasi nilai: suhu -10 sampai 60 C, RH 0 sampai 100 persen, hujan tidak negatif. Di luar itu data dibuang dan cadangan dipakai.
     if (!Number.isFinite(temperatureC) || temperatureC < -10 || temperatureC > 60) return null;
     if (!Number.isFinite(humidityPercent) || humidityPercent < 0 || humidityPercent > 100) return null;
     if (!Number.isFinite(rainfallMm) || rainfallMm < 0) return null;
@@ -117,6 +121,7 @@ async function fetchOpenMeteo(now: number): Promise<WeatherTelemetryData | null>
 }
 
 // Mencoba Open-Meteo, lalu jatuh ke profil cadangan. Hasil Open-Meteo juga disimpan di cache 15 menit.
+// Urutan sumber: Open-Meteo bila ada, bila tidak profil cadangan. Hasil Open-Meteo disimpan di cache selama masa berlaku.
 async function secondarySourceOrFallback(now: number): Promise<WeatherTelemetryData> {
   const data = await fetchOpenMeteo(now);
   if (!data) return returnFallbackProfile(now, "FALLBACK");
@@ -131,6 +136,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
   const now = Date.now();
 
   // Return dari cache jika masih valid
+  // Cache dalam memori: selama belum kedaluwarsa dan tidak dipaksa segarkan, data lama dikembalikan dengan sumber CACHE.
   if (!forceRefresh && memoryCache !== null && now < memoryCache.expiresAtTimestamp) {
     return {
       ...memoryCache.data,
@@ -174,6 +180,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
     const weatherDescription = String(payload.weather?.[0]?.description ?? "").toLowerCase();
 
     // Deteksi hujan untuk trigger model redaman pengunjung (PSR-15)
+    // Hujan terdeteksi dari kata kunci kondisi cuaca (rain, drizzle, dan sejenisnya).
     const conditionLower = weatherCondition.toLowerCase();
     const isRaining =
       conditionLower.includes("rain") ||
@@ -184,6 +191,7 @@ export async function getHyperlocalMarketWeather(forceRefresh = false): Promise<
     // OpenWeather tidak selalu mengirim rain.1h; saat hujan tanpa angka, diasumsikan 12,5 mm (hujan lebat sore).
     const rainfallMm = Number(payload.rain?.["1h"] ?? (isRaining ? 12.5 : 0.0));
 
+    // Data segar dari sumber utama: suhu, RH, hujan, kondisi, waktu rekam, dan batas cache.
     const freshData: WeatherTelemetryData = {
       temperatureC,
       humidityPercent,
@@ -220,6 +228,7 @@ function returnFallbackProfile(
   sourceLabel: "FALLBACK" | "fallback_offline" = "FALLBACK"
 ): WeatherTelemetryData {
   // Profil cadangan ditandai isEstimated agar antarmuka dan chatbot menyebutnya estimasi.
+  // Data cadangan: profil tropis dengan waktu rekam sekarang dan masa berlaku cache yang sama.
   const fallbackData: WeatherTelemetryData = {
     ...TROPICAL_FALLBACK_PROFILE,
     recordedAt: new Date(currentTimestampMs).toISOString(),
@@ -256,6 +265,7 @@ export const weatherAgent = {
   getHyperlocalMarketWeather,
   // Versi cuaca dengan label sumber huruf kecil (cache, live_api, fallback_offline) untuk UI.
   // simulateOffline mengosongkan cache dan langsung memakai profil cadangan.
+  // Mode simulateOffline dipakai uji dan demo: cache dikosongkan lalu profil cadangan dikembalikan tanpa menghubungi jaringan.
   getMarketWeather: async (options?: { forceRefresh?: boolean; simulateOffline?: boolean }) => {
     if (options?.simulateOffline) {
       resetWeatherMemoryCache();
@@ -263,6 +273,7 @@ export const weatherAgent = {
     }
     const res = await getHyperlocalMarketWeather(options?.forceRefresh ?? false);
     // Label sumber dinormalkan ke huruf kecil untuk antarmuka.
+    // Nama sumber dinormalkan ke huruf kecil (cache, live_api, open_meteo, fallback_offline) untuk dipakai antarmuka dan API.
     const normalizedSource =
       res.source === "CACHE" ? "cache" : res.source === "LIVE_API" ? "live_api" : res.source === "OPEN_METEO" ? "open_meteo" : "fallback_offline";
     return {
@@ -280,6 +291,7 @@ export const weatherAgent = {
   clearCache: resetWeatherMemoryCache,
   resetCache: resetWeatherMemoryCache,
   // Status cache saat ini dan sisa masa berlakunya dalam detik.
+  // Metrik cache untuk pemantauan: apakah cache aktif dan sisa detik masa berlakunya.
   getCacheMetrics: () => {
     const now = Date.now();
     const hasActiveCache = memoryCache !== null && now < memoryCache.expiresAtTimestamp;
@@ -289,6 +301,7 @@ export const weatherAgent = {
     return { hasActiveCache, expiresInSeconds };
   },
   // Menghitung peluruhan komoditas memakai suhu dan kelembapan cuaca terkini.
+  // Evaluasi susut satu komoditas memakai cuaca los saat ini dan jam pajang yang diberikan.
   evaluateCommodityDecay: async (commodity: Commodity, hoursElapsed: number) => {
     const weather = await getHyperlocalMarketWeather();
     const decay = calculateDecay(commodity, weather.temperatureC, weather.humidityPercent, hoursElapsed);

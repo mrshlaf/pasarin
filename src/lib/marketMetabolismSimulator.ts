@@ -6,6 +6,7 @@
 // 4. Hujan Sore (15:30 WIB): Redaman pembeli 48%, alokasi prioritas 30m Dapur Sosial & klaim QRIS Escrow.
 // 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, konfirmasi serah terima, pelepasan escrow, & akuntansi emisi karbon.
 
+// Impor: data kios dan komoditas, mesin peluruhan, rumus inti, orkestrator, jendela prioritas, kalkulator armada, dan pembuat manifes.
 import { KIOSKS } from "@/data/kiosks";
 import { COMMODITIES } from "@/data/commodities";
 import { calculateDecay } from "@/lib/decayEngine";
@@ -99,6 +100,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     totalIntakeKg += kg1 + kg2;
   });
 
+  // Fase 1 (04.30 WIB): penerimaan pasokan subuh dari seluruh kios, memakai data sampel.
   phaseLogs.push({
     phase: "Fase 1: Penerimaan Pasokan Subuh",
     timeClock: "04:30 WIB",
@@ -116,6 +118,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
 
   // Fase 2: Puncak Suhu Los Terik Siang (12:00 WIB)
   // Berapa kios yang komoditas contohnya sudah melewati skor 0,35 pada suhu puncak.
+  // Menghitung kios berisiko tinggi pada suhu 34 C, RH 62 persen, lama pajang 7,5 jam. Kondisi ini asumsi skenario, bukan pengukuran.
   let highDecayStallsCount = 0;
   KIOSKS.forEach((_, idx) => {
     const c = COMMODITIES[idx % COMMODITIES.length];
@@ -123,6 +126,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     if (evalRes.decayScore >= 0.35) highDecayStallsCount++;
   });
 
+  // Fase 2 (12.00 WIB): puncak panas los. Rasio percepatan "2.4x" di bawah adalah teks tetap, bukan hasil hitung.
   phaseLogs.push({
     phase: "Fase 2: Puncak Suhu Los Terik",
     timeClock: "12:00 WIB",
@@ -146,6 +150,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   const tier2SocialKg = 284.0;
   const tier3MaggotKg = 160.0;
 
+  // Fase 3 (14.30 WIB): evaluasi mutu dan sapuan ReAct; hasil disimulasikan dan ringkasan menunjukkan alur kerja agen.
   phaseLogs.push({
     phase: "Fase 3: Evaluasi Mutu & ReAct AI Cron Sweep",
     timeClock: "14:30 WIB",
@@ -164,6 +169,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
 
   // Fase 4: Hujan Sore, Redaman Pengunjung & Klaim 3-Tier (15:30 WIB)
   // Hujan 18,5 mm sebagai skenario; penawaran contoh tier 2 baru dibuat sehingga jendela 30 menit penuh.
+  // Fase 4 (15.30 WIB): hujan sore 18,5 mm sebagai skenario, lalu memeriksa klaim 3-tier dan jendela prioritas.
   const rainEffect = calculateRainFootfallAttenuation(18.5, true);
   const sampleT2Offer = {
     id: "ofr_trial_t2",
@@ -173,6 +179,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   };
   const windowEval = evaluateTier2PriorityWindow(sampleT2Offer);
   // Klaim maggot pada lot tier 2 saat jendela aktif harus ditolak (aturan 3).
+  // Pemeriksaan jendela prioritas: pembeli Maggot tidak boleh mengklaim lot Tier 2 sebelum jendela 30 menit berakhir.
   const maggotClaimCheck = validateClaimAgainstPriorityWindow(
     {
       id: "ofr_trial_t2",
@@ -209,6 +216,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
 
   // Fase 5: Distribusi Armada Logistik & Handover PoD (17:30 - 21:00 WIB)
   // Tiga titik jemput contoh di blok A dan B untuk membangun manifes ke satu Warteg.
+  // Fase 5 (17.30 sampai 21.00 WIB): contoh pemberhentian pengambilan di blok A dan B untuk manifes armada. Nama kios dan berat adalah data contoh.
   const stopsSample = [
     { kioskStall: "A-12", kioskName: "Kios H. Rohmat", block: "A" as const, commodityName: "Kangkung", weightKg: 45 },
     { kioskStall: "A-18", kioskName: "Kios Pak Asep", block: "A" as const, commodityName: "Pakcoy", weightKg: 40 },
@@ -265,6 +273,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   const durationMs = Date.now() - trialStartTime;
 
   // Angka surplus, alokasi tier, dan penyelesaian escrow adalah nilai skenario tetap; hanya total pasokan, hasil aturan, dan faktor emisi yang dihitung.
+  // Hasil uji 24 jam: ID uji, durasi, status fase, audit invarian, dan dampak lingkungan simulasi.
   return {
     trialId,
     executedAt: new Date().toISOString(),

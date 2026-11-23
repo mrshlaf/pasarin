@@ -3,6 +3,7 @@
 // Dashboard publik landing page: ringkasan pasokan per tujuan, komoditas tersedia, dan estimasi armada.
 // Hanya memakai /api/market/overview yang tidak memuat data akun.
 
+// Impor: hook React, tautan Next, ikon, tipe ringkasan publik, pemformat, dan latar hero.
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, Boxes, HeartHandshake, MapPin, Recycle, RefreshCw, Truck, UtensilsCrossed } from "lucide-react";
@@ -88,6 +89,7 @@ export function PublicMarketDashboard() {
       {/* Tautan lewati navigasi untuk pengguna keyboard dan pembaca layar. */}
       <a className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-surface focus:p-3" href="#ringkasan">Lewati ke ringkasan pasar</a>
       {/* Bilah atas: logo, jam WIB, dan tombol masuk atau ruang kerja. */}
+      {/* Header tetap di atas: logo, jam WIB, dan tombol Masuk (atau Ruang kerja bila sudah login). */}
       <header className="sticky top-0 z-40 border-b border-line/70 bg-surface/90 backdrop-blur">
         <div className="market-shell flex min-h-16 items-center justify-between gap-3">
           <Link href="/" className="inline-flex min-h-11 items-center rounded-lg" aria-label="Dasbor publik Pasarin"><PasarinLogo size="sm" showSubtitle={false} /></Link>
@@ -99,6 +101,7 @@ export function PublicMarketDashboard() {
       </header>
 
       {/* Isi utama; id ringkasan menjadi tujuan tautan lewati. */}
+      {/* Isi utama halaman publik; hanya angka agregat etalase, tanpa data akun atau dana. */}
       <main id="ringkasan" className="market-shell py-5 sm:py-8" tabIndex={-1}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm font-medium text-ink-soft"><MapPin size={16} aria-hidden />Pasar Induk Kramat Jati</p>
@@ -108,6 +111,7 @@ export function PublicMarketDashboard() {
         </div>
         <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr] lg:gap-5" aria-busy={refreshing}>
           {/* Kartu sambutan dengan volume yang siap diselamatkan hari ini. */}
+          {/* Panel hero: sapaan, judul, dan penjelasan singkat tentang surplus pasar, dengan latar visual. */}
           <section className="relative isolate flex min-w-0 flex-col justify-between overflow-hidden rounded-3xl bg-brand-deep p-6 text-cream sm:p-9 lg:p-11 shadow-sm min-h-[420px]" aria-labelledby="market-title">
             <MarketHeroBackground context="public" />
             <div>
@@ -124,6 +128,7 @@ export function PublicMarketDashboard() {
           </section>
 
           {/* Total penyaluran yang sudah selesai, beserta waktu pembaruan terakhir. */}
+          {/* Total penyaluran: ringkasan angka agregat dari ikhtisar pasar. */}
           <section aria-labelledby="distribution-totals" className="market-panel flex min-w-0 flex-col justify-between">
             <div>
               <h2 id="distribution-totals" className="market-section-heading">Pencapaian Penyaluran Bersama</h2>
@@ -140,6 +145,7 @@ export function PublicMarketDashboard() {
         </div>
 
         {/* Pasokan menurut tujuan dan komoditas teratas. */}
+        {/* Bagian jalur penyaluran dan komoditas tersedia. */}
         <div id="jalur" className="mt-5 grid scroll-mt-6 gap-4 lg:grid-cols-[1.3fr_1fr] lg:gap-5">
           <section aria-labelledby="lane-title" className="market-panel min-w-0">
             <h2 id="lane-title" className="market-section-heading">Pasokan menurut tujuan</h2>
@@ -150,6 +156,7 @@ export function PublicMarketDashboard() {
                 {lanes.map(({ id, name, detail, icon: Icon, color }) => {
                   const lane = data.lanes[id];
                   // Persentase batang jalur terhadap total kg; dibatasi 100 dan nol bila belum ada pasokan.
+                  // Porsi jalur terhadap total kg tersedia, dibatasi maksimum 100 persen dan 0 bila belum ada pasokan.
                   const share = data.availableKg > 0 ? Math.min(100, lane.kg / data.availableKg * 100) : 0;
                   return <li key={id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 py-4">
                     <span className="grid size-10 place-items-center rounded-xl bg-canvas text-brand"><Icon size={19} aria-hidden /></span>
@@ -165,6 +172,7 @@ export function PublicMarketDashboard() {
           </section>
 
           {/* Lima komoditas dengan volume terbesar. */}
+          {/* Daftar komoditas yang sedang tersedia di etalase. */}
           <section aria-labelledby="commodity-title" className="market-panel min-w-0">
             <h2 id="commodity-title" className="market-section-heading">Komoditas tersedia</h2>
             <p className="mt-1 text-sm leading-6 text-ink-muted">Hingga lima komoditas dengan volume tertinggi.</p>
@@ -184,6 +192,7 @@ export function PublicMarketDashboard() {
           </header>
           <div className="grid gap-6 p-5 sm:gap-7 sm:p-7 lg:grid-cols-[1.1fr_1fr] lg:gap-8">
             {/* Perkiraan porsi olahan: 1 kg bahan menjadi 4 porsi. */}
+            {/* Potensi porsi olahan: perkiraan sederhana dari berat untuk dapur sosial, bukan jumlah penerima nyata. */}
             <section aria-labelledby="portion-estimate" className="min-w-0 rounded-2xl bg-brand-soft p-5 sm:p-6">
               <h3 id="portion-estimate" className="text-sm font-semibold text-brand">Potensi porsi olahan</h3>
               <dl className="mt-6 grid gap-6 sm:grid-cols-2 sm:gap-4">
@@ -199,6 +208,7 @@ export function PublicMarketDashboard() {
               <p className="mt-6 border-t border-line pt-4 text-sm leading-6 text-ink-soft">Dihitung dengan asumsi 1 kg bahan menjadi 4 porsi.</p>
             </section>
             {/* Perkiraan kebutuhan kendaraan menurut total muatan. */}
+            {/* Perkiraan kebutuhan armada dari total muatan. */}
             <section aria-labelledby="fleet-estimate" className="min-w-0">
               <h3 id="fleet-estimate" className="flex items-center gap-2 text-sm font-semibold text-ink"><Truck size={18} aria-hidden />Perkiraan kebutuhan angkut</h3>
               <ul className="mt-3 divide-y divide-line">
@@ -213,6 +223,7 @@ export function PublicMarketDashboard() {
         </section>}
 
         {/* Kaki halaman dengan tautan ke bot Telegram. */}
+        {/* Footer: keterangan bahwa ringkasan tanpa detail akun, dan tautan ke bot Telegram. */}
         <footer className="mt-12 border-t border-line/70 py-4 text-xs text-ink-muted">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
             <p>

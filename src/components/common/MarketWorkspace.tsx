@@ -15,6 +15,7 @@ export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 // Kelas border, latar, dan teks untuk setiap tone pill.
 const toneStyles: Record<Tone, string> = {
+  // Gaya tiap nada warna (batas, latar, teks); satu tempat agar semua dasbor tampil seragam.
   neutral: "border-brand/20 bg-brand-soft text-brand-ink",
   info: "border-tier-1/30 bg-tier-1-soft text-tier-1-ink",
   success: "border-tier-3/30 bg-tier-3-soft text-tier-3-ink",
@@ -24,6 +25,7 @@ const toneStyles: Record<Tone, string> = {
 
 // Tone bawaan menurut teks label status; label yang tidak terdaftar jatuh ke `neutral`.
 const statusTones: Record<string, Tone> = {
+  // Peta teks status ke nada warna yang dipakai pil status.
   Tersedia: "success",
   Selesai: "success",
   "Di kios": "neutral",
@@ -77,6 +79,7 @@ const metricTones = {
 
 // Menampilkan metrik dan saldo real-time dalam panel baris berpembatas halus.
 export function MarketMetrics({ items }: { items: MarketMetric[] }) {
+  // Satu metrik memakai satu kolom; dua atau lebih memakai dua kolom pada layar kecil.
   const baseCols = items.length === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2";
   const wideCols = items.length === 1 ? "lg:grid-cols-1" : items.length === 2 ? "lg:grid-cols-2" : items.length === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return (
@@ -127,8 +130,11 @@ export function TierChip({ tier }: { tier: RescueOffer["targetTier"] }) {
 
 // Visualisasi skala peluruhan biologis (0 - 100) berbasis Arrhenius lengkap dengan batas zona aman, waspada, dan afkir.
 export function DecayMeter({ score }: { score: number }) {
+  // Skor 0 sampai 1 diubah ke persen 0 sampai 100 dan dibatasi agar tidak keluar rentang.
   const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
+  // Posisi penanda dijaga di 1 sampai 99 persen supaya tidak menempel di tepi bilah.
   const marker = Math.max(1, Math.min(99, percent));
+  // Zona warna mengikuti ambang model: di bawah 35 segar, 35 sampai 65 layu ringan, 65 sampai 85 layu sedang, 85 ke atas khusus biokonversi.
   const zone = percent < 35
     ? { label: "Segar", text: "text-tier-3-ink" }
     : percent < 65
@@ -249,16 +255,20 @@ export function kg(amount: number) {
 
 // Mengubah sisa jam simpan ke format ramah pengguna: menit jika < 1 jam, jam & menit jika ada sisa, atau afkir.
 export function formatRemainingShelfLife(hours: number, decayScore?: number): string {
+  // Skor 0,85 ke atas berarti afkir: tidak lagi layak konsumsi manusia, hanya untuk pakan maggot.
   if (decayScore !== undefined && decayScore >= 0.85) {
     return "Afkir (pakan maggot)";
   }
+  // Sisa jam nol, negatif, atau tak terhingga juga ditampilkan sebagai afkir.
   if (!Number.isFinite(hours) || hours <= 0) {
     return "Afkir (pakan maggot)";
   }
+  // Kurang dari satu jam ditampilkan dalam menit, minimal 1 menit.
   if (hours < 1) {
     const minutes = Math.max(1, Math.round(hours * 60));
     return `${minutes} menit`;
   }
+  // Jam penuh dan sisa menit dibulatkan; bila menit 0 hanya jam yang ditampilkan.
   const fullHours = Math.floor(hours);
   const remainingMinutes = Math.round((hours - fullHours) * 60);
   if (remainingMinutes === 0) {

@@ -4,6 +4,7 @@
 
 "use client";
 
+// Impor: state React, ikon, konteks sesi dan pasar, rumus dan tipe pasar, serta komponen dasbor bersama (termasuk penjelas skor).
 import { useState, type FormEvent } from "react";
 import { AlertTriangle, BadgeCheck, Boxes, Clock, CloudSun, Droplets, PackagePlus, Receipt, Store, Wallet } from "lucide-react";
 import { COMMODITIES } from "@/data/commodities";
@@ -108,6 +109,7 @@ export function VendorDashboard() {
     if (!selection) return;
     setConfirmationError("");
     // Pilihan jual atau donasi hanya berlaku untuk jalur dapur sosial (tier 2).
+    // Konfirmasi timbang: berat sisa fisik yang diketik pedagang dan, untuk tier 2, pilihan jual atau donasi.
     const confirmation = {
       confirmedKg: Number(confirmedKg),
       mode: selectedTier === "tier_2" ? mode || undefined : undefined,
@@ -122,6 +124,7 @@ export function VendorDashboard() {
   return (
     <div className="grid min-w-0 gap-6">
       {/* Kartu pembuka: ajakan menimbang, info kios, dan tombol lot berikutnya. */}
+      {/* Panel pembuka: ajakan menimbang bila ada stok belum ditimbang, ditambah saldo dompet dan jumlah lot. */}
       <section className="market-panel grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="min-w-0">
           <h2 className="font-serif text-2xl leading-tight tracking-tight sm:text-3xl">{needsWeighing.length > 0 ? "Sisa dagangan menunggu timbangan" : "Pantau stok, siapkan penawaran"}</h2>
@@ -162,6 +165,7 @@ export function VendorDashboard() {
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
         {/* Daftar stok dan mutu lot; peninjau mendapat filter kios. */}
+        {/* Daftar stok dan mutu lot: skor susut, tujuan penyaluran, dan penjelasan skor per lot. */}
         <MarketSection
           variant="plain"
           title="Stok & mutu lot"
@@ -203,6 +207,7 @@ export function VendorDashboard() {
                 // Sisa yang masih bisa dijual setelah dikurangi pesanan.
                 const remainingForSale = roundKg(item.remainingKg - reservedKg);
                 // Penawaran aktif yang tier-nya sudah tidak cocok dengan skor susut terbaru ditandai "Mutu berubah".
+                // Tujuan penawaran aktif berubah otomatis bila mutu lot bergeser; penanda changed dipakai untuk memberi tahu pedagang.
                 const changed = linked?.status === "active" && health && linked.targetTier !== distributionTierForDecay(health.decayScore);
                 return (
                   <li key={item.id} className={`rounded-2xl border border-line p-4 sm:p-5 ${item.remainingKg === 0 ? "bg-canvas/40" : "bg-surface"}`}>
@@ -226,6 +231,7 @@ export function VendorDashboard() {
                           ...(linked?.status === "active" && item.verifiedAt ? [{ label: "Kuota penawaran", value: kg(linked.quantityKg) }] : []),
                         ]} />
                         {/* Meteran susut dan sisa simpan; disembunyikan untuk lot yang sudah habis. */}
+                        {/* Kotak mutu hanya untuk lot yang masih ada sisanya dan sudah punya evaluasi. */}
                         {health && item.remainingKg > 0 && (
                           <div className="mt-3 rounded-xl border border-line bg-canvas/80 px-3 py-3">
                             <DecayMeter score={health.decayScore} />
@@ -250,6 +256,7 @@ export function VendorDashboard() {
                               {health.condition === "tidak_layak" && "Kondisi afkir non-pangan (Tier 3: Sentra Maggot BSF gratis)."}
                             </p>
                             {/* Penjelasan skor: langkah rumus dan kalimat dari AI atau template. */}
+                            {/* Tombol penjelasan skor (Gemini bila tersedia, rumus bila tidak) untuk lot ini. */}
                             <DecayExplainer stockId={item.id} />
                           </div>
                         )}
@@ -279,6 +286,7 @@ export function VendorDashboard() {
 
         <div className="grid min-w-0 gap-4 xl:sticky xl:top-20 xl:self-start">
           {/* Formulir pasokan baru; hanya pedagang bertaut kios yang bisa mengisinya. */}
+          {/* Formulir catat pasokan masuk; hanya untuk akun yang boleh mengelola kios. */}
           {canManage && (
             <MarketSection title="Catat Pasokan Masuk" description="Ada sayuran baru tiba di kios? Yuk catat berat awalnya di sini! Sisa fisik nantinya bisa ditimbang saat siap diselamatkan.">
               <form onSubmit={recordArrival} className="grid gap-4" aria-busy={busy}>
@@ -303,6 +311,7 @@ export function VendorDashboard() {
           )}
 
           {/* Panel samping: cuaca los dan ringkasan kios. */}
+          {/* Kartu cuaca los: suhu, kelembapan, dan label Estimasi bila data bukan dari sensor. */}
           <aside className="rounded-2xl bg-brand-deep p-5 text-cream">
             <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-1.5 text-[13px] text-sage"><CloudSun size={14} aria-hidden /> Cuaca los</p>
@@ -323,6 +332,7 @@ export function VendorDashboard() {
           </aside>
 
           {/* Akun pedagang yang belum terhubung ke kios hanya melihat pesan ini. */}
+          {/* Peringatan bila akun pedagang belum tertaut ke kios. */}
           {user?.role === "vendor" && !user.vendorId && (
             <p role="status" className="flex items-start gap-2 rounded-2xl border border-warning/30 bg-warning-soft p-3 text-[13px] leading-5 text-warning">
               <AlertTriangle size={16} aria-hidden className="mt-0.5 shrink-0" />
@@ -333,6 +343,7 @@ export function VendorDashboard() {
       </div>
 
       {/* Usulan penawaran dari sistem dan penawaran yang sudah terbit. */}
+      {/* Penawaran dan persetujuan: usulan penyelamatan stok yang menunggu keputusan pedagang. */}
       <MarketSection title="Penawaran & Persetujuan Kios" description="Yuk tinjau usulan penyelamatan stokmu! Cukup konfirmasi hasil timbang fisik untuk menerbitkannya ke katalog pembeli."
         action={<div className="flex items-center gap-3 text-[13px] font-semibold tabular-nums">
           <span className="text-ink-muted">{activeCount} aktif</span>
@@ -373,6 +384,7 @@ export function VendorDashboard() {
       </MarketSection>
 
       {/* Riwayat pembayaran dan pencairan escrow ke dompet. */}
+      {/* Riwayat pembayaran: dana ditahan di escrow lalu dicairkan ke dompet setelah serah terima. */}
       <MarketSection title="Pembayaran & pencairan" description="Dana escrow dicairkan ke dompet setelah serah terima selesai. Donasi dan biomassa gratis tidak memerlukan pembayaran.">
         {transactions.length === 0 ? (
           <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi pembayaran dan pelepasan dana escrow akan tercatat di sini." />
@@ -386,6 +398,7 @@ export function VendorDashboard() {
       </MarketSection>
 
       {/* Dialog konfirmasi sisa fisik; tidak bisa ditutup saat permintaan berjalan. */}
+      {/* Dialog konfirmasi sisa fisik: pedagang memasukkan berat nyata sebelum penawaran terbit. */}
       {selectedStock && <MarketDialog title="Konfirmasi sisa fisik" onClose={() => { if (!busy) setSelection(null); }}>
         <form className="grid gap-4" onSubmit={confirmStock} aria-busy={busy}>
           <p className="text-sm leading-6 text-ink-muted">{commodityName(selectedStock.commodityId)} · {selectedStock.lotNumber}</p>
@@ -431,6 +444,7 @@ export function VendorDashboard() {
             <p className="mt-1.5 text-xs leading-5 text-ink-muted">Timbang sisa fisik bulat (1, 2, 3, dst.) di luar pesanan PASARIN. Maksimal {kg(maxConfirmedKg)}. Masukkan 0 jika sudah habis.</p>
           </div>
           {/* Pilihan jual atau donasi hanya muncul untuk jalur dapur sosial (tier 2). */}
+          {/* Pilihan cara penyaluran ke dapur sosial: dijual murah atau didonasikan. */}
           {selectedTier === "tier_2" && (
             <fieldset className="grid gap-2">
               <legend className="mb-1 text-sm font-semibold">Cara penyaluran ke dapur sosial</legend>

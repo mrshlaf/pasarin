@@ -6,6 +6,7 @@
 
 "use client";
 
+// Impor: state React, ikon, konteks sesi dan pasar, QRIS simulasi, rumus pasar, dan komponen dasbor bersama.
 import { useState, type FormEvent } from "react";
 import { Clock, HeartHandshake, PackageCheck, Receipt, Recycle, UtensilsCrossed } from "lucide-react";
 import { distributionTierForDecay, isDonation, isFreeMaggotOffer, type RescueOffer } from "@/types/market";
@@ -23,6 +24,7 @@ import {
 const tier = { warteg: "tier_1", social_kitchen: "tier_2", maggot: "tier_3" } as const;
 
 // Judul, ajakan, ikon, dan rumus dampak per peran; angka porsi dan larva di sini harus sama dengan perhitungan `impact`.
+// Teks pembuka per peran pembeli (Warteg, dapur sosial, maggot): judul, ajakan, dan ikon.
 const framing = {
   warteg: {
     title: "Pasokan Segar Siap Masak",
@@ -123,6 +125,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   const selectedStock = selectedOffer && stockById.get(selectedOffer.stockId);
 
   // Mereservasi kuantitas bobot yang dipilih dan membuka tiket tagihan pembayaran jika penawaran berbayar.
+  // Klaim: kirim jumlah kg yang dipilih ke server; server memeriksa tier, kuota, dan stok sebelum menerima.
   async function reserve(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selection) return;
@@ -147,6 +150,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
   return (
     <div className="grid min-w-0 gap-6">
       {/* Kartu pembuka: judul peran, jumlah tersedia, dan angka dampak. */}
+      {/* Panel pembuka sesuai peran, dengan ringkasan penawaran yang tersedia untuk akun ini. */}
       <section className="market-panel grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,0.45fr)] lg:items-center">
         <div className="min-w-0">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-ink"><RoleIcon size={18} aria-hidden />{role === "warteg" ? "Tier 1 · Warteg & UMKM" : role === "social_kitchen" ? "Tier 2 · Dapur sosial" : "Tier 3 · Biokonversi BSF"}</div>
@@ -177,6 +181,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
         { label: "Serah terima selesai", value: orders.filter((offer) => offer.status === "settled").length },
       ]} />
 
+      {/* Katalog penawaran aktif untuk tier peran ini; bisa diurutkan bila ada lebih dari satu. */}
       <MarketSection variant="plain" title={role === "maggot" ? "Katalog biomassa" : "Katalog bahan"} description={copy.catalogDescription}
         action={listings.length > 1 && (
           <div className="flex w-full items-center gap-2 sm:block sm:w-48">
@@ -256,6 +261,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
                     ) : <p className="mt-3 text-sm text-ink-muted">Perkiraan mutu belum tersedia.</p>}
                   </div>
 
+                  {/* Baris bawah kartu penawaran: asal atau tarif, harga total, dan tombol klaim. */}
                   <div className="flex min-w-0 flex-wrap items-end justify-between gap-3 border-t border-line pt-4 min-[1100px]:flex-col min-[1100px]:items-stretch min-[1100px]:justify-center min-[1100px]:border-l min-[1100px]:border-t-0 min-[1100px]:pl-5 min-[1100px]:pt-0">
                     <div className="min-w-0">
                       <p className="text-xs font-medium text-ink-muted">{isDonation(offer) ? "Dari pedagang" : isFreeMaggotOffer(offer) ? "Alokasi biomassa" : "Harga per kilogram"}</p>
@@ -292,6 +298,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
       </MarketSection>
 
       {/* Pesanan berjalan dan selesai beserta status pengantaran. */}
+      {/* Pesanan dan pengantaran: status bayar, antrean antar, dan serah terima. */}
       <MarketSection title="Pesanan & pengantaran" description="Pantau pembayaran, antrean pengantaran, dan serah terima setiap lot.">
         {orders.length === 0 ? (
           <EmptyState icon={PackageCheck} title="Belum ada pesanan" description={role === "maggot" ? "Pilih lot biomassa dan jumlah yang dapat diterima fasilitas dari katalog." : "Pilih lot dan tentukan jumlah dari katalog untuk membuat pesanan."} />
@@ -318,6 +325,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
       </MarketSection>
 
       {/* Riwayat pembayaran escrow. */}
+      {/* Riwayat pembayaran escrow dan pencairan milik akun ini. */}
       <MarketSection title="Riwayat transaksi & pembayaran" description="Catatan pembayaran escrow dan pencairan pesanan.">
         {transactions.length === 0 ? (
           <EmptyState icon={Receipt} title="Belum ada transaksi" description="Transaksi pembayaran pesanan Anda akan tercatat di sini." />
@@ -331,6 +339,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
       </MarketSection>
 
       {/* Dialog pemesanan: pilih jumlah kg lalu reservasi. */}
+      {/* Dialog pilih jumlah: bahan biasa, donasi, atau biomassa gratis; judul menyesuaikan jenis penawaran. */}
       {selectedOffer && <MarketDialog title={isFreeMaggotOffer(selectedOffer) ? "Pilih jumlah biomassa gratis" : isDonation(selectedOffer) ? "Pilih jumlah donasi" : "Pilih jumlah pesanan"} onClose={() => { if (!busy) setSelection(null); }}>
         <form className="grid gap-4" onSubmit={reserve} aria-busy={busy}>
           <div>
@@ -386,6 +395,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
       </MarketDialog>}
 
       {/* Dialog pembayaran QRIS simulasi. */}
+      {/* Dialog pembayaran QRIS simulasi untuk pesanan yang belum dibayar. */}
       {invoice && <MarketDialog title="Pembayaran simulasi QRIS" onClose={() => { if (!busy) setInvoice(null); }}>
         <p className="break-words text-sm leading-5 text-ink-muted">{offerTitle(invoice)}, {kioskLabel(invoice.vendorId)}</p>
         <p className="mt-3 rounded-lg border border-line bg-canvas p-3 text-sm leading-6 text-ink-muted">Ini simulasi pembayaran, bukan pemindahan uang sungguhan. Dana pesanan dicatat di escrow hingga serah terima selesai.</p>

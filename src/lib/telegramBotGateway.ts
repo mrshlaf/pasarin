@@ -51,6 +51,7 @@ export interface TelegramUpdate {
 
 // Memvalidasi keaslian permintaan webhook masuk dari server Telegram.
 // Membandingkan nilai header secret token dengan rahasia lingkungan secara timing-safe.
+// Memeriksa rahasia webhook dari header Telegram; hanya permintaan dengan rahasia cocok yang diproses.
 export function verifyTelegramWebhookSecret(
   secretHeader: string | null | undefined,
   expectedSecret = getEnv().TELEGRAM_WEBHOOK_SECRET,
@@ -60,6 +61,7 @@ export function verifyTelegramWebhookSecret(
 
 // Mengirimkan pesan teks atau balasan interaktif ke obrolan Telegram via REST API Telegram Bot.
 // Dilengkapi mekanisme pengiriman ulang (fail-safe fallback) ke teks polos jika parsing Markdown gagal.
+// Mengirim pesan ke Telegram. Mode simulate dan token palsu tidak menghubungi jaringan sehingga aman untuk uji.
 export async function dispatchTelegramMessage(
   chatId: number | string,
   text: string,
@@ -73,6 +75,7 @@ export async function dispatchTelegramMessage(
   const env = getEnv();
 
   // Pengiriman nyata via Telegram Bot API jika token terpasang
+  // Hanya mengirim sungguhan bila bukan simulasi dan token ada serta bukan token palsu.
   if (!options?.simulate && env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_BOT_TOKEN !== "dummy_telegram_token") {
     try {
       const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -91,6 +94,7 @@ export async function dispatchTelegramMessage(
       const json = await response.json();
       const latencyMs = Date.now() - startTime;
 
+      // Telegram menjawab ok: kembalikan ID pesan dan waktu respons.
       if (json.ok) {
         return {
           success: true,
@@ -100,8 +104,10 @@ export async function dispatchTelegramMessage(
       }
 
       // Fallback: Jika pemformatan Markdown ditolak Telegram (400 Bad Request), kirim ulang sebagai Plain Text
+      // Format Markdown ditolak Telegram: kirim ulang sebagai teks biasa, kecuali galat bukan 400 atau parse mode memang tidak dipakai.
       console.warn("[Telegram Dispatch Warning] Markdown rejected by Telegram:", json.description);
       if (!options?.parseMode || response.status !== 400) {
+        // Pengiriman ulang pun gagal: kembalikan galat dari Telegram.
         return { success: false, latencyMs, error: "Telegram menolak pesan." };
       }
       const fallbackRes = await fetch(url, {
@@ -116,6 +122,7 @@ export async function dispatchTelegramMessage(
       });
       const fallbackJson = await fallbackRes.json();
       if (fallbackJson.ok) {
+        // Mode simulasi: ID pesan palsu acak supaya pemanggil tetap menerima hasil sukses tanpa jaringan.
         return {
           success: true,
           messageId: fallbackJson.result?.message_id,
@@ -151,6 +158,7 @@ export async function dispatchTelegramMessage(
 }
 
 // Mengirimkan konfirmasi penerimaan interaksi tombol inline (callback query) ke Telegram.
+// Menutup indikator muat pada tombol inline dengan pesan singkat; tanpa token mengembalikan gagal tanpa galat.
 export async function answerTelegramCallbackQuery(callbackQueryId: string, message: string) {
   const token = getEnv().TELEGRAM_BOT_TOKEN;
   if (!token) return { success: false };

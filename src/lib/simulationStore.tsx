@@ -98,6 +98,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
           const liveHoursElapsed = health.hoursElapsed + deltaHours;
           const liveHoursRemaining = Math.max(0, health.hoursRemaining - deltaHours);
           // Lot yang sisa simpannya habis di klien langsung dianggap tidak layak (tier 3) sambil menunggu data server.
+          // Lot dianggap rusak bila skor 0,85 ke atas, atau sisa jam sempat positif tetapi sudah habis di sisi klien.
           const isSpoiled = health.decayScore >= 0.85 || (health.hoursRemaining > 0 && liveHoursRemaining <= 0);
           return [
             stockId,
@@ -126,6 +127,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
     // Mengabaikan respons polling jika ada mutasi data lokal yang lebih mutakhir
     async function sync() {
       // Lewati bila permintaan sebelumnya masih berjalan atau sedang ada mutasi.
+      // Pengambilan data diabaikan bila permintaan sebelumnya masih berjalan, ada tindakan berlangsung, atau belum ada pengguna.
       if (inFlight || changing.current || !userId) return;
       inFlight = true;
       setSyncingUserId(userId);
@@ -134,6 +136,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         const response = await apiFetch("/api/simulation/state", { signal: controller.signal, cache: "no-store" });
         const payload: ApiResponse<ServerState> = await response.json();
         // Respons yang datang setelah komponen dilepas atau setelah ada mutasi baru dibuang.
+        // Hasil dibuang bila permintaan dibatalkan atau generasi data sudah berganti (misal ganti akun), supaya data lama tidak menimpa data baru.
         if (controller.signal.aborted || generation.current !== version) return;
         if (response.ok && payload.data) {
           setSnapshot({ userId, state: payload.data, syncedAt: Date.now() });
@@ -164,6 +167,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   // Mengalirkan aksi mutasi peran ke endpoint API server dan memperbarui snapshot pasar secara atomik.
   async function mutate(body: Record<string, unknown>, endpoint = "/api/simulation/state"): Promise<MarketActionResult> {
     // Hanya satu mutasi pada satu waktu.
+    // Satu tindakan pada satu waktu: tindakan kedua ditolak selama yang pertama belum selesai, lalu generasi data dinaikkan.
     if (!userId || changing.current) return { success: false, message: "Tunggu tindakan sebelumnya selesai." };
     changing.current = true;
     generation.current++;
@@ -180,6 +184,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
         ? { success: true, message: payload.data.message, offer: payload.data.offer }
         : { success: false, message: payload.error ?? "Tindakan tidak dapat diproses." };
       // Server mengembalikan snapshot terbaru bersama hasil aksi sehingga tampilan langsung benar.
+      // Server mengembalikan state terbaru setelah tindakan; langsung dipakai tanpa menunggu polling berikutnya.
       if (payload.data?.state) {
         setSnapshot({ userId, state: payload.data.state, syncedAt: Date.now() });
         setSyncError((error) => error?.userId === userId ? null : error);
@@ -188,6 +193,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
       result = { success: false, message: "Koneksi terputus. Periksa data sebelum mencoba lagi." };
     } finally {
       // Setelah mutasi, muat ulang dari server untuk memastikan data akhir.
+      // Setelah tindakan selesai: buka kunci, matikan status sibuk, dan picu pengambilan data ulang.
       changing.current = false;
       setBusy(false);
       setRefreshTick((tick) => tick + 1);
@@ -214,6 +220,7 @@ export function SimulationProvider({ children }: { children: ReactNode }) {
   // Menjalankan sapuan sore secara manual.
   const triggerCronSweepNow = () => mutate({}, "/api/orchestrator/run");
   // Nilai konteks: data dari server dan aksi mutasi.
+  // Provider menyalurkan state, status sinkronisasi, dan fungsi tindakan ke seluruh dasbor.
   return (
     <SimulationContext.Provider
       value={{

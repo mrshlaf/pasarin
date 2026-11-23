@@ -16,6 +16,7 @@ export const SESSION_COOKIE = "pasarin_session";
 export const SESSION_SECONDS = 8 * 60 * 60;
 
 // Konfigurasi atribut keamanan cookie sesi server (HttpOnly, SameSite Lax, Secure) (PSR-2).
+// Pengaturan cookie sesi: httpOnly agar tidak terbaca JavaScript, sameSite lax, dan secure hanya di produksi.
 export const sessionCookie = {
   httpOnly: true,
   sameSite: "lax" as const,
@@ -47,6 +48,7 @@ function sign(payload: string) {
 // Membuat token sesi bertanda tangan kriptografis HMAC-SHA256 untuk disimpan dalam HttpOnly cookie.
 export function createSessionToken(user: AuthUser) {
   // Muatan sesi berisi profil akun dan waktu kedaluwarsa (detik epoch), lalu dikodekan base64url.
+  // Muatan sesi: data pengguna ditambah waktu kedaluwarsa (detik epoch), dikodekan base64url; tanda tangan HMAC ditambahkan oleh pemanggil.
   const payload = Buffer.from(JSON.stringify({
     ...user,
     exp: Math.floor(Date.now() / 1000) + SESSION_SECONDS,
@@ -68,6 +70,7 @@ function verifySessionToken(token: string): AuthUser | null {
     // Token kedaluwarsa ditolak.
     if (!data.exp || data.exp < Math.floor(Date.now() / 1000)) return null;
     // Semua field wajib dicek tipenya karena muatan berasal dari cookie.
+    // Validasi bentuk sesi: id, email, nama, organisasi harus teks dan peran harus peran aplikasi; selain itu sesi ditolak.
     if (typeof data.id !== "string" || typeof data.email !== "string" || typeof data.name !== "string" ||
       typeof data.organization !== "string" || !isAppRole(data.role)) return null;
     return {
@@ -106,6 +109,7 @@ function profileFromRow(row: AccountRow): AuthUser | null {
   const meta = row.raw_user_meta_data ?? {};
   const role = app.pasarin_role;
   // Akun tanpa peran PASARIN yang valid tidak dianggap pengguna aplikasi.
+  // Peran dibaca dari metadata aplikasi; peran tak dikenal berarti akun tidak boleh masuk.
   if (!isAppRole(role)) return null;
   const vendorId = app.pasarin_vendor_id;
   return {
@@ -121,6 +125,7 @@ function profileFromRow(row: AccountRow): AuthUser | null {
 // Mengautentikasi pengguna langsung ke tabel `auth.users` Supabase PostgreSQL menggunakan ekstensi pgcrypto.
 export async function authenticateAccount(username: string, password: string): Promise<AuthUser | null> {
   // Kata sandi dicocokkan di database dengan pgcrypto; akun terhapus atau diblokir tidak lolos.
+  // Mencari akun lokal berdasarkan email di tabel auth.users.
   const result = await getDatabasePool().query<AccountRow>(
     `select id, email, raw_app_meta_data, raw_user_meta_data
      from auth.users
@@ -137,6 +142,7 @@ export async function authenticateAccount(username: string, password: string): P
 }
 
 // Mengambil dan memvalidasi ulang profil pengguna yang masih aktif berdasarkan ID akun di basis data.
+// Mencari akun aktif (belum dihapus) berdasarkan ID.
 export async function findActiveAccount(id: string): Promise<AuthUser | null> {
   const { rows } = await getDatabasePool().query<AccountRow>(
     `select id, email, raw_app_meta_data, raw_user_meta_data
@@ -151,6 +157,7 @@ export async function findActiveAccount(id: string): Promise<AuthUser | null> {
 // Menginjeksi metadata peran aplikasi (app_metadata) dan enkripsi kata sandi via pgcrypto Blowfish.
 export async function seedAccounts() {
   // Satu koneksi khusus dengan transaksi agar seed akun semua-atau-tidak-sama-sekali.
+  // Penyemaian akun dilakukan dalam satu transaksi: semua akun contoh berhasil atau tidak ada yang berubah.
   const client = await getDatabasePool().connect();
   const actorIds: Record<string, string> = {};
   try {
@@ -158,6 +165,7 @@ export async function seedAccounts() {
     for (const account of MARKET_ACCOUNTS) {
       const email = accountEmail(account.username);
       // Metadata peran yang dibaca profileFromRow saat login.
+      // Metadata aplikasi akun contoh: penyedia email, peran PASARIN, dan kios untuk pedagang.
       const appMetadata = JSON.stringify({
         provider: "email",
         providers: ["email"],
@@ -167,12 +175,14 @@ export async function seedAccounts() {
       });
       const userMetadata = JSON.stringify({ name: account.name, organization: account.organization });
       // Akun yang sudah ada diperbarui (kata sandi disetel ulang), yang belum ada dibuat baru.
+      // Cek akun sudah ada (belum dihapus) agar penyemaian bisa diulang tanpa duplikat.
       const existing = await client.query<{ id: string }>(
         "select id from auth.users where email = $1 and deleted_at is null limit 1",
         [email],
       );
       let userId = existing.rows[0]?.id;
       if (userId) {
+        // Identitas email dibuat untuk akun baru agar bisa masuk lewat Supabase Auth.
         await client.query(
           `update auth.users set
              encrypted_password = extensions.crypt($2, extensions.gen_salt('bf')),
@@ -216,6 +226,7 @@ export async function seedAccounts() {
     return actorIds;
   } catch (error) {
     // Batalkan seluruh transaksi bila ada akun yang gagal.
+    // Gagal di tengah jalan: batalkan seluruh transaksi lalu lempar ulang galatnya; koneksi selalu dikembalikan ke pool.
     await client.query("rollback");
     throw error;
   } finally {
@@ -224,6 +235,7 @@ export async function seedAccounts() {
 }
 
 // Menghitung jumlah akun pengguna pasar yang saat ini tersimpan aktif di skema Supabase Auth.
+// Menghitung akun PASARIN yang aktif di basis data.
 export async function countMarketAccounts() {
   const result = await getDatabasePool().query<{ count: number }>(
     "select count(*)::int as count from auth.users where raw_app_meta_data ? 'pasarin_role' and deleted_at is null",
