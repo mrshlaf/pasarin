@@ -13,8 +13,8 @@ import { calculateDecay } from "@/lib/decayEngine";
 import {
   FOOD_WASTE_CO2E_KG_PER_KG,
   FOOD_WASTE_METHANE_KG_PER_KG,
-  calculateInverseSurgePricing,
   calculateRainFootfallAttenuation,
+  salvagePriceOrderingHolds,
 } from "@/lib/pasarinCore";
 import { executeAutonomousOrchestration } from "@/lib/geminiOrchestrator";
 import {
@@ -249,15 +249,10 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   });
 
   // Evaluasi kepatuhan invarian dan audit akuntansi lingkungan IPCC 2006
-  const sampleTomat = COMMODITIES.find((c) => c.id === "tomat")!;
-  const p1 = calculateInverseSurgePricing(sampleTomat, 14.5, 0.0).offeredSalvagePrice;
-  // Invarian 2 dicek dengan harga contoh tomat: Tier 1 dari inverse surge, Tier 2 sekitar 20% harga grosir, Tier 3 Rp1.500.
-  const p2 = Math.max(sampleTomat.minimumSalvagePricePerKg, Math.round(sampleTomat.baseWholesalePricePerKg * 0.2));
-  const p3 = 1500;
-
   const inv1 = !maggotClaimCheck.allowed;
-  // Aturan 2 lulus bila harga tier 1 lebih besar dari tier 2, tier 2 tidak kurang dari tier 3, dan tier 3 tidak di bawah Rp1.500.
-  const inv2 = p1 > p2 && p2 >= p3 && p3 >= 1500;
+  // Aturan 2 dicek dengan tabel harga yang dipakai katalog, untuk seluruh 30 komoditas:
+  // harga Tier 1 termurah > harga Tier 2 termahal > harga Tier 3 (gratis).
+  const inv2 = COMMODITIES.every(salvagePriceOrderingHolds);
   // Penawaran contoh baru dibuat, jadi jendela harus aktif dengan sisa tepat 30 menit.
   const inv3 = windowEval.isWindowActive && windowEval.remainingMinutes === 30;
 

@@ -57,7 +57,7 @@ async function runToolCallingRegistryTests() {
     "calculateDecayRate",
     "calculateFootfallIndex",
     "computeProjectedSurplus",
-    "computeInverseSurgePrice",
+    "computeSalvagePrice",
     "verifyHumanGradeIntegrity",
     "assignVehicleType",
     "calculateMethaneAvoidance",

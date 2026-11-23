@@ -4,7 +4,7 @@
 // Landasan Invarian PRD §5.1 & §6.1:
 // 1. Invarian 1 (Zero Edible Food to Feed): 0% sayuran layak makan manusia (decayScore < 0.85)
 // boleh dialihkan ke sentra budidaya maggot BSF (Tier 3).
-// 2. Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg.
+// 2. Invarian 2 (Strict Price Ordering): harga Tier 1 > Tier 2 > Tier 3 (gratis), dari tabel diskon tunggal quoteSalvagePrice.
 // 3. Invarian 3 (30-Minute Social Reservation Window): Sayur bernutrisi tinggi di Tier 2
 // dikunci selama 30 menit khusus untuk dapur sosial sebelum dapat diakses pihak lain.
 

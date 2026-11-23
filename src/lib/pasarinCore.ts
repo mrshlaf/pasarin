@@ -1,7 +1,7 @@
 // Modul Inti Kinetika Peluruhan Biologis Hortikultura Tropis (PSR-14).
-// Menghitung laju degradasi respirasi seluler berbasis termodinamika Arrhenius dan koefisien kelipatan Q10.
+// Menghitung kecepatan peluruhan dengan persamaan Arrhenius; energi aktivasi tiap komoditas diturunkan dari koefisien Q10-nya.
 // Menentukan skor kebusukan (decayScore 0.00 - 1.00), alokasi penyelamatan sirkular 3-Tier,
-// serta kalkulasi harga salvaging adaptif dengan perlindungan batas bawah modal pedagang (Price Floor Protection).
+// serta harga penyelamatan dari satu tabel diskon dengan perlindungan batas bawah modal pedagang (Price Floor Protection).
 
 import { Commodity, COMMODITIES } from "@/data/commodities";
 import {
@@ -13,14 +13,16 @@ import {
 // Konstanta gas universal R dalam satuan J/(mol·K) (PSR-14).
 export const UNIVERSAL_GAS_CONSTANT_R = 8.314; // J/(mol·K)
 
-// Energi aktivasi respirasi sel daun hortikultura Ea dalam J/mol (~48.5 kJ/mol) (PSR-14).
-export const ACTIVATION_ENERGY_EA_J_MOL = 48500.0; // J/mol (~48.5 kJ/mol)
+// Selisih skala Celsius dan Kelvin; persamaan Arrhenius memakai suhu mutlak.
+const KELVIN_OFFSET = 273.15;
 
-// Faktor frekuensi Arrhenius A per jam (PSR-14).
-export const ARRHENIUS_FREQUENCY_FACTOR_A = 1.42e7; // 1/jam
+// Q10 komoditas dibaca pada rentang suhu los pasar 27,5 sampai 37,5 C (simetris di sekitar suhu acuan 32,5 C).
+// Energi aktivasi diturunkan dari rentang ini, jadi pada rentang itu model Arrhenius memberi kelipatan tepat sebesar Q10.
+export const Q10_RANGE_LOW_C = 27.5;
+export const Q10_RANGE_HIGH_C = 37.5;
 
-// Suhu acuan penyimpanan dasar dalam derajat Celsius (PSR-14).
-export const BASELINE_STORAGE_TEMP_C = 25.0; // °C
+// Q10 bawaan bila data komoditas kosong atau tidak valid.
+export const DEFAULT_Q10 = 2.0;
 
 // Ambang batas kelembapan relatif kritis (% RH) (PSR-14).
 export const CRITICAL_RELATIVE_HUMIDITY_PERCENT = 80.0; // Ambang batas kelembapan (%)
@@ -51,15 +53,33 @@ function humidityRateFactor(relativeHumidityPercent: number, sensitivity: number
   return 1.0;
 }
 
+// Energi aktivasi peluruhan komoditas (J/mol), diturunkan dari Q10: Ea = R x ln(Q10) x T1 x T2 / 10,
+// dengan T1 = 27,5 C dan T2 = 37,5 C dalam Kelvin. Literatur pascapanen umumnya melaporkan Q10, bukan Ea, jadi Ea dihitung dari Q10.
+// Contoh: kangkung Q10 2,5 memberi Ea = 8,314 x 0,916 x 300,65 x 310,65 / 10 = sekitar 71 kJ/mol.
+export function activationEnergyJPerMol(commodity: Commodity) {
+  const q10 = commodity.q10Coefficient > 0 ? commodity.q10Coefficient : DEFAULT_Q10;
+  const t1 = Q10_RANGE_LOW_C + KELVIN_OFFSET;
+  const t2 = Q10_RANGE_HIGH_C + KELVIN_OFFSET;
+  return (UNIVERSAL_GAS_CONSTANT_R * Math.log(q10) * t1 * t2) / 10.0;
+}
+
+// Faktor suhu Arrhenius: k(T) / k(T acuan) = exp(Ea/R x (1/T acuan - 1/T)), suhu dalam Kelvin.
+// Faktor frekuensi A pada k = A x e^(-Ea/RT) saling menghapus karena yang dihitung adalah rasio terhadap suhu acuan 32,5 C.
+// Contoh: kangkung pada 27 C: exp(8.558 x (1/305,65 - 1/300,15)) = 0,60, jadi peluruhan sekitar 40 persen lebih lambat.
+export function arrheniusTemperatureFactor(commodity: Commodity, temperatureCelsius: number) {
+  const eaOverR = activationEnergyJPerMol(commodity) / UNIVERSAL_GAS_CONSTANT_R;
+  const t = temperatureCelsius + KELVIN_OFFSET;
+  const tRef = REFERENCE_TEMPERATURE_C + KELVIN_OFFSET;
+  return Math.exp(eaOverR * (1 / tRef - 1 / t));
+}
+
 // Kecepatan peluruhan relatif terhadap kondisi acuan (32,5 C, 75 persen). Bernilai 1 pada kondisi acuan,
 // di atas 1 bila lebih panas atau lebih ekstrem kelembapannya, di bawah 1 bila lebih sejuk.
-// Rumus: Q10^((T - 32,5)/10) x faktorKelembapan(RH) / faktorKelembapan(75). Q10 dan sensitivitas kelembapan diambil dari data komoditas.
-// Contoh: Q10 2,5 pada 27 C: 2,5^(-0,55) = 0,60, jadi peluruhan 40 persen lebih lambat dan umur simpan sekitar 1,7 kali lebih panjang.
+// Rumus: faktor suhu Arrhenius x faktorKelembapan(RH) / faktorKelembapan(75). Q10 dan sensitivitas kelembapan diambil dari data komoditas.
+// Faktor kelembapan adalah koreksi empiris di luar persamaan Arrhenius.
 export function relativeDecaySpeed(commodity: Commodity, temperatureCelsius: number, relativeHumidityPercent: number) {
-  // Q10 komoditas dipakai bila valid (lebih dari 0); bila tidak, pakai nilai bawaan global.
-  const q10 = commodity.q10Coefficient > 0 ? commodity.q10Coefficient : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
-  // Bagian suhu: Q10 dipangkatkan (selisih suhu dari 32,5 C dibagi 10). Tiap kenaikan 10 C, kecepatan naik sebesar Q10 kali.
-  const thermal = Math.pow(q10, (temperatureCelsius - REFERENCE_TEMPERATURE_C) / 10.0);
+  // Bagian suhu: persamaan Arrhenius dengan energi aktivasi komoditas.
+  const thermal = arrheniusTemperatureFactor(commodity, temperatureCelsius);
   const sensitivity = commodity.humiditySensitivityFactor;
   // Bagian kelembapan: faktor pada RH aktual dibagi faktor pada RH acuan 75 persen, supaya kondisi acuan bernilai tepat 1.
   const humidity = humidityRateFactor(relativeHumidityPercent, sensitivity) / humidityRateFactor(REFERENCE_HUMIDITY_PERCENT, sensitivity);
@@ -67,60 +87,144 @@ export function relativeDecaySpeed(commodity: Commodity, temperatureCelsius: num
   return Math.min(MAX_RELATIVE_SPEED, Math.max(MIN_RELATIVE_SPEED, thermal * humidity));
 }
 
+// ---------------------------------------------------------------------------------------------
+// TABEL TUNGGAL MUTU, TIER, DAN DISKON. Semua harga penyelamatan di aplikasi (dasbor, katalog,
+// penerbitan lot, sinkronisasi tier, seed, chatbot, Telegram, dan alat orkestrator) dihitung dari sini.
+//
+//   Skor susut      Kondisi        Jalur                        Diskon dari harga grosir
+//   < 0,35          segar prima    eceran; bila ditawarkan      50% (diskon awal Tier 1)
+//                                  ikut Tier 1
+//   0,35 - < 0,65   layu ringan    Tier 1 Warteg & UMKM         50% naik linear ke 70%
+//   0,65 - < 0,85   layu sedang    Tier 2 Dapur Sosial & Panti  75% naik linear ke 85% (atau donasi Rp0)
+//   >= 0,85         tidak layak    Tier 3 Sentra Maggot         100% (gratis, bukan pangan)
+//
+// Harga = harga grosir x (1 - diskon), dibulatkan ke kelipatan Rp500, lalu dikunci harga lantai tier.
+// Diskon hanya bergantung pada mutu, jadi harga tidak pernah naik ketika mutu turun.
+// ---------------------------------------------------------------------------------------------
+
+// Batas skor tiap fase mutu.
+export const DECAY_THRESHOLDS = {
+  LAYU_RINGAN: 0.35,
+  LAYU_SEDANG: 0.65,
+  TIDAK_LAYAK: 0.85,
+} as const;
+
+// Rentang diskon tiap tier pangan: diskon naik linear dari minPercent ke maxPercent sepanjang rentang skor tier itu.
+export const SALVAGE_DISCOUNT_BANDS = {
+  tier_1: { fromScore: DECAY_THRESHOLDS.LAYU_RINGAN, toScore: DECAY_THRESHOLDS.LAYU_SEDANG, minPercent: 50, maxPercent: 70 },
+  tier_2: { fromScore: DECAY_THRESHOLDS.LAYU_SEDANG, toScore: DECAY_THRESHOLDS.TIDAK_LAYAK, minPercent: 75, maxPercent: 85 },
+} as const;
+
+// Harga lantai Tier 1: tarif dasar pakan maggot Rp1.500 ditambah margin pedagang Rp1.000; harga lantai komoditas berlaku bila lebih tinggi.
+export const TIER1_PRICE_FLOOR_IDR = 2500;
+// Harga lantai Tier 2 (tebus murah dapur sosial). Donasi tetap Rp0 karena dipilih pedagang, bukan hasil tabel.
+export const TIER2_PRICE_FLOOR_IDR = 1000;
+// Pembulatan harga ke kelipatan Rp500 agar mudah dibayar tunai.
+const PRICE_STEP_IDR = 500;
+
+// Tier yang menerima penawaran penyelamatan (lot segar yang tetap diterbitkan masuk Tier 1).
+export type SalvageTier = Exclude<CircularRescueTier, "fresh">;
+
+// Diskon nominal (persen) dari tabel menurut skor susut. Skor di bawah 0,35 memakai diskon awal Tier 1 (50 persen).
+// Contoh: skor 0,50 berada di tengah Tier 1, (0,50 - 0,35) / 0,30 = 0,5, jadi diskon 50 + 0,5 x 20 = 60 persen.
+export function salvageDiscountPercent(decayScore: number) {
+  if (decayScore >= DECAY_THRESHOLDS.TIDAK_LAYAK) return 100;
+  const band = decayScore >= DECAY_THRESHOLDS.LAYU_SEDANG ? SALVAGE_DISCOUNT_BANDS.tier_2 : SALVAGE_DISCOUNT_BANDS.tier_1;
+  const progress = Math.min(1, Math.max(0, (decayScore - band.fromScore) / (band.toScore - band.fromScore)));
+  return band.minPercent + Math.round(progress * (band.maxPercent - band.minPercent));
+}
+
+// Tier penyaluran menurut skor; sama dengan distributionTierForDecay di types/market.
+export function salvageTierForScore(decayScore: number): SalvageTier {
+  if (decayScore >= DECAY_THRESHOLDS.TIDAK_LAYAK) return "tier_3";
+  return decayScore >= DECAY_THRESHOLDS.LAYU_SEDANG ? "tier_2" : "tier_1";
+}
+
+// Harga per kg setelah diskon, dibulatkan Rp500, tidak di bawah harga lantai.
+function discountedPrice(commodity: Commodity, discountPercent: number, floor: number) {
+  const raw = commodity.baseWholesalePricePerKg * (1.0 - discountPercent / 100.0);
+  return Math.max(floor, Math.round(raw / PRICE_STEP_IDR) * PRICE_STEP_IDR);
+}
+
+// Harga lantai Tier 1 untuk satu komoditas.
+function tier1Floor(commodity: Commodity) {
+  return Math.max(commodity.minimumSalvagePricePerKg, TIER1_PRICE_FLOOR_IDR);
+}
+
+// Penawaran harga penyelamatan satu komoditas pada skor susut tertentu.
+export interface SalvagePriceQuote {
+  tier: SalvageTier;
+  // Diskon dari tabel sebelum pembulatan dan harga lantai.
+  nominalDiscountPercent: number;
+  // Diskon nyata terhadap harga grosir setelah pembulatan dan harga lantai; angka ini yang tampil di penawaran.
+  discountPercent: number;
+  pricePerKg: number;
+  floorPerKg: number;
+  wholesalePricePerKg: number;
+}
+
+// Satu-satunya fungsi harga penyelamatan. Tier 2 juga dibatasi Rp500 di bawah harga Tier 1 termurah komoditas itu,
+// supaya Invarian 2 (harga Tier 1 > Tier 2 > Tier 3) tetap berlaku meski ada pembulatan dan harga lantai.
+// Contoh: kangkung Rp6.000. Skor 0,50: diskon 60 persen, Rp2.400 dibulatkan Rp2.500. Lot segar (skor 0,02) juga Rp3.000 (diskon 50 persen), tidak lebih murah.
+export function quoteSalvagePrice(commodity: Commodity, decayScore: number): SalvagePriceQuote {
+  const wholesale = commodity.baseWholesalePricePerKg;
+  const tier = salvageTierForScore(decayScore);
+  const nominalDiscountPercent = salvageDiscountPercent(decayScore);
+
+  let pricePerKg = 0;
+  let floorPerKg = 0;
+  if (tier === "tier_1") {
+    floorPerKg = tier1Floor(commodity);
+    pricePerKg = discountedPrice(commodity, nominalDiscountPercent, floorPerKg);
+  } else if (tier === "tier_2") {
+    floorPerKg = TIER2_PRICE_FLOOR_IDR;
+    const cheapestTier1 = discountedPrice(commodity, SALVAGE_DISCOUNT_BANDS.tier_1.maxPercent, tier1Floor(commodity));
+    // Batas atas Tier 2: kelipatan Rp500 terbesar yang masih di bawah harga Tier 1 termurah (Rp2.800 menjadi Rp2.500).
+    const tier2Ceiling = Math.ceil(cheapestTier1 / PRICE_STEP_IDR) * PRICE_STEP_IDR - PRICE_STEP_IDR;
+    pricePerKg = Math.max(floorPerKg, Math.min(discountedPrice(commodity, nominalDiscountPercent, floorPerKg), tier2Ceiling));
+  }
+
+  const discountPercent = wholesale > 0 ? Math.min(100, Math.max(0, Math.round(100 * (1 - pricePerKg / wholesale)))) : 100;
+  return { tier, nominalDiscountPercent, discountPercent, pricePerKg, floorPerKg, wholesalePricePerKg: wholesale };
+}
+
+// Invarian 2 (Strict Price Ordering) untuk satu komoditas: harga Tier 1 termurah > harga Tier 2 termahal > harga Tier 3 (gratis).
+// Dicek pada titik batas tier, tempat pelanggaran paling mungkin terjadi akibat pembulatan dan harga lantai.
+export function salvagePriceOrderingHolds(commodity: Commodity) {
+  const cheapestTier1 = quoteSalvagePrice(commodity, DECAY_THRESHOLDS.LAYU_SEDANG - 1e-6).pricePerKg;
+  const dearestTier2 = quoteSalvagePrice(commodity, DECAY_THRESHOLDS.LAYU_SEDANG).pricePerKg;
+  const tier3 = quoteSalvagePrice(commodity, DECAY_THRESHOLDS.TIDAK_LAYAK).pricePerKg;
+  return cheapestTier1 > dearestTier2 && dearestTier2 > tier3;
+}
+
 // Menetapkan klasifikasi mutu fisik dan alokasi penyelamatan sirkular 3-Tier berdasarkan DecayScore.
 // Menegakkan Invarian 1 (Zero Edible Food to Feed): komoditas layak konsumsi manusia dilarang ke sentra maggot.
+// Diskon diambil dari tabel tunggal di atas, sama dengan harga di dasbor.
 export function classifyProduceCondition(decayScore: number): {
   condition: ProduceCondition;
   recommendedTier: CircularRescueTier;
   tierLabel: string;
   baseDiscountPercent: number;
 } {
-  // Skor di bawah 0,35: masih segar prima, dijual eceran biasa tanpa diskon penyelamatan.
-  if (decayScore < 0.35) {
-    return {
-      condition: "segar_prima",
-      recommendedTier: "fresh",
-      tierLabel: "Segar Prima (Eceran Normal)",
-      baseDiscountPercent: 0,
-    };
-  }
+  const baseDiscountPercent = salvageDiscountPercent(decayScore);
 
+  // Skor di bawah 0,35: masih segar prima untuk eceran biasa; bila tetap ditawarkan, ikut diskon awal Tier 1.
+  if (decayScore < DECAY_THRESHOLDS.LAYU_RINGAN) {
+    return { condition: "segar_prima", recommendedTier: "fresh", tierLabel: "Segar Prima (Eceran Normal)", baseDiscountPercent };
+  }
   // Skor 0,35 sampai di bawah 0,65: layu ringan, jalur Tier 1 (Warteg dan UMKM kuliner).
-  if (decayScore < 0.65) {
-    // Diskon bertingkat proporsional inverse surge (50% - 70%)
-    // Diskon tier 1 naik linear 50 sampai 70 persen sesuai posisi skor antara 0,35 dan 0,65.
-    // Posisi skor di dalam fase ini dari 0 sampai 1. Contoh: skor 0,50 memberi (0,50 - 0,35) / 0,30 = 0,5, jadi diskon 50 + 10 = 60 persen.
-    const surgeStep = (decayScore - 0.35) / 0.3;
-    const discount = 50 + Math.round(surgeStep * 20);
-    return {
-      condition: "layu_ringan",
-      recommendedTier: "tier_1",
-      tierLabel: "Tier 1: Warteg & UMKM Kuliner (Diskon 50% - 70%)",
-      baseDiscountPercent: discount,
-    };
+  if (decayScore < DECAY_THRESHOLDS.LAYU_SEDANG) {
+    return { condition: "layu_ringan", recommendedTier: "tier_1", tierLabel: "Tier 1: Warteg & Katering UMKM (Diskon 50% - 70%)", baseDiscountPercent };
   }
-
-  // Skor 0,65 sampai di bawah 0,85: layu sedang, jalur Tier 2 (dapur sosial dan panti) dengan subsidi 85 persen.
-  if (decayScore < 0.85) {
-    // Skor 0,85 ke atas: tidak layak konsumsi manusia, jalur Tier 3 (maggot dan kompos), bukan pangan.
-    return {
-      condition: "layu_sedang",
-      recommendedTier: "tier_2",
-      tierLabel: "Tier 2: Dapur Sosial & Panti Asuhan (Donasi / Subsidi 85%)",
-      baseDiscountPercent: 85,
-    };
+  // Skor 0,65 sampai di bawah 0,85: layu sedang, jalur Tier 2 (dapur sosial dan panti).
+  if (decayScore < DECAY_THRESHOLDS.TIDAK_LAYAK) {
+    return { condition: "layu_sedang", recommendedTier: "tier_2", tierLabel: "Tier 2: Dapur Sosial & Panti (Diskon 75% - 85% atau Donasi)", baseDiscountPercent };
   }
-
-  return {
-    condition: "tidak_layak",
-    recommendedTier: "tier_3",
-    tierLabel: "Tier 3: Sentra Maggot BSF & Biokonversi (Non-Pangan)",
-    baseDiscountPercent: 95,
-  };
+  // Skor 0,85 ke atas: tidak layak konsumsi manusia, jalur Tier 3 (maggot dan kompos), bukan pangan.
+  return { condition: "tidak_layak", recommendedTier: "tier_3", tierLabel: "Tier 3: Sentra Maggot BSF & Biokonversi (Gratis, Non-Pangan)", baseDiscountPercent };
 }
 
-// Mengevaluasi kinetika peluruhan komoditas dengan kinetika Arrhenius dan proteksi harga modal pedagang (PSR-14).
-// Menghitung harga salvaging diskon bertingkat (50% - 70%) tanpa pernah menembus batas bawah modal (Price Floor).
+// Mengevaluasi kinetika peluruhan komoditas dengan persamaan Arrhenius dan harga penyelamatan dari tabel tunggal (PSR-14).
 export function evaluateProduceDecay(
   commodity: Commodity,
   temperatureC: number,
@@ -128,37 +232,7 @@ export function evaluateProduceDecay(
   hoursElapsed: number
 ): DecayEvaluationResult {
   const arrhenius = evaluateArrheniusDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
-  // Harga grosir komoditas adalah dasar semua diskon; harga lantai dan diskon dihitung per fase di bawah ini.
-  const basePrice = commodity.baseWholesalePricePerKg;
-
-  let baseDiscountPercent = 0;
-  let estimatedSalvagePriceIdr = 0;
-  let floorPrice = commodity.minimumSalvagePricePerKg;
-
-  if (arrhenius.condition === 'layu_ringan') {
-    // Tier 1 (Warteg): Semakin mendekati busuk, diskon bertambah (50% -> 70%) dan harga semakin murah
-    // surgeStep = posisi skor di dalam fase (0..1); diskon tier 1 = 50 + 20 x surgeStep persen.
-    const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.35) / 0.30));
-    baseDiscountPercent = 50 + Math.round(surgeStep * 20);
-    floorPrice = Math.max(commodity.minimumSalvagePricePerKg, 2500);
-    // Harga dibulatkan ke kelipatan Rp500 agar mudah dibayar tunai, lalu dikunci di atas harga lantai.
-    // Harga = harga grosir x (1 - diskon). Dibulatkan ke kelipatan Rp500, lalu tidak boleh di bawah harga lantai. Contoh: Rp6.000 diskon 60 persen = Rp2.400, dibulatkan Rp2.500.
-    const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
-    estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
-  } else if (arrhenius.condition === 'layu_sedang') {
-    // Tier 2 (Dapur Sosial): Lebih layu dari tier 1, harga lebih murah lagi (diskon 75% -> 85%) jika ditebus subsidi
-    // Tier 2 memakai diskon 75 sampai 85 persen: 75 + 10 x surgeStep, posisi dihitung dari skor 0,65 sampai 0,85.
-    const surgeStep = Math.min(1, Math.max(0, (arrhenius.decayScore - 0.65) / 0.20));
-    baseDiscountPercent = 75 + Math.round(surgeStep * 10);
-    floorPrice = 1000;
-    const rawDiscountedPrice = Math.round(basePrice * (1.0 - baseDiscountPercent / 100.0));
-    estimatedSalvagePriceIdr = Math.max(floorPrice, Math.round(rawDiscountedPrice / 500) * 500);
-  } else if (arrhenius.condition === 'tidak_layak') {
-    // Tier 3 (Maggot BSF): Komoditas afkir/rusak non-pangan manusia dialihkan GRATIS (Rp 0)
-    baseDiscountPercent = 100;
-    floorPrice = 0;
-    estimatedSalvagePriceIdr = 0;
-  }
+  const quote = quoteSalvagePrice(commodity, arrhenius.decayScore);
 
   // Hasil akhir evaluasi: identitas komoditas, kondisi cuaca masukan, skor, tier, sisa jam, diskon, dan harga penyelamatan.
   return {
@@ -168,17 +242,17 @@ export function evaluateProduceDecay(
     temperatureC,
     humidityPercent,
     hoursElapsed,
-    // 0,045 adalah k dasar pada 20°C, sehingga nilai ini adalah kelipatan laju terhadap suhu acuan.
-    accelerationFactor: Number((arrhenius.rateConstantK / 0.045).toFixed(3)),
+    // Kelipatan kecepatan peluruhan terhadap kondisi acuan 32,5 C dan 75 persen.
+    accelerationFactor: Number(relativeDecaySpeed(commodity, temperatureC, humidityPercent).toFixed(3)),
     decayScore: arrhenius.decayScore,
     condition: arrhenius.condition,
     recommendedTier: arrhenius.recommendedTier,
     tierLabel: arrhenius.tierLabel,
     hoursRemaining: arrhenius.hoursRemaining,
-    salvageDiscountPercent: baseDiscountPercent,
-    estimatedSalvagePriceIdr,
-    baseWholesalePriceIdr: basePrice,
-    priceFloorIdr: floorPrice,
+    salvageDiscountPercent: quote.discountPercent,
+    estimatedSalvagePriceIdr: quote.pricePerKg,
+    baseWholesalePriceIdr: quote.wholesalePricePerKg,
+    priceFloorIdr: quote.floorPerKg,
     calculatedAt: new Date().toISOString(),
   };
 }
@@ -214,14 +288,14 @@ export function getAllCommodityEvaluations(
   );
 }
 
-// Parameter acuan kinetika termal Arrhenius-Q10 kurikulum (PSR-14).
+// Parameter acuan kinetika Arrhenius (PSR-14). Energi aktivasi tidak tercantum di sini karena dihitung per komoditas dari Q10.
 export const ARRHENIUS_CONSTANTS = {
   GAS_CONSTANT_R: UNIVERSAL_GAS_CONSTANT_R,
-  ACTIVATION_ENERGY_EA: ACTIVATION_ENERGY_EA_J_MOL,
-  FREQUENCY_FACTOR_A: ARRHENIUS_FREQUENCY_FACTOR_A,
-  // Acuan laju dasar k(T, RH) adalah 20°C. BASELINE_STORAGE_TEMP_C (25°C) hanya konstanta rujukan penyimpanan dan tidak dipakai rumus skor.
-  BASELINE_TEMP_CELSIUS: 20.0,
-  THERMAL_QUOTIENT_Q10: 2.0,
+  REFERENCE_TEMPERATURE_C,
+  REFERENCE_HUMIDITY_PERCENT,
+  Q10_RANGE_LOW_C,
+  Q10_RANGE_HIGH_C,
+  THERMAL_QUOTIENT_Q10: DEFAULT_Q10,
   CRITICAL_HUMIDITY_PERCENT: CRITICAL_RELATIVE_HUMIDITY_PERCENT,
   BETA_HUMIDITY_COEFFICIENT: HUMIDITY_PENALTY_COEFFICIENT,
 } as const;
@@ -245,7 +319,11 @@ export interface ArrheniusDecayResult {
   temperatureCelsius: number;
   relativeHumidityPercent: number;
   hoursElapsed: number;
-  // Konstanta laju peluruhan per jam, dibulatkan 4 desimal.
+  // Energi aktivasi komoditas dalam kJ/mol, diturunkan dari Q10.
+  activationEnergyKjPerMol: number;
+  // Kelipatan kecepatan peluruhan terhadap kondisi acuan 32,5 C dan 75 persen (faktor Arrhenius x faktor kelembapan).
+  relativeSpeed: number;
+  // Konstanta laju per jam: bagian batas umur simpan yang terpakai tiap jam pada kondisi ini (kecepatan relatif / batas jam).
   rateConstantK: number;
   decayScore: number;
   condition: ProduceCondition;
@@ -256,46 +334,20 @@ export interface ArrheniusDecayResult {
   isEdibleForHumans: boolean;
 }
 
-// Menghitung konstanta laju dasar k(T, RH) sesuai spesifikasi PSR-14: akselerasi tetap 2,2x pada 33°C dibanding 20°C.
-// Parameter q10 hanya menentukan apakah nilai bawaan dipakai (bila nol atau negatif); sensitivitas suhu tiap komoditas
-// diterapkan terpisah oleh relativeDecaySpeed. Nilai ini dipakai untuk rateConstantK dan accelerationFactor, bukan untuk skor.
-export function calculateArrheniusRateConstant(
-  temperatureCelsius: number,
-  relativeHumidityPercent: number,
-  q10: number = ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10
-): number {
-  const { BASELINE_TEMP_CELSIUS, CRITICAL_HUMIDITY_PERCENT, BETA_HUMIDITY_COEFFICIENT } = ARRHENIUS_CONSTANTS;
-  // Laju k per jam = 0,045 x 2,2^((T - 20)/13) x (1 + 0,015 x max(0, RH - 80)). Artinya: 0,045 adalah laju pada 20 C, setiap kenaikan 13 C melipatkan laju 2,2 kali, dan kelembapan di atas 80 persen menambah laju sedikit.
-  const k_baseline = 0.045;
-  // Q10 komoditas tidak dipakai langsung: nilai positif apa pun diganti 2,2 per 13°C (kalibrasi ~2,2x pada 33°C vs 20°C).
-  // Koreksi kelembapan hanya menambah laju di atas 80% RH.
-  // Rumus laju lama untuk konstanta k: Q10 efektif 2,2 per 13 C. Hanya dipakai untuk rateConstantK dan faktor percepatan; skor memakai relativeDecaySpeed.
-  const effectiveQ10 = q10 > 0 ? 2.2 : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
-  const tempDelta = temperatureCelsius - BASELINE_TEMP_CELSIUS;
-  // Rasio termal: Q10 efektif dipangkatkan (selisih suhu dari suhu dasar dibagi 13).
-  const thermalRatio = Math.pow(effectiveQ10, tempDelta / 13.0);
-  // Koreksi kelembapan: 1 + beta x (RH di atas batas kritis); makin lembap makin cepat.
-  const humidityDelta = Math.max(0, relativeHumidityPercent - CRITICAL_HUMIDITY_PERCENT);
-  const humidityCorrection = 1.0 + BETA_HUMIDITY_COEFFICIENT * humidityDelta;
-  return k_baseline * thermalRatio * humidityCorrection;
-}
-
-// Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan & laju respirasi Arrhenius (PSR-14).
+// Evaluasi akumulasi peluruhan (DecayScore) berbasis jam simpan dan kecepatan peluruhan Arrhenius (PSR-14).
 export function evaluateArrheniusDecay(
   commodity: Commodity,
   temperatureCelsius: number,
   relativeHumidityPercent: number,
   hoursElapsed: number
 ): ArrheniusDecayResult {
-  // Q10 komoditas dibaca dari data; bila kosong memakai nilai bawaan.
-  const q10 = commodity.q10Coefficient || ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
-  const rateK = calculateArrheniusRateConstant(temperatureCelsius, relativeHumidityPercent, q10);
-
   // Kecepatan peluruhan relatif terhadap kondisi acuan; 1 berarti jam batas komoditas berlaku apa adanya.
   const speed = relativeDecaySpeed(commodity, temperatureCelsius, relativeHumidityPercent);
 
   // Batas jam sampai tidak layak: dari data komoditas; jika kosong pakai umur simpan standar, dan jika kosong juga 16 jam.
   const safeHorizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
+  // Laju per jam: bagian batas umur simpan yang terpakai tiap jam pada suhu dan kelembapan ini.
+  const rateK = speed / safeHorizonHours;
   // Paparan ternormalisasi = jam pajang dibagi batas jam; bernilai 1 saat tepat di batas.
   const normalizedExposure = hoursElapsed / safeHorizonHours;
   // Skor = (paparan x kecepatan relatif)^1,15 x 0,82. Paparan x kecepatan adalah lama pajang setara pada kondisi acuan.
@@ -305,31 +357,8 @@ export function evaluateArrheniusDecay(
   const rawScore = Math.pow(normalizedExposure * speed, 1.15) * 0.82;
   const decayScore = Math.min(1.0, Math.max(0.0, Number(rawScore.toFixed(4))));
 
-  let condition: ProduceCondition;
-  let recommendedTier: RescueTier;
-  let tierLabel: string;
-
-  // Skor di bawah 0,35: segar prima.
-  if (decayScore < 0.35) {
-    condition = "segar_prima";
-    recommendedTier = "fresh";
-    tierLabel = "Segar Prima (Pasar Eceran Subuh)";
-  } else if (decayScore < 0.65) {
-    // Skor di bawah 0,65: layu ringan, Tier 1.
-    condition = "layu_ringan";
-    recommendedTier = "tier_1";
-    tierLabel = "Tier 1: Warteg & Katering UMKM (Diskon 50% - 70%)";
-  } else if (decayScore < 0.85) {
-    // Skor di bawah 0,85: layu sedang, Tier 2.
-    condition = "layu_sedang";
-    recommendedTier = "tier_2";
-    tierLabel = "Tier 2: Dapur Sosial & Panti (Tebus Murah / Pangan Darurat)";
-  } else {
-    // Skor 0,85 ke atas: tidak layak, Tier 3. Ambang yang sama dipakai classifyProduceCondition.
-    condition = "tidak_layak";
-    recommendedTier = "tier_3";
-    tierLabel = "Tier 3: Sentra Budidaya Maggot BSF & Kompos Organik";
-  }
+  // Kondisi, tier, dan label dari klasifikasi tunggal yang juga dipakai gerbang mutu.
+  const { condition, recommendedTier, tierLabel } = classifyProduceCondition(decayScore);
 
   // Sisa jam aman sebelum memasuki batas afkir / tidak layak (decayScore >= 0.85).
   // Dihitung langsung dari invers kinetika Arrhenius agar selaras dengan skor peluruhan.
@@ -349,6 +378,8 @@ export function evaluateArrheniusDecay(
     temperatureCelsius,
     relativeHumidityPercent,
     hoursElapsed,
+    activationEnergyKjPerMol: Number((activationEnergyJPerMol(commodity) / 1000).toFixed(1)),
+    relativeSpeed: Number(speed.toFixed(4)),
     rateConstantK: Number(rateK.toFixed(4)),
     decayScore,
     condition,
@@ -484,91 +515,6 @@ export function calculateRainFootfallAttenuation(
   };
 }
 
-// Kontrak struktur data hasil penetapan harga dinamis inverse surge sore hari (PSR-20).
-export interface DynamicPricingResult {
-  commodityId: string;
-  commodityName: string;
-  // Harga grosir pagi dalam rupiah per kg.
-  baseMorningWholesalePrice: number;
-  // Harga lantai rupiah per kg; minimal Rp2.500 (tarif maggot + margin pedagang).
-  minimumPriceFloor: number;
-  // Harga tebus penyelamatan rupiah per kg setelah dikunci harga lantai.
-  offeredSalvagePrice: number;
-  appliedDiscountPercent: number;
-  pricingMechanism: "inverse_surge_normal" | "inverse_surge_rain_accelerated" | "price_floor_locked";
-  priceFloorEnforced: boolean;
-  targetAudience: "Warteg & Katering UMKM" | "Dapur Sosial" | "Pakan Maggot BSF";
-}
-
-// Model penetapan harga dinamis inverse surge sore hari (14.30-18.00 WIB) dengan proteksi price floor modal (PSR-20).
-// Diskon bertambah seiring bertambahnya waktu kritis namun terkunci aman di atas harga pakan maggot + margin pedagang.
-export function calculateInverseSurgePricing(
-  commodity: Commodity,
-  currentHourDecimal: number = 14.5,
-  rainfallMm: number = 0.0
-): DynamicPricingResult {
-  const P_morning = commodity.baseWholesalePricePerKg;
-
-  // Proteksi modal pedagang: minimal harga maggot + margin aman atau floor profil komoditas
-  const MAGGOT_BASE_RATE = 1500;
-  const VENDOR_MARGIN_PROTECTION = 1000;
-  const P_floor = Math.max(
-    commodity.minimumSalvagePricePerKg,
-    MAGGOT_BASE_RATE + VENDOR_MARGIN_PROTECTION
-  );
-
-  const t_trigger = 14.5; // 14:30 WIB
-  const t_critical = 18.0; // 18:00 WIB
-  const delta_0 = 0.50; // Diskon awal 50%
-  const lambda = 0.65; // Konstanta percepatan eksponensial
-
-  // Jam dibatasi pada 14.30 sampai 18.00; progres waktu 0 pada 14.30 dan 1 pada 18.00.
-  const clampedHour = Math.min(t_critical, Math.max(t_trigger, currentHourDecimal));
-  const timeProgress = (clampedHour - t_trigger) / (t_critical - t_trigger);
-
-  // Akselerasi diskon saat hujan lebat (> 10 mm)
-  const isHeavyRain = rainfallMm > 10.0;
-  const mu_weather = isHeavyRain ? 0.85 : 1.0;
-
-  // Formula peluruhan eksponensial harga
-  // Harga = harga pagi x (1 - 0,50) x e^(-0,65 x progres) x faktor hujan. Pada 14.30 harga tinggal 50 persen harga pagi; pada 18.00 sekitar 26 persen (0,5 x e^-0,65 = 0,26). Hujan lebat (>10 mm) mengalikan 0,85.
-  const unconstrainedPrice =
-    P_morning * (1.0 - delta_0) * Math.exp(-lambda * timeProgress) * mu_weather;
-
-  // Kunci batas bawah harga modal
-  // Harga akhir tidak pernah di bawah harga lantai; flag priceFloorEnforced menandai bila lantai yang berlaku.
-  const offeredSalvagePrice = Math.round(Math.max(P_floor, unconstrainedPrice));
-  const priceFloorEnforced = offeredSalvagePrice <= P_floor;
-
-  // Hitung persentase diskon
-  const discountDecimal = (P_morning - offeredSalvagePrice) / P_morning;
-  const appliedDiscountPercent = Math.round(discountDecimal * 100);
-
-  // Mekanisme harga yang dipakai: harga lantai mengunci, hujan deras mempercepat diskon, selain itu inverse surge normal.
-  let pricingMechanism: "inverse_surge_normal" | "inverse_surge_rain_accelerated" | "price_floor_locked";
-  if (priceFloorEnforced) {
-    pricingMechanism = "price_floor_locked";
-  } else if (isHeavyRain) {
-    pricingMechanism = "inverse_surge_rain_accelerated";
-  } else {
-    pricingMechanism = "inverse_surge_normal";
-  }
-
-  // Hasil harga: harga pagi, harga lantai, harga tawar, diskon, mekanisme, dan sasaran Warteg dan UMKM.
-  return {
-    commodityId: commodity.id,
-    commodityName: commodity.localName,
-    baseMorningWholesalePrice: P_morning,
-    minimumPriceFloor: P_floor,
-    offeredSalvagePrice,
-    appliedDiscountPercent,
-    pricingMechanism,
-    priceFloorEnforced,
-    targetAudience: "Warteg & Katering UMKM",
-  };
-}
-
-
 // Tingkat urgensi penyelamatan pangan (Level 1 sampai 5) (PSR-19):
 // 1: Rendah (> 12 jam aman tersisa)
 // 2: Sedang (8-12 jam tersisa)
@@ -599,7 +545,7 @@ export interface StallSurplusPrediction {
   hoursRemaining: number;
   urgencyLevel: UrgencyLevel;
   allocatedTier: RescueTier;
-  // Harga tebus hasil inverse surge, rupiah per kg.
+  // Harga tebus dari tabel diskon tunggal (quoteSalvagePrice), rupiah per kg; Tier 3 bernilai 0.
   recommendedSalvagePricePerKg: number;
 }
 
@@ -687,7 +633,8 @@ export function calculateCompositeMarketSurplus(
     const estimatedSurplusKg = Number(rawSurplusKg.toFixed(1));
     totalPredictedSurplusKg += estimatedSurplusKg;
 
-    const pricing = calculateInverseSurgePricing(commodity, currentHourDecimal, rainfallMm);
+    // Harga dari tabel diskon tunggal, sama dengan harga yang akan tampil di katalog.
+    const pricing = quoteSalvagePrice(commodity, decayResult.decayScore);
 
     // Alokasi berat surplus ke tier sesuai kondisi; kondisi segar tidak dialokasikan ke tier penyelamatan.
     let allocatedTier: RescueTier = decayResult.recommendedTier;
@@ -712,7 +659,7 @@ export function calculateCompositeMarketSurplus(
       hoursRemaining: decayResult.hoursRemaining,
       urgencyLevel,
       allocatedTier,
-      recommendedSalvagePricePerKg: pricing.offeredSalvagePrice,
+      recommendedSalvagePricePerKg: pricing.pricePerKg,
     });
   }
 

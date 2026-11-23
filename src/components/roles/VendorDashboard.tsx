@@ -250,9 +250,9 @@ export function VendorDashboard() {
                               )}
                             </div>
                             <p className="mt-1 text-xs leading-5 text-ink-muted">
-                              {health.condition === "segar_prima" && "Kondisi segar prima untuk pasar retail."}
-                              {health.condition === "layu_ringan" && "Kondisi layu ringan (Tier 1: Warteg & UMKM). Diskon dinamis 50%–70%."}
-                              {health.condition === "layu_sedang" && "Kondisi layu sedang (Tier 2: Dapur Sosial). Tentukan jual subsidi atau donasi."}
+                              {health.condition === "segar_prima" && "Kondisi segar prima untuk pasar retail. Bila tetap ditawarkan, masuk Tier 1 dengan diskon awal 50%."}
+                              {health.condition === "layu_ringan" && "Kondisi layu ringan (Tier 1: Warteg & UMKM). Diskon 50%–70% sesuai skor susut."}
+                              {health.condition === "layu_sedang" && "Kondisi layu sedang (Tier 2: Dapur Sosial). Diskon 75%–85%, atau pilih donasi."}
                               {health.condition === "tidak_layak" && "Kondisi afkir non-pangan (Tier 3: Sentra Maggot BSF gratis)."}
                             </p>
                             {/* Penjelasan skor: langkah rumus dan kalimat dari AI atau template. */}

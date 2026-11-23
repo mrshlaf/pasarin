@@ -1,9 +1,9 @@
 // Modul Master Testbench Pengujian Sesi Kelas (PSR-39 / In-Class Unit Testbench).
 // Memvalidasi 14 suite rekayasa perangkat lunak PASARIN (Sprint 1, Sprint 2 & Sprint 3):
 // 1. [SUITE 1: PSR-5]  Telemetri Cuaca Hiperlokal & In-Memory Cache 15 Menit.
-// 2. [SUITE 2: PSR-14] Kinetika Peluruhan Biologis Arrhenius-Q10 & Laju Respirasi Daun.
+// 2. [SUITE 2: PSR-14] Kinetika Peluruhan Biologis Arrhenius (Ea dari Q10) & Laju Respirasi Daun.
 // 3. [SUITE 3: PSR-15] Model Redaman Pengunjung Pasar Akibat Hujan Lebat (Penurunan 48%).
-// 4. [SUITE 4: PSR-20] Inverse Surge Dynamic Pricing & Price Floor Modal Pedagang.
+// 4. [SUITE 4: PSR-20] Harga Penyelamatan dari Tabel Diskon Tunggal & Price Floor Modal Pedagang.
 // 5. [SUITE 5: PSR-19] Mesin Prediksi Surplus Komposit & Validasi Target Baseline 1.240 kg.
 // 6. [SUITE 6: PSR-21] Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1 (Zero Edible to Feed).
 // 7. [SUITE 7: PSR-17] Google Gemini ReAct Agent Core (Siklus Otonom 14:30 WIB & Max 5 Turns).
@@ -20,10 +20,14 @@ import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 import { weatherAgent } from "@/lib/weatherAgent";
 import {
-  calculateArrheniusRateConstant,
+  activationEnergyJPerMol,
+  arrheniusTemperatureFactor,
+  classifyProduceCondition,
   evaluateArrheniusDecay,
+  evaluateProduceDecay,
   calculateRainFootfallAttenuation,
-  calculateInverseSurgePricing,
+  quoteSalvagePrice,
+  salvagePriceOrderingHolds,
   calculateCompositeMarketSurplus,
   calculateUrgencyLevel,
   validateQualityGateMoralHazard,
@@ -205,19 +209,17 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 2. Suite 2: PSR-14
-  startSuite("SUITE 2: PSR-14", "Kinetika Peluruhan Biologis Arrhenius-Q10");
+  startSuite("SUITE 2: PSR-14", "Kinetika Peluruhan Biologis Arrhenius (Ea dari Q10)");
   const kangkung = COMMODITIES.find((c) => c.id === "kangkung")!;
   // [TC-K00] Memverifikasi master komoditas Kangkung Darat terdaftar lengkap dalam katalog 30 komoditas
   assert(!!kangkung, "TC-K00", "Komoditas Kangkung Darat tersedia dalam katalog master");
-  const rate20C = calculateArrheniusRateConstant(20.0, 75.0, kangkung.q10Coefficient);
-  const rate33C = calculateArrheniusRateConstant(33.0, 75.0, kangkung.q10Coefficient);
-  const accelerationRatio = rate33C / rate20C;
-  // [TC-K01] Memvalidasi kinetika termal Arrhenius: laju respirasi pada 33°C meningkat ~2.2x lipat dibanding suhu 20°C
+  const q10Reproduced = arrheniusTemperatureFactor(kangkung, 37.5) / arrheniusTemperatureFactor(kangkung, 27.5);
+  // [TC-K01] Memvalidasi persamaan Arrhenius: Ea yang diturunkan dari Q10 menghasilkan kelipatan tepat Q10 pada rentang 27,5-37,5°C
   assert(
-    accelerationRatio >= 2.0 && accelerationRatio <= 2.6,
+    Math.abs(q10Reproduced - kangkung.q10Coefficient) < 1e-9,
     "TC-K01",
-    "Validasi kinetika termal: laju respirasi pada 33°C meningkat ~2.2x lipat dibanding suhu 20°C",
-    `Faktor akselerasi: ${accelerationRatio.toFixed(2)}x`
+    "Persamaan Arrhenius dengan Ea dari Q10 mereproduksi Q10 kangkung pada rentang 27,5-37,5°C",
+    `Kelipatan: ${q10Reproduced.toFixed(3)}x (Q10 data ${kangkung.q10Coefficient}), Ea ${(activationEnergyJPerMol(kangkung) / 1000).toFixed(1)} kJ/mol`
   );
   const decayAt8_5h = evaluateArrheniusDecay(kangkung, 33.0, 75.0, 8.5);
   // [TC-K02] Memvalidasi batas kritis layu: pemaparan 8.5 jam otomatis memicu status layu_ringan (Tier 1)
@@ -234,6 +236,23 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "TC-K03",
     "Sayuran pajang subuh 2 jam berkategori 'segar_prima' (Penjualan Retail Eceran)",
     `DecayScore: ${decayFresh.decayScore}`
+  );
+  const activationEnergiesKj = COMMODITIES.map((c) => activationEnergyJPerMol(c) / 1000);
+  // [TC-K04] Memvalidasi energi aktivasi seluruh 30 komoditas berada pada rentang respirasi hortikultura (10-100 kJ/mol)
+  assert(
+    activationEnergiesKj.every((ea) => ea >= 10 && ea <= 100),
+    "TC-K04",
+    "Energi aktivasi hasil turunan Q10 untuk 30 komoditas berada pada rentang 10-100 kJ/mol",
+    `Rentang: ${Math.min(...activationEnergiesKj).toFixed(1)}-${Math.max(...activationEnergiesKj).toFixed(1)} kJ/mol`
+  );
+  const warmerIsFaster = COMMODITIES.every((c) =>
+    evaluateArrheniusDecay(c, 36.0, 75.0, 6.0).decayScore >= evaluateArrheniusDecay(c, 28.0, 75.0, 6.0).decayScore);
+  // [TC-K05] Memvalidasi arah kinetika: lot yang sama pada suhu lebih panas tidak pernah lebih segar
+  assert(
+    warmerIsFaster,
+    "TC-K05",
+    "Pada jam pajang yang sama, suhu 36°C tidak pernah menghasilkan skor lebih rendah daripada 28°C (30 komoditas)",
+    "Monoton terhadap suhu"
   );
 
   // 3. Suite 3: PSR-15
@@ -264,30 +283,55 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 4. Suite 4: PSR-20
-  startSuite("SUITE 4: PSR-20", "Dynamic Pricing dengan Proteksi Price Floor Modal");
-  const price1430 = calculateInverseSurgePricing(kangkung, 14.5, 0.0);
-  // [TC-P01] Memvalidasi penawaran awal sapuan sore 14:30 WIB memberikan diskon proporsional 50% - 70%
+  startSuite("SUITE 4: PSR-20", "Harga Penyelamatan dari Tabel Diskon Tunggal dengan Proteksi Price Floor Modal");
+  // Skor uji dari 0 sampai 1 dengan langkah 0,005, mencakup semua batas tier.
+  const scoreGrid = Array.from({ length: 201 }, (_, index) => index / 200);
+  const tier1Discounts = scoreGrid.filter((s) => s >= 0.35 && s < 0.65).map((s) => classifyProduceCondition(s).baseDiscountPercent);
+  // [TC-P01] Memvalidasi diskon nominal Tier 1 (layu ringan) naik linear 50% sampai 70% sesuai skor
   assert(
-    price1430.appliedDiscountPercent >= 50 && price1430.appliedDiscountPercent <= 70,
+    tier1Discounts[0] === 50 && tier1Discounts[tier1Discounts.length - 1] === 70 &&
+      tier1Discounts.every((d, i) => i === 0 || d >= tier1Discounts[i - 1]),
     "TC-P01",
-    "Penawaran awal sapuan sore jam 14:30 WIB memberikan diskon proporsional 50% - 70%",
-    `Diskon: ${price1430.appliedDiscountPercent}%`
+    "Diskon Tier 1 naik linear dari 50% (skor 0,35) ke 70% (skor menjelang 0,65)",
+    `Diskon: ${tier1Discounts[0]}% sampai ${tier1Discounts[tier1Discounts.length - 1]}%`
   );
-  const priceRain = calculateInverseSurgePricing(kangkung, 16.0, 15.0);
-  // [TC-P02] Memvalidasi hujan lebat mengaktifkan pengali akselerasi diskon darurat mu_weather = 0.85
+  const freshNeverCheaper = COMMODITIES.every((c) => scoreGrid.every((s, i) =>
+    i === 0 || quoteSalvagePrice(c, s).pricePerKg <= quoteSalvagePrice(c, scoreGrid[i - 1]).pricePerKg));
+  const freshKangkung = quoteSalvagePrice(kangkung, 0.02);
+  const wiltedKangkung = quoteSalvagePrice(kangkung, 0.5);
+  // [TC-P02] Regresi bug harga lot segar: harga tidak pernah naik saat mutu turun, jadi lot segar tidak lebih murah dari lot layu
   assert(
-    priceRain.pricingMechanism === "inverse_surge_rain_accelerated" || priceRain.priceFloorEnforced,
+    freshNeverCheaper && freshKangkung.pricePerKg >= wiltedKangkung.pricePerKg,
     "TC-P02",
-    "Hujan lebat (>10 mm) mengaktifkan pengali akselerasi diskon mu_weather = 0.85",
-    `Mekanisme: ${priceRain.pricingMechanism}`
+    "Harga tidak pernah naik ketika mutu turun (30 komoditas, skor 0-1); lot segar tidak lebih murah dari lot layu",
+    `Kangkung segar Rp ${freshKangkung.pricePerKg} >= layu ringan Rp ${wiltedKangkung.pricePerKg}`
   );
-  const price1800 = calculateInverseSurgePricing(kangkung, 18.0, 25.0);
-  // [TC-P03] Memvalidasi proteksi mutlak Price Floor: harga tebus tidak pernah tembus di bawah modal kulakan
+  const floorsHold = COMMODITIES.every((c) => scoreGrid.every((s) => {
+    const quote = quoteSalvagePrice(c, s);
+    if (quote.tier === "tier_1") return quote.pricePerKg >= Math.max(c.minimumSalvagePricePerKg, 2500);
+    if (quote.tier === "tier_2") return quote.pricePerKg >= 1000;
+    return quote.pricePerKg === 0;
+  }));
+  // [TC-P03] Memvalidasi proteksi Price Floor: Tier 1 >= harga lantai komoditas (minimal Rp2.500), Tier 2 >= Rp1.000, Tier 3 gratis
   assert(
-    price1800.offeredSalvagePrice >= price1800.minimumPriceFloor,
+    floorsHold,
     "TC-P03",
-    "Proteksi Price Floor mutlak: harga tebus tidak pernah tembus di bawah modal kulakan pedagang",
-    `Harga tebus: Rp ${price1800.offeredSalvagePrice} >= Floor: Rp ${price1800.minimumPriceFloor}`
+    "Proteksi Price Floor: Tier 1 tidak di bawah harga lantai modal, Tier 2 tidak di bawah Rp1.000, Tier 3 gratis",
+    "30 komoditas x 201 skor"
+  );
+  const singleTable = COMMODITIES.every((c) => scoreGrid.every((s) => {
+    const quote = quoteSalvagePrice(c, s);
+    return quote.nominalDiscountPercent === classifyProduceCondition(s).baseDiscountPercent;
+  })) && COMMODITIES.every((c) => {
+    const evaluation = evaluateProduceDecay(c, 32.5, 75.0, c.decayTidakLayakHour * 0.7);
+    return evaluation.estimatedSalvagePriceIdr === quoteSalvagePrice(c, evaluation.decayScore).pricePerKg;
+  });
+  // [TC-P04] Memvalidasi satu tabel diskon: klasifikasi mutu, evaluasi dasbor, dan harga penawaran memakai angka yang sama
+  assert(
+    singleTable && classifyProduceCondition(0.9).baseDiscountPercent === 100,
+    "TC-P04",
+    "Gerbang mutu, evaluasi dasbor, dan harga penawaran memakai tabel diskon yang sama (Tier 3 = 100%, gratis)",
+    "Tabel tunggal"
   );
 
   // 5. Suite 5: PSR-19
@@ -594,15 +638,15 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // 12. Suite 12: Invarian 2 & 3
   startSuite("SUITE 12: Invarian, QRIS Escrow, & 24H Trial", "Aturan Harga Sirkular, QRIS Escrow, & Uji Metabolisme 24 Jam");
   const tomat = COMMODITIES.find((c) => c.id === "tomat")!;
-  const pTier1 = calculateInverseSurgePricing(tomat, 14.5, 0.0).offeredSalvagePrice;
-  const pTier2 = Math.max(tomat.minimumSalvagePricePerKg, Math.round(tomat.baseWholesalePricePerKg * 0.20));
-  const pTier3 = 1500;
-  // [TC-INV02] Memvalidasi Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg
+  const pTier1 = quoteSalvagePrice(tomat, 0.6499).pricePerKg;
+  const pTier2 = quoteSalvagePrice(tomat, 0.65).pricePerKg;
+  const pTier3 = quoteSalvagePrice(tomat, 0.85).pricePerKg;
+  // [TC-INV02] Memvalidasi Invarian 2 (Strict Price Ordering) di batas tier untuk 30 komoditas: P_Tier1 > P_Tier2 > P_Tier3 = Rp0 (maggot gratis)
   assert(
-    pTier1 > pTier2 && pTier2 >= pTier3 && pTier3 >= 1500,
+    COMMODITIES.every(salvagePriceOrderingHolds),
     "TC-INV02",
-    "Invarian 2 (Strict Price Ordering): P_Tier1 > P_Tier2 >= P_Tier3 >= Rp 1.500/kg terpenuhi secara konsisten",
-    `Rp ${pTier1} > Rp ${pTier2} >= Rp ${pTier3} >= Rp 1.500/kg`
+    "Invarian 2 (Strict Price Ordering): Tier 1 termurah > Tier 2 termahal > Tier 3 gratis, untuk 30 komoditas",
+    `Contoh tomat: Rp ${pTier1} > Rp ${pTier2} > Rp ${pTier3}`
   );
   const socialWindowMinutes = qualityGateAgent.SOCIAL_RESERVATION_WINDOW_MINUTES;
   // [TC-INV03] Memvalidasi Invarian 3 (30-Minute Priority Window): Tier 2 terkunci 30 menit khusus Dapur Sosial

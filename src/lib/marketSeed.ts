@@ -11,6 +11,7 @@ import { MARKET_ACCOUNTS, localActorId } from "@/data/marketAccounts";
 import type { EscrowTransaction, RescueOffer, StockItem } from "@/types/market";
 import type { ServerState } from "@/lib/serverSimulationState";
 import { calculateDecay } from "@/lib/decayEngine";
+import { quoteSalvagePrice } from "@/lib/pasarinCore";
 
 // Parameter cuaca mikro dasar untuk penyemaian data pasar (32°C, 75% RH) (PSR-5).
 const SEED_WEATHER = { temperatureC: 32, humidityPercent: 75 } as const;
@@ -98,15 +99,11 @@ function accountName(username: string) {
   return MARKET_ACCOUNTS.find((account) => account.username === username)?.name ?? username;
 }
 
-// Menentukan harga penyelamatan per kg berdasarkan tingkatan alokasi 3-Tier sirkular (PSR-20).
-// - Tier 3 (Maggot): Gratis (Rp 0/kg).
-// - Tier 2 (Dapur Sosial): Diskon sosial masif (15% harga grosir awal, min Rp 1.000/kg).
-// - Tier 1 (Warteg): Harga dinamis terdiskon hasil evaluasi kinetika Arrhenius, terkunci batas dasar (price floor).
-function priceForTier(commodity: Commodity, tier: OfferTier, evaluationPrice: number) {
-  // Aturan harga seed: tier 3 gratis; tier 2 sekitar 15 persen harga grosir (dibulatkan Rp500, minimal Rp1.000); tier 1 mengikuti evaluasi dengan harga lantai.
+// Menentukan harga penyelamatan per kg untuk lot seed (PSR-20) dari tabel diskon tunggal di pasarinCore,
+// sama dengan harga yang dipakai saat pedagang menerbitkan lot: Tier 1 diskon 50-70 persen, Tier 2 75-85 persen, Tier 3 gratis.
+function priceForTier(commodity: Commodity, tier: OfferTier, decayScore: number) {
   if (tier === "tier_3") return 0;
-  if (tier === "tier_2") return Math.max(1000, Math.round((commodity.baseWholesalePricePerKg * 0.15) / 500) * 500);
-  return Math.max(commodity.minimumSalvagePricePerKg, evaluationPrice);
+  return quoteSalvagePrice(commodity, decayScore).pricePerKg;
 }
 
 // Membangun dataset simulasi pasar deterministik dengan 30 kios pedagang, tahapan umur simpan bertingkat, dan penawaran teralokasi.
@@ -148,7 +145,7 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
       const evaluation = calculateDecay(
         commodity, SEED_WEATHER.temperatureC, SEED_WEATHER.humidityPercent, hoursOffset,
       );
-      const salvagePricePerKg = priceForTier(commodity, stage.offerTier, evaluation.estimatedSalvagePrice);
+      const salvagePricePerKg = priceForTier(commodity, stage.offerTier, evaluation.decayScore);
       // Diskon dihitung dari harga seed terhadap harga grosir dan dibatasi 0 sampai 100.
       const discountPercentage = Math.max(0, Math.min(100,
         Math.round(100 * (1 - salvagePricePerKg / commodity.baseWholesalePricePerKg))));

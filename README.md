@@ -23,11 +23,11 @@
 ### Solusi Rekayasa PASARIN
 Berbeda dari aplikasi surplus konsumen pasif, PASARIN bekerja secara **proaktif dan otonom**:
 1. **Penyapuan Terjadwal 14.30 WIB:** Background worker otomatis bangun pada jam rawan pasar untuk memindai stok tanpa menunggu instruksi pedagang.
-2. **Kinetika Respirasi Biologis Arrhenius-Q10:** Memprediksi penurunan mutu dan sisa umur simpan sayur murni menggunakan data suhu mikro pasar tanpa ketergantungan kamera CCTV fisik di los basah.
+2. **Kinetika Respirasi Biologis Arrhenius (Ea dari Q10 komoditas):** Memprediksi penurunan mutu dan sisa umur simpan sayur murni menggunakan data suhu mikro pasar tanpa ketergantungan kamera CCTV fisik di los basah.
 3. **Kaskade Redistribusi 3-Tier Sirkular:**
-   * **Tier 1 (Komersial Warteg):** Diskon dinamis 50%–70% dengan proteksi harga modal (*Price Floor*) untuk memulihkan modal tunai pedagang (*balik modal*).
+   * **Tier 1 (Komersial Warteg):** Diskon 50%–70% yang naik linear mengikuti skor susut, dengan proteksi harga modal (*Price Floor*) untuk memulihkan modal tunai pedagang (*balik modal*).
    * **Tier 2 (Sosial & Kemanusiaan):** Jendela reservasi prioritas eksklusif 30 menit bagi Dapur Sosial & Panti Asuhan untuk mengklaim sayuran bergizi layak konsumsi.
-   * **Tier 3 (Biokonversi Biomassa):** Alokasi otomatis sayuran reject non-food grade ke sentra budidaya larva Maggot BSF dan TPS 3R (Rp 1.500/kg).
+   * **Tier 3 (Biokonversi Biomassa):** Alokasi otomatis sayuran reject non-food grade ke sentra budidaya larva Maggot BSF dan TPS 3R (gratis, Rp0/kg).
 4. **Arsitektur Nol Biaya Server ($0 Cloud):** Beroperasi 100% pada kuota gratis (Vercel Edge, Supabase PostgreSQL, Google Gemini Flash, OpenWeatherMap, dan Telegram Bot API).
 
 ---
@@ -80,7 +80,7 @@ Proyek diselesaikan melalui 3 Sprint terpadu dengan siklus pengujian mingguan pa
   * `PSR-28`: Antarmuka 7 Role Mobile Dashboards bertema terang (Pedagang, Warteg, Panti, Maggot, Kurir, Manajer, Admin) di `src/components/roles/`.
 * **Sprint 2 (Target Kelas: Senin, 02 November 2026):**
   * Kinetika peluruhan biologis Arrhenius-Q10 & reduksi pengunjung hujan lebat (`PSR-14`, `PSR-15`).
-  * Penetapan harga dinamis Inverse Surge dengan Price Floor Protection & Ethical Quality Gate (`PSR-20`, `PSR-21`).
+  * Harga penyelamatan dari satu tabel diskon berbasis mutu (Tier 1 50–70%, Tier 2 75–85%, Tier 3 gratis) dengan Price Floor Protection & Ethical Quality Gate (`PSR-20`, `PSR-21`).
   * Agen ReAct Multi-Turn Google Gemini Flash & Function Calling Registry (`PSR-17`, `PSR-18`).
   * **`PSR-39`:** In-Class Automated Unit Testing Suite (`npm run test:unit`) siap demo di kelas.
   * **`PSR-40`:** Frontend Supabase Role Authentication & Login System (`/login` + Role Isolation).
@@ -122,7 +122,7 @@ C:/Project/Pasarin/
 │   ├── lib/                    # Mesin sains domain, konektor, dan utilitas:
 │   │   ├── api-response.ts     (Standard response envelope builder & Zod body validator)
 │   │   ├── audit.ts            (System audit trail logger ke Supabase & memory buffer)
-│   │   ├── decayEngine.ts      (Formula kinetika Arrhenius & Inverse Surge Pricing)
+│   │   ├── decayEngine.ts      (Adapter evaluasi susut & harga untuk UI)
 │   │   ├── env.ts              (Runtime Zod validator untuk variabel lingkungan)
 │   │   ├── simulationStore.tsx (State reaktif global React Context 24 jam pasar)
 │   │   └── supabase.ts         (Inisialisasi koneksi Supabase Client & Service Role)

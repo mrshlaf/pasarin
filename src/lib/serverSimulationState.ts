@@ -14,7 +14,7 @@ import type { AuthUser } from "@/data/accounts";
 import { calculateDecay } from "@/lib/decayEngine";
 import { getRealtimeWIBTimeString } from "@/lib/marketClock";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
-import { calculateRainFootfallAttenuation, predictRetailSurplusKg } from "@/lib/pasarinCore";
+import { calculateRainFootfallAttenuation, predictRetailSurplusKg, quoteSalvagePrice, type SalvagePriceQuote } from "@/lib/pasarinCore";
 import { executeEscrowSettlement } from "@/lib/qrisEscrowGateway";
 import { getServiceRoleClient } from "@/lib/supabase";
 import { buildMarketSeedState } from "@/lib/marketSeed";
@@ -832,29 +832,18 @@ export function syncOffersWithDecay(
         // paymentStatus sengaja tetap "unpaid": "not_required" baru diberikan saat lot diklaim,
         // agar lot yang belum diklaim tidak masuk antrean kurir (yang memfilter paymentStatus !== "unpaid").
       } else if (liveTier === "tier_2") {
-        // Tier 2: harga mengikuti estimasi salvage tanpa harga lantai; donasi yang sudah dipilih pedagang tetap donasi.
-        // Tier 3 (tidak layak konsumsi manusia): harga mengikuti perkiraan tanpa harga lantai, dan diskon dihitung terhadap harga grosir.
+        // Tier 2: harga dari tabel diskon tunggal (75-85 persen); donasi yang sudah dipilih pedagang tetap Rp0.
         const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
-        if (commodity) {
-          const price = Math.max(0, health.estimatedSalvagePrice);
-          offer.salvagePricePerKg = price;
-          offer.discountPercentage = Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg));
-          offer.totalAmountIdr = Math.round(price * offer.quantityKg);
+        if (commodity && offer.distributionMode !== "donation") {
+          applySalvageQuote(offer, quoteSalvagePrice(commodity, health.decayScore));
         }
         if (offer.distributionMode !== "donation") {
           offer.distributionMode = "sale";
         }
       } else if (liveTier === "tier_1") {
-        // Tier 1: harga tidak boleh di bawah harga lantai komoditas; lot kembali berbayar.
-        // Tier 1: harga mengikuti perkiraan tetapi tidak boleh di bawah harga lantai komoditas.
+        // Tier 1: harga dari tabel diskon tunggal (50-70 persen) dengan harga lantai Tier 1; lot kembali berbayar.
         const commodity = COMMODITIES.find((c) => c.id === offer.commodityId);
-        if (commodity) {
-          const floor = commodity.minimumSalvagePricePerKg;
-          const price = Math.max(floor, health.estimatedSalvagePrice);
-          offer.salvagePricePerKg = price;
-          offer.discountPercentage = Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg));
-          offer.totalAmountIdr = Math.round(price * offer.quantityKg);
-        }
+        if (commodity) applySalvageQuote(offer, quoteSalvagePrice(commodity, health.decayScore));
         offer.distributionMode = "sale";
         if (offer.paymentStatus === "not_required") {
           offer.paymentStatus = "unpaid";
@@ -864,6 +853,13 @@ export function syncOffersWithDecay(
   }
 
   return changed;
+}
+
+// Menulis harga, diskon, dan total dari penawaran harga tabel tunggal ke sebuah penawaran.
+function applySalvageQuote(offer: RescueOffer, quote: SalvagePriceQuote) {
+  offer.salvagePricePerKg = quote.pricePerKg;
+  offer.discountPercentage = quote.discountPercent;
+  offer.totalAmountIdr = Math.round(quote.pricePerKg * offer.quantityKg);
 }
 
 // Memastikan peruntukan tier penawaran tetap selaras dengan kondisi kinetika peluruhan biologis terkini.
@@ -878,16 +874,15 @@ function evaluateStockOffer(stock: StockItem, weather: { temperatureC: number; h
   if (!commodity || !evaluation || stock.remainingKg <= 0) return null;
   // Usulan otomatis hanya dibuat untuk lot yang skornya sudah 0,35 ke atas; yang masih segar tidak perlu diselamatkan.
   if (automatic && evaluation.decayScore < 0.35) return null;
-  const tier = distributionTierForDecay(evaluation.decayScore);
-  // Harga lantai hanya berlaku di tier 1; tier 2 boleh sangat murah, tier 3 gratis.
-  const floor = tier === "tier_1" ? commodity.minimumSalvagePricePerKg : 0;
-  const price = tier === "tier_3" ? 0 : Math.max(floor, evaluation.estimatedSalvagePrice);
+  // Tier, harga, dan diskon dari tabel tunggal. Lot segar yang tetap diterbitkan pedagang ikut diskon awal Tier 1 (50 persen),
+  // jadi tidak pernah lebih murah daripada lot yang sudah layu.
+  const quote = quoteSalvagePrice(commodity, evaluation.decayScore);
   return {
     id: randomUUID(), stockId: stock.id, vendorId: stock.vendorId, commodityId: commodity.id,
-    targetTier: tier, quantityKg: stock.remainingKg, originalPricePerKg: commodity.baseWholesalePricePerKg,
-    salvagePricePerKg: price, discountPercentage: Math.round(100 * (1 - price / commodity.baseWholesalePricePerKg)),
+    targetTier: quote.tier, quantityKg: stock.remainingKg, originalPricePerKg: commodity.baseWholesalePricePerKg,
+    salvagePricePerKg: quote.pricePerKg, discountPercentage: quote.discountPercent,
     // Penawaran berlaku 30 menit; usulan otomatis menunggu pedagang, penawaran manual langsung aktif.
-    totalAmountIdr: Math.round(price * stock.remainingKg), expiresInMinutes: 30,
+    totalAmountIdr: Math.round(quote.pricePerKg * stock.remainingKg), expiresInMinutes: 30,
     createdAt: new Date().toISOString(), status: automatic ? "pending_vendor" : "active", paymentStatus: "unpaid",
   };
 }

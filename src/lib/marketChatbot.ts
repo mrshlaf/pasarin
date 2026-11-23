@@ -12,6 +12,7 @@ import { type ChatUser, checkPrivacy } from "@/lib/chatbotPrivacy";
 import { getEnv } from "@/lib/env";
 import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import { getMarketOperations } from "@/lib/marketOperations";
+import { quoteSalvagePrice } from "@/lib/pasarinCore";
 import { readMarketSnapshot, readPublicCatalog } from "@/lib/serverSimulationState";
 import { distributionTierForDecay, isDonation, isReadyForDelivery, roundKg, type RescueOffer, type StockItem } from "@/types/market";
 
@@ -756,10 +757,9 @@ function estimatedPricePerKg(stock: StockItem, snapshot: Snapshot) {
   const health = snapshot.stockHealth[stock.id];
   const commodity = COMMODITIES.find((item) => item.id === stock.commodityId);
   if (!health || !commodity) return null;
-  const tier = distributionTierForDecay(health.decayScore);
-  if (tier === "tier_3") return { tier, price: 0 };
-  const floor = tier === "tier_1" ? commodity.minimumSalvagePricePerKg : 0;
-  return { tier, price: Math.max(floor, health.estimatedSalvagePrice) };
+  // Tabel diskon tunggal yang sama dengan penerbitan lot di server.
+  const quote = quoteSalvagePrice(commodity, health.decayScore);
+  return { tier: quote.tier, price: quote.pricePerKg };
 }
 
 // Harga lot milik pedagang: harga penawaran aktif, atau perkiraan harga jika lot diterbitkan sekarang.

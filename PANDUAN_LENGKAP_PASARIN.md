@@ -53,12 +53,15 @@ Angka 0 sampai 1 yang menyatakan seberapa layu satu lot. **Dihitung dengan rumus
 
 ```
 paparan   = jam dipajang / batas jam komoditas
-kecepatan = Q10^((suhu - 32,5) / 10) x faktorKelembapan(RH) / faktorKelembapan(75)
+Ea        = R x ln(Q10) x T1 x T2 / 10            (T1 = 27,5 °C, T2 = 37,5 °C, dalam Kelvin)
+kecepatan = exp(Ea/R x (1/T_acuan - 1/T)) x faktorKelembapan(RH) / faktorKelembapan(75)
 skor      = (paparan x kecepatan)^1,15 x 0,82     (dibatasi 0 sampai 1)
 ```
 
 - **Batas jam** berbeda tiap komoditas (kangkung cepat layu, labu tahan lama).
-- **Q10** adalah ukuran seberapa cepat proses membusuk naik tiap kenaikan 10 derajat. Nilainya per komoditas.
+- **Persamaan Arrhenius** `k = A x e^(-Ea/RT)` dipakai sebagai rasio terhadap suhu acuan, jadi faktor A saling menghapus.
+- **Q10** adalah ukuran seberapa cepat proses membusuk naik tiap kenaikan 10 derajat. Nilainya per komoditas. Literatur pascapanen melaporkan Q10, bukan Ea, jadi **energi aktivasi Ea tiap komoditas diturunkan dari Q10** (14 sampai 77 kJ/mol). Pada rentang 27,5 sampai 37,5 °C hasilnya tepat sama dengan Q10.
+- **Faktor kelembapan** adalah koreksi empiris di luar persamaan Arrhenius.
 - **Kondisi acuan** adalah 32,5 °C dan 75 persen RH. Pada kondisi itu kecepatan bernilai tepat 1.
 - **Kecepatan** dibatasi 0,2 sampai 5 kali agar suhu ekstrem tidak menghasilkan angka tak masuk akal.
 - Konstanta 0,82 dan eksponen 1,15 adalah **kalibrasi buatan**, bukan hasil pengukuran. Jawab jujur bila ditanya: skor adalah indeks relatif.
@@ -71,19 +74,21 @@ Contoh pada suhu lebih panas dengan kecepatan 1,5: (0,5 x 1,5)^1,15 x 0,82 = **0
 
 | Skor | Kondisi | Tujuan | Diskon |
 |---|---|---|---|
-| di bawah 0,35 | Segar prima | Eceran biasa di kios | tidak ada |
+| di bawah 0,35 | Segar prima | Eceran biasa di kios; bila tetap ditawarkan masuk Tier 1 | 50 persen (diskon awal Tier 1) |
 | 0,35 sampai 0,65 | Layu ringan | **Tier 1**: Warteg dan UMKM | 50 sampai 70 persen |
 | 0,65 sampai 0,85 | Layu sedang | **Tier 2**: dapur sosial dan panti | 75 sampai 85 persen, atau donasi |
 | 0,85 ke atas | Tidak layak | **Tier 3**: sentra maggot | gratis |
 
-Diskon Tier 1 naik lurus mengikuti posisi skor. Contoh: skor 0,50 berada di tengah fase, jadi diskon 60 persen.
+Ini satu-satunya tabel harga (`quoteSalvagePrice` di `pasarinCore.ts`). Dasbor, katalog, penerbitan lot, sinkronisasi tier, seed, chatbot, Telegram, gerbang mutu, dan alat orkestrator semuanya memakai fungsi ini.
 
-Harga akhir = harga grosir x (1 - diskon), dibulatkan ke kelipatan Rp500, lalu **tidak boleh di bawah harga lantai** komoditas supaya pedagang tidak rugi di bawah modal.
+Diskon naik lurus (linear) mengikuti posisi skor di dalam tier. Contoh: skor 0,50 berada di tengah Tier 1, jadi diskon 60 persen. Diskon hanya bergantung pada mutu, jadi **harga tidak pernah naik ketika mutu turun**.
+
+Harga akhir = harga grosir x (1 - diskon), dibulatkan ke kelipatan Rp500, lalu **tidak boleh di bawah harga lantai**: Tier 1 memakai harga lantai komoditas (minimal Rp2.500), Tier 2 minimal Rp1.000. Harga Tier 2 juga dibatasi di bawah harga Tier 1 termurah komoditas itu.
 
 ### 4.3 Tiga aturan yang tidak boleh dilanggar (invarian)
 
 1. **Tidak ada makanan layak manusia yang diberikan ke maggot.** Bahan dengan skor di bawah 0,85 yang diminta ke Tier 3 diblokir, dicatat di audit, dan pedagang kena penalti reputasi 5 poin.
-2. **Urutan harga:** harga Tier 1 lebih besar dari Tier 2, Tier 2 lebih besar atau sama dengan Tier 3, dan Tier 3 minimal Rp1.500/kg pada rumus harga.
+2. **Urutan harga:** harga Tier 1 termurah lebih besar dari harga Tier 2 termahal, dan Tier 2 lebih besar dari Tier 3 (gratis). Dicek untuk 30 komoditas oleh `salvagePriceOrderingHolds`.
 3. **Jendela eksklusif 30 menit untuk Tier 2:** dapur sosial punya kesempatan pertama sebelum penawaran dibuka ke peran lain.
 
 ### 4.4 Proyeksi surplus dan hujan

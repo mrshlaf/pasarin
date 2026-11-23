@@ -4,7 +4,7 @@
 // - Suite 1 (PSR-5): Telemetri Cuaca Hiperlokal & In-Memory Cache 15 Menit.
 // - Suite 2 (PSR-14): Kinetika Peluruhan Biologis Arrhenius-Q10 & Laju Respirasi Daun.
 // - Suite 3 (PSR-15): Model Redaman Pengunjung Pasar saat Hujan Lebat (Penurunan 48%).
-// - Suite 4 (PSR-20): Inverse Surge Dynamic Pricing & Proteksi Price Floor Modal.
+// - Suite 4 (PSR-20): Harga Penyelamatan dari Tabel Diskon Tunggal & Proteksi Price Floor Modal.
 // - Suite 5 (PSR-19): Prediksi Surplus Komposit & Validasi Baseline 1.240 kg.
 // - Suite 6 (PSR-21): Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1.
 // - Suite 7 (PSR-17): Google Gemini ReAct Agent Core (Maks 5 Putaran).

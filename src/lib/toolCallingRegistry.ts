@@ -17,7 +17,7 @@ import {
   FOOD_WASTE_METHANE_KG_PER_KG,
   evaluateArrheniusDecay,
   calculateRainFootfallAttenuation,
-  calculateInverseSurgePricing,
+  quoteSalvagePrice,
   calculateCompositeMarketSurplus,
   KioskStockInput,
 } from "@/lib/pasarinCore";
@@ -96,18 +96,19 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
       },
     },
   },
-  // Alat 5: harga penyelamatan berdiskon dengan harga lantai modal pedagang.
-  // Deklarasi alat 5: komoditas wajib; jam dan hujan memengaruhi seberapa dalam diskon sore.
+  // Alat 5: harga penyelamatan dari tabel diskon tunggal (sama dengan harga di katalog) dengan harga lantai modal pedagang.
+  // Deklarasi alat 5: komoditas wajib; jam pajang, suhu, dan kelembapan menentukan skor susut, dan skor menentukan diskon.
   {
-    name: "computeInverseSurgePrice",
+    name: "computeSalvagePrice",
     agentId: "Agent_12_DynamicPricingAgent",
-    description: "Menetapkan harga penyelamatan surplus secara dinamis dengan diskon bertingkat 50%-70% dan penguncian Price Floor modal pedagang.",
+    description: "Menetapkan harga penyelamatan dari skor susut: Tier 1 diskon 50%-70%, Tier 2 75%-85%, Tier 3 gratis, dengan penguncian Price Floor modal pedagang.",
     parameters: {
       type: "OBJECT",
       properties: {
         commodityId: { type: "STRING", description: "ID komoditas hortikultura yang hendak dijual" },
-        currentHourDecimal: { type: "NUMBER", description: "Waktu penawaran dalam format jam desimal", default: 14.5 },
-        rainfallMm: { type: "NUMBER", description: "Curah hujan saat penawaran dihitung untuk akselerasi diskon", default: 0.0 },
+        hoursOnDisplay: { type: "NUMBER", description: "Lama komoditas dipajang dalam jam", default: 10.0 },
+        ambientTempC: { type: "NUMBER", description: "Suhu los pasar dalam derajat Celsius", default: 32.5 },
+        humidityPct: { type: "NUMBER", description: "Kelembapan relatif los pasar dalam persen", default: 75.0 },
       },
       required: ["commodityId"],
     },
@@ -263,16 +264,17 @@ export async function executeRegisteredTool(
         };
       }
 
-      // Harga sore: komoditas dicari di katalog (bawaan kangkung); jam dan hujan memengaruhi diskon, harga lantai tetap berlaku.
-      case "computeInverseSurgePrice": {
+      // Harga penyelamatan: komoditas dicari di katalog (bawaan kangkung); skor susut dari jam pajang, suhu, dan kelembapan menentukan diskon.
+      case "computeSalvagePrice": {
         const commodityId = String(args.commodityId || "kangkung").trim().toLowerCase();
         const commodity = COMMODITIES.find((c) => c.id.toLowerCase() === commodityId) || COMMODITIES[0];
-        const hour = Number(args.currentHourDecimal ?? 14.5);
-        const rain = Number(args.rainfallMm ?? 0.0);
+        const hours = Number(args.hoursOnDisplay ?? 10.0);
+        const temp = Number(args.ambientTempC ?? 32.5);
+        const rh = Number(args.humidityPct ?? 75.0);
 
-        // Harga sore dihitung dari harga grosir komoditas, jam, dan hujan; hasilnya sudah dikunci harga lantai.
-        const pricing = calculateInverseSurgePricing(commodity, hour, rain);
-        // Hasil alat armada: muatan, jenis kendaraan, kapasitas, jumlah unit, perkiraan biaya BBM, dan kalimat penugasan.
+        // Skor dari model Arrhenius, lalu harga dari tabel diskon tunggal; hasilnya sudah dikunci harga lantai.
+        const decay = evaluateArrheniusDecay(commodity, temp, rh, hours);
+        const pricing = { commodityId: commodity.id, commodityName: commodity.localName, decayScore: decay.decayScore, ...quoteSalvagePrice(commodity, decay.decayScore) };
         return {
           toolName,
           agentId: "Agent_12_DynamicPricingAgent",
@@ -517,7 +519,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
     return {
       originalQuery: query,
       detectedIntent: "pricing_and_floor",
-      requiredTools: ["calculateDecayRate", "computeInverseSurgePrice", "verifyHumanGradeIntegrity"],
+      requiredTools: ["calculateDecayRate", "computeSalvagePrice", "verifyHumanGradeIntegrity"],
       executionSteps: [
         {
           step: 1,
@@ -527,9 +529,9 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
         },
         {
           step: 2,
-          toolName: "computeInverseSurgePrice",
-          purpose: "Menghitung harga salvaging diskon sore hari dengan proteksi batas modal",
-          arguments: { commodityId: "kangkung", currentHourDecimal: 14.5, rainfallMm: 0.0 },
+          toolName: "computeSalvagePrice",
+          purpose: "Menghitung harga penyelamatan dari skor susut dengan proteksi batas modal",
+          arguments: { commodityId: "kangkung", hoursOnDisplay: 10.0 },
         },
         {
           step: 3,
@@ -644,8 +646,8 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
         const gateStatus = String(data.gateStatus).toUpperCase();
         const moralHazardStatus = data.isMoralHazardViolation ? "TERDETEKSI & DIBLOKIR" : "NIHIL";
         observationText = `Keputusan gerbang mutu: ${gateStatus}. Moral hazard: ${moralHazardStatus}. Alokasi: ${String(data.recommendedTier)}.`;
-      } else if (stepConfig.toolName === "computeInverseSurgePrice" && "offeredSalvagePrice" in data && "minimumPriceFloor" in data) {
-        observationText = `Harga salvaging tebusan: Rp ${Number(data.offeredSalvagePrice).toLocaleString("id-ID")}/kg (Floor modal: Rp ${Number(data.minimumPriceFloor).toLocaleString("id-ID")}/kg).`;
+      } else if (stepConfig.toolName === "computeSalvagePrice" && "pricePerKg" in data && "floorPerKg" in data && "discountPercent" in data) {
+        observationText = `Harga salvaging tebusan: Rp ${Number(data.pricePerKg).toLocaleString("id-ID")}/kg, diskon ${String(data.discountPercent)}% (Floor modal: Rp ${Number(data.floorPerKg).toLocaleString("id-ID")}/kg).`;
       } else {
         observationText = `Alat '${stepConfig.toolName}' selesai dieksekusi dalam ${toolExec.durationMs} ms.`;
       }
@@ -686,9 +688,13 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
       "menurunkan pengunjung eceran sebesar 48%, meningkatkan risiko surplus sayuran daun hingga 2,0x lipat lebih cepat.";
     recommendations.push("Majukan jadwal siaran diskon ke grup Warteg 30 menit lebih awal untuk mencegah pembusukan.");
   } else if (plan.detectedIntent === "pricing_and_floor") {
+    // Angka contoh dihitung dari rumus yang sama dengan langkah 2 (kangkung, 10 jam pajang, kondisi acuan), bukan teks tetap.
+    const kangkung = COMMODITIES.find((c) => c.id === "kangkung") ?? COMMODITIES[0];
+    const sample = quoteSalvagePrice(kangkung, evaluateArrheniusDecay(kangkung, 32.5, 75.0, 10.0).decayScore);
     executiveSummary =
-      "Formula inverse surge pricing menetapkan harga tebus kangkung layu ringan pada Rp 2.500/kg (diskon 58%). " +
-      "Batas modal pedagang (Price Floor Rp 2.500/kg) terlindungi 100% dari kerugian.";
+      `Tabel diskon berbasis mutu menetapkan harga tebus ${kangkung.localName} pada Rp ${sample.pricePerKg.toLocaleString("id-ID")}/kg ` +
+      `(diskon ${sample.discountPercent}% dari harga grosir Rp ${sample.wholesalePricePerKg.toLocaleString("id-ID")}/kg). ` +
+      `Harga lantai modal pedagang Rp ${sample.floorPerKg.toLocaleString("id-ID")}/kg tetap terlindungi.`;
     recommendations.push("Konfirmasi persetujuan pedagang melalui bot Telegram 1-ketuk [Setuju Jual].");
   } else if (plan.detectedIntent === "quality_and_ethics") {
     executiveSummary =
