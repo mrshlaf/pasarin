@@ -161,7 +161,7 @@ export function PublicMarketDashboard() {
                   return <li key={id} className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 py-4">
                     <span className="grid size-10 place-items-center rounded-xl bg-canvas text-brand"><Icon size={19} aria-hidden /></span>
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"><h3 className="font-semibold">{name}</h3><p className="text-base font-semibold tabular-nums">{kg(lane.kg)}</p></div>
+                      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"><h3 className="text-sm font-semibold leading-6 text-ink">{name}</h3><p className="text-base font-semibold tabular-nums">{kg(lane.kg)}</p></div>
                       <p className="mt-1 text-[13px] leading-5 text-ink-muted">{detail} · {number.format(lane.lots)} lot</p>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-track" aria-hidden><div className={"h-full rounded-full " + color} style={{ width: share + "%" }} /></div>
                     </div>
@@ -194,7 +194,7 @@ export function PublicMarketDashboard() {
             {/* Perkiraan porsi olahan: 1 kg bahan menjadi 4 porsi. */}
             {/* Potensi porsi olahan: perkiraan sederhana dari berat untuk dapur sosial, bukan jumlah penerima nyata. */}
             <section aria-labelledby="portion-estimate" className="min-w-0 rounded-2xl bg-brand-soft p-5 sm:p-6">
-              <h3 id="portion-estimate" className="text-sm font-semibold text-brand">Potensi porsi olahan</h3>
+              <h3 id="portion-estimate" className="text-sm font-semibold leading-6 text-brand">Potensi porsi olahan</h3>
               <dl className="mt-6 grid gap-6 sm:grid-cols-2 sm:gap-4">
                 <div>
                   <dt className="text-sm text-ink-soft">Warteg</dt>
@@ -210,11 +210,11 @@ export function PublicMarketDashboard() {
             {/* Perkiraan kebutuhan kendaraan menurut total muatan. */}
             {/* Perkiraan kebutuhan armada dari total muatan. */}
             <section aria-labelledby="fleet-estimate" className="min-w-0">
-              <h3 id="fleet-estimate" className="flex items-center gap-2 text-sm font-semibold text-ink"><Truck size={18} aria-hidden />Perkiraan kebutuhan angkut</h3>
+              <h3 id="fleet-estimate" className="flex items-center gap-2 text-sm font-semibold leading-6 text-ink"><Truck size={18} aria-hidden />Perkiraan kebutuhan angkut</h3>
               <ul className="mt-3 divide-y divide-line">
                 {data.forecast.fleet.vehicles.map((vehicle) => <li key={vehicle.type} className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-4 py-4">
                   <p className="font-serif text-4xl leading-none tabular-nums text-brand">{number.format(vehicle.units)}<span className="mt-1 block font-sans text-xs font-medium text-ink-muted">unit</span></p>
-                  <div className="min-w-0"><h4 className="text-sm font-semibold leading-6">{vehicle.name}</h4><p className="mt-0.5 text-sm leading-6 text-ink-muted">{kg(vehicle.capacityKg)} / unit · {vehicle.targetLane}</p></div>
+                  <div className="min-w-0"><h4 className="text-sm font-semibold leading-6 text-ink">{vehicle.name}</h4><p className="mt-0.5 text-sm leading-6 text-ink-muted">{kg(vehicle.capacityKg)} / unit · {vehicle.targetLane}</p></div>
                 </li>)}
               </ul>
             </section>

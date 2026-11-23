@@ -333,7 +333,7 @@ export function LogisticsDashboard() {
                         </span>
                       </div>
 
-                      <h3 className="mt-3 break-words font-serif text-xl leading-tight tracking-tight sm:text-2xl">
+                      <h3 className="mt-3 break-words font-serif text-xl leading-tight tracking-tight">
                         {commodityName(offer.commodityId)}, {kg(offer.quantityKg)}
                       </h3>
 

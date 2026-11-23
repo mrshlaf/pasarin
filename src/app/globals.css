@@ -270,12 +270,14 @@ p {
 }
 
 .market-metric dd {
+  /* Angka besar memakai huruf serif yang sama dengan judul dan angka hero di semua dasbor. */
+  font-family: var(--market-display-font);
   overflow-wrap: normal;
   word-break: normal;
   font-size: clamp(1.5rem, 2.7vw, 2.1rem);
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.2;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 

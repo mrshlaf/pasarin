@@ -168,7 +168,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
       {/* Pengingat pembayaran bila ada pesanan belum dibayar. */}
       {unpaidOrders.length > 0 && <section className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-warning/30 bg-warning-soft p-4">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-warning">{unpaidOrders.length} pesanan menunggu pembayaran</h2>
+          <h2 className="text-sm font-semibold leading-6 text-warning">{unpaidOrders.length} pesanan menunggu pembayaran</h2>
           <p className="mt-1 text-sm leading-5 text-ink-muted">Selesaikan simulasi QRIS agar pesanan dapat masuk antrean pengantaran.</p>
         </div>
         {canBuy && <button type="button" className={marketButton} disabled={busy} onClick={() => { setError(""); setInvoice(unpaidOrders[0]); }}>Bayar pesanan berikutnya</button>}
@@ -226,7 +226,7 @@ export function BuyerDashboard({ role }: { role: BuyerRole }) {
                   <div className="min-w-0">
                     <p className="market-eyebrow break-words">{kioskLabel(offer.vendorId)}{stock?.lotNumber ? " · " + stock.lotNumber : ""}</p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                      <h3 className="break-words font-serif text-2xl leading-tight tracking-tight">{commodityName(offer.commodityId)}</h3>
+                      <h3 className="break-words font-serif text-xl leading-tight tracking-tight">{commodityName(offer.commodityId)}</h3>
                       {isFreeMaggotOffer(offer) ? <StatusPill label="Gratis · Pakan Maggot" tone="success" /> : isDonation(offer) ? <StatusPill label="Donasi" tone="success" /> : (
                         <span className="rounded-md bg-brand px-2 py-1 text-[12px] font-semibold tabular-nums text-cream">
                           {role === "social_kitchen" ? "Jual · " : ""}−{Math.round(offer.discountPercentage)}%

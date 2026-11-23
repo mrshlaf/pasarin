@@ -30,7 +30,7 @@ export function MarketDialog({ title, onClose, children }: {
     <dialog ref={dialog} aria-labelledby={titleId} className="market-dialog"
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
       onCancel={(event) => { event.preventDefault(); onClose(); }}>
-      <h2 id={titleId} className="mb-3 text-xl font-semibold tracking-tight">{title}</h2>
+      <h2 id={titleId} className="mb-3 font-serif text-2xl leading-tight tracking-tight">{title}</h2>
       {children}
     </dialog>
   );

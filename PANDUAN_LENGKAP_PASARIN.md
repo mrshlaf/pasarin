@@ -376,6 +376,22 @@ Vercel Cron 14.30 WIB ──► /api/cron/afternoon-sweep
 
 ---
 
+## 8A. Tipografi dan tampilan
+
+Semua dasbor memakai dua keluarga huruf saja, dengan aturan yang sama:
+
+| Elemen | Huruf | Contoh |
+|---|---|---|
+| Judul halaman, judul kartu, judul dialog | Newsreader (serif), ukuran 2xl sampai 3xl, tanpa tebal | "Tinjau alur pasar", "Laporan penjualan hari ini" |
+| Nama item (komoditas) | Newsreader, ukuran xl | "Kangkung Darat" |
+| Angka besar (metrik, hero) | Newsreader, medium, angka lebar tetap | "30", "Rp 115.000" |
+| Sub-judul kecil | Geist (sans), sm, semibold | "Komoditas teratas" |
+| Isi teks, label, tombol | Geist (sans) | seluruh paragraf dan tombol |
+
+Variabel huruf ada di `src/app/layout.tsx` (Geist dan Newsreader lewat `next/font`) dan `src/app/globals.css` (`--market-display-font`). Bila menambah komponen baru, pakai kelas yang sama, bukan ukuran baru.
+
+---
+
 ## 9. Bot Telegram
 
 Bot `@agent_pasarin_bot`. Perintah dibatasi per peran, misalnya `/pasok`, `/stok`, `/terbitkan` untuk pedagang, `/surplus` dan `/klaim` untuk pembeli, `/tugas` dan `/antar` untuk kurir, `/status`, `/dlh`, `/pratinjau` untuk pengelola dan admin. Satu obrolan bisa menyimpan beberapa akun sekaligus. Login lewat Mini App memverifikasi `initData` yang ditandatangani HMAC, sehingga kata sandi tidak diketik di obrolan.

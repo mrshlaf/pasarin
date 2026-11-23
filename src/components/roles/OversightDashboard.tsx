@@ -4,7 +4,7 @@
 
 // Impor: state React, ikon, konteks sesi dan pasar, serta komponen bersama.
 import { useState } from "react";
-import { Boxes, CalendarDays, Clock, FileBarChart, Receipt, RefreshCw } from "lucide-react";
+import { Boxes, Clock, FileBarChart, Receipt, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
 import { MarketDialog } from "@/components/common/MarketDialog";
@@ -202,27 +202,34 @@ export function OversightDashboard() {
         <MarketDialog title="Laporan penjualan hari ini" onClose={() => setReportOpen(false)}>
           <div className="grid gap-5">
             <p className="rounded-xl bg-canvas p-3 text-sm leading-6 text-ink-muted">Dihitung dari pesanan yang diserahterimakan hari ini (zona waktu Jakarta). Donasi dan lot gratis dicatat sebagai berat, bukan rupiah. Dana ditahan menunggu serah terima.</p>
-            {/* Angka kunci hari ini. */}
-            <MarketMetrics items={[
-              { label: "Penjualan hari ini", value: rupiah(today.salesIdr), tone: today.salesIdr > 0 ? "brand" : undefined },
-              { label: "Pesanan selesai", value: today.orders },
-              { label: "Berat tersalur", value: kg(today.kg) },
-              { label: "Dana masih ditahan", value: rupiah(heldIdr) },
-            ]} />
+            {/* Angka kunci hari ini: dua kolom ringkas supaya nominal rupiah tidak terpotong. */}
+            <dl className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Penjualan hari ini", value: rupiah(today.salesIdr) },
+                { label: "Pesanan selesai", value: String(today.orders) },
+                { label: "Berat tersalur", value: kg(today.kg) },
+                { label: "Dana masih ditahan", value: rupiah(heldIdr) },
+              ].map((metric) => (
+                <div key={metric.label} className="min-w-0 rounded-xl border border-line p-3">
+                  <dt className="text-[13px] font-medium leading-5 text-ink-muted">{metric.label}</dt>
+                  <dd className="mt-1 break-words font-serif text-2xl leading-tight tabular-nums">{metric.value}</dd>
+                </div>
+              ))}
+            </dl>
             {todayOrders.length === 0 ? (
-              <EmptyState icon={CalendarDays} title="Belum ada penjualan hari ini" description="Angka muncul setelah ada pesanan yang diserahterimakan hari ini." />
+              <p className="rounded-xl bg-canvas p-4 text-center text-sm leading-6 text-ink-muted">Belum ada penjualan hari ini. Angka muncul setelah ada pesanan yang diserahterimakan.</p>
             ) : (
               <>
                 {/* Lima komoditas dengan berat terbanyak hari ini. */}
                 <section>
-                  <h3 className="font-semibold">Komoditas teratas</h3>
+                  <h3 className="text-sm font-semibold leading-6 text-ink">Komoditas teratas</h3>
                   <ul>{topCommodities.map(([id, row]) => (
                     <LedgerRow key={id} title={commodityName(id)} amount={rupiah(row.salesIdr)} detail={kg(row.kg)} status={<StatusPill label="Terjual" tone="success" />} />
                   ))}</ul>
                 </section>
                 {/* Berat yang disalurkan ke tiap tujuan. */}
                 <section>
-                  <h3 className="font-semibold">Penyaluran per tujuan</h3>
+                  <h3 className="text-sm font-semibold leading-6 text-ink">Penyaluran per tujuan</h3>
                   <LotFacts items={[
                     { label: "Warteg dan UMKM", value: kg(byTier.tier_1) },
                     { label: "Dapur sosial dan panti", value: kg(byTier.tier_2) },
@@ -234,7 +241,7 @@ export function OversightDashboard() {
             {/* Penjualan beberapa hari terakhir sebagai pembanding. */}
             {dailyRows.length > 0 && (
               <section>
-                <h3 className="font-semibold">Riwayat penjualan harian</h3>
+                <h3 className="text-sm font-semibold leading-6 text-ink">Riwayat penjualan harian</h3>
                 <ul>{dailyRows.map(([key, row]) => (
                   <LedgerRow key={key} title={dayLabel(key) + (key === todayKey ? " (hari ini)" : "")} amount={rupiah(row.salesIdr)}
                     detail={<>{row.orders} pesanan · {kg(row.kg)}{row.freeKg > 0 ? " · " + kg(row.freeKg) + " donasi atau gratis" : ""}</>}
