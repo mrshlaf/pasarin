@@ -535,7 +535,7 @@ function overviewAnswer(view: View) {
     "Laporan di dashboard:",
     "• Pantauan Penawaran Pasar: semua penawaran dari kios, urut dari yang butuh tindakan.",
     "• Buku Besar Transaksi dan Escrow: status dana per transaksi (ditahan, dicairkan, dikembalikan).",
-    "• Laporan simulasi 24 jam: uji skenario model, bukan data langsung pasar.",
+    "• Laporan transaksi harian: penjualan, berat, dan jumlah pesanan selesai per hari.",
     "• Evaluasi stok sekarang (khusus admin): memindai stok dan membuat usulan penawaran.",
     "• Bot Telegram: /status, /penawaran, /transaksi, /dlh, /armada, dan /pratinjau.",
     "",

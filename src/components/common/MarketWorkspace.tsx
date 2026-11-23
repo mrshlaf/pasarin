@@ -288,7 +288,8 @@ export function formatElapsedHours(hours: number): string {
 export function dateLabel(value?: string) {
   if (!value) return "";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  // Transaksi lama menyimpan jam saja (misal "13:45 WIB"), jadi teks itu ditampilkan apa adanya.
+  if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short" }).format(date);
 }
 
