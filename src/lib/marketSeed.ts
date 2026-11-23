@@ -13,8 +13,9 @@ import type { ServerState } from "@/lib/serverSimulationState";
 import { calculateDecay } from "@/lib/decayEngine";
 import { quoteSalvagePrice } from "@/lib/pasarinCore";
 
-// Parameter cuaca mikro dasar untuk penyemaian data pasar (32°C, 75% RH) (PSR-5).
-const SEED_WEATHER = { temperatureC: 32, humidityPercent: 75 } as const;
+// Cuaca acuan penyemaian: sengaja agak panas (34°C, 70% RH). Skor susut naik lebih cepat pada cuaca panas dan kering, jadi lot yang dihitung pada kondisi ini
+// tidak membusuk lebih awal saat cuaca nyata di Jakarta panas; pada cuaca lebih sejuk lot justru terlihat lebih segar.
+const SEED_WEATHER = { temperatureC: 34, humidityPercent: 70 } as const;
 
 // Enam tahapan mutu simpan per kios Pasar Kramat Jati:
 // 1. Segar Prima (decayTarget: 0.12, penjualan retail normal).
@@ -120,7 +121,10 @@ export function buildMarketSeedState(actorIds: Record<string, string> = {}): Ser
     commodities.forEach((commodity, lotIndex) => {
       const stage = STAGES[lotIndex];
       // Jam pajang dihitung mundur dari skor susut target tahap sehingga mutu lot sesuai tier yang diinginkan.
-      const hoursOffset = hoursForDecay(commodity, stage.decayTarget);
+      // Lot tier 3 dibuat jauh melewati batas jam komoditas supaya tetap tidak layak pada cuaca sejuk atau lembap, bukan hanya pada cuaca seed.
+      const hoursOffset = stage.offerTier === "tier_3"
+        ? Math.max(hoursForDecay(commodity, stage.decayTarget), Number((commodity.decayTidakLayakHour * 1.8).toFixed(2)))
+        : hoursForDecay(commodity, stage.decayTarget);
       const stockId = `stk_seed_${String(kioskIndex + 1).padStart(2, "0")}_${lotIndex + 1}`;
       // Berat dibuat deterministik dari indeks kios dan lot, jadi seed selalu sama tiap dijalankan.
       const remainingKg = 20 + ((kioskIndex * 7 + lotIndex * 13) % 46);
