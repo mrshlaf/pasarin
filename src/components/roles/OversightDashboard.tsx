@@ -49,6 +49,7 @@ export function OversightDashboard() {
   // Laporan harian: pesanan selesai dikelompokkan per hari kalender Jakarta dari tanggal serah terimanya.
   // Penjualan hanya menghitung lot berbayar; donasi dan lot maggot gratis dihitung sebagai berat saja.
   const jakartaDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Jakarta" });
+  const todayKey = jakartaDay.format(new Date());
   const dailyMap = new Map<string, { orders: number; kg: number; salesIdr: number; freeKg: number }>();
   for (const offer of settled) {
     if (!offer.deliveredOn || Number.isNaN(Date.parse(offer.deliveredOn))) continue;
@@ -60,9 +61,22 @@ export function OversightDashboard() {
     if (free) row.freeKg += offer.quantityKg; else row.salesIdr += offer.totalAmountIdr;
     dailyMap.set(key, row);
   }
+  // Rincian hari ini per komoditas (berat dan penjualan) dan per tujuan penyaluran (berat).
+  const todayOrders = settled.filter((offer) => offer.deliveredOn && !Number.isNaN(Date.parse(offer.deliveredOn)) && jakartaDay.format(Date.parse(offer.deliveredOn)) === todayKey);
+  const byCommodity = new Map<string, { kg: number; salesIdr: number }>();
+  const byTier = { tier_1: 0, tier_2: 0, tier_3: 0 };
+  for (const offer of todayOrders) {
+    const row = byCommodity.get(offer.commodityId) ?? { kg: 0, salesIdr: 0 };
+    row.kg += offer.quantityKg;
+    if (!(isDonation(offer) || isFreeMaggotOffer(offer))) row.salesIdr += offer.totalAmountIdr;
+    byCommodity.set(offer.commodityId, row);
+    byTier[offer.targetTier] += offer.quantityKg;
+  }
+  const topCommodities = [...byCommodity.entries()].sort((a, b) => b[1].kg - a[1].kg).slice(0, 5);
+  // Dana yang sudah dibayar pembeli tetapi masih ditahan sampai serah terima.
+  const heldIdr = transactions.filter((item) => item.status === "held_in_escrow").reduce((sum, item) => sum + item.amountIdr, 0);
   // Tujuh hari terbaru, hari terbaru di atas.
   const dailyRows = [...dailyMap.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
-  const todayKey = jakartaDay.format(new Date());
   const today = dailyMap.get(todayKey) ?? { orders: 0, kg: 0, salesIdr: 0, freeKg: 0 };
   const dayLabel = (key: string) => new Intl.DateTimeFormat("id-ID", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" }).format(new Date(key + "T12:00:00+07:00"));
 
@@ -102,19 +116,46 @@ export function OversightDashboard() {
         { label: "Serah terima selesai", value: settled.length },
       ]} />
 
-      {/* Laporan transaksi harian: penjualan, berat, dan jumlah pesanan selesai per hari. */}
-      <MarketSection title="Laporan transaksi harian" description="Penjualan dan penyaluran per hari dari pesanan yang sudah diserahterimakan."
-        action={<span className="text-sm font-semibold tabular-nums text-ink-muted">Hari ini {rupiah(today.salesIdr)}</span>}>
-        {dailyRows.length === 0 ? (
-          <EmptyState icon={CalendarDays} title="Belum ada transaksi selesai" description="Ringkasan harian muncul setelah ada pesanan yang diserahterimakan." />
+      {/* Ringkasan penjualan hari ini: angka kunci, komoditas teratas, dan penyaluran per tujuan. */}
+      <MarketSection title="Ringkasan penjualan hari ini" description="Dari pesanan yang diserahterimakan hari ini (zona waktu Jakarta). Dana yang masih ditahan menunggu serah terima.">
+        <MarketMetrics items={[
+          { label: "Penjualan hari ini", value: rupiah(today.salesIdr), tone: today.salesIdr > 0 ? "brand" : undefined },
+          { label: "Pesanan selesai", value: today.orders },
+          { label: "Berat tersalur", value: kg(today.kg) },
+          { label: "Dana masih ditahan", value: rupiah(heldIdr) },
+        ]} />
+        {todayOrders.length === 0 ? (
+          <EmptyState icon={CalendarDays} title="Belum ada penjualan hari ini" description="Angka muncul setelah ada pesanan yang diserahterimakan hari ini." />
         ) : (
+          <div className="mt-4 grid gap-5 md:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-semibold">Komoditas teratas</h3>
+              <ul>{topCommodities.map(([id, row]) => (
+                <LedgerRow key={id} title={commodityName(id)} amount={rupiah(row.salesIdr)} detail={kg(row.kg)} status={<StatusPill label="Terjual" tone="success" />} />
+              ))}</ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">Penyaluran per tujuan</h3>
+              <LotFacts items={[
+                { label: "Warteg dan UMKM", value: kg(byTier.tier_1) },
+                { label: "Dapur sosial dan panti", value: kg(byTier.tier_2) },
+                { label: "Sentra maggot", value: kg(byTier.tier_3) },
+              ]} />
+            </div>
+          </div>
+        )}
+      </MarketSection>
+
+      {/* Riwayat harian: penjualan beberapa hari terakhir sebagai pembanding. */}
+      {dailyRows.length > 0 && (
+        <MarketSection title="Riwayat penjualan harian" description="Tujuh hari terakhir yang punya pesanan selesai.">
           <ul>{dailyRows.map(([key, row]) => (
             <LedgerRow key={key} title={dayLabel(key) + (key === todayKey ? " (hari ini)" : "")} amount={rupiah(row.salesIdr)}
               detail={<>{row.orders} pesanan · {kg(row.kg)}{row.freeKg > 0 ? " · " + kg(row.freeKg) + " donasi atau gratis" : ""}</>}
               status={<StatusPill label="Penjualan" tone="success" />} />
           ))}</ul>
-        )}
-      </MarketSection>
+        </MarketSection>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">

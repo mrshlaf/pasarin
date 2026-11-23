@@ -38,7 +38,7 @@ Ada 7 peran. Tiap peran hanya melihat data yang menjadi haknya.
 | Dapur sosial dan panti | `social_kitchen` | Katalog Tier 2 (jual murah atau donasi), klaim |
 | Sentra maggot | `maggot` | Katalog Tier 3, biomassa gratis |
 | Kurir | `logistics` | Antrean antar tiga tahap, konfirmasi serah terima |
-| Pengelola pasar | `manager` | Laporan transaksi harian (penjualan, berat, pesanan selesai per hari), pantauan seluruh penawaran, buku besar |
+| Pengelola pasar | `manager` | Ringkasan penjualan hari ini (penjualan, pesanan selesai, berat, dana ditahan, komoditas teratas, penyaluran per tujuan) dan riwayat harian, pantauan seluruh penawaran, buku besar |
 | Admin | `admin` | Semua milik pengelola, ditambah tombol evaluasi stok dan penyemaian data |
 
 Akun demo: 30 pedagang, 100 Warteg, 3 dapur sosial, 2 maggot, 5 kurir, 1 pengelola, 1 admin (total 142). Di mode lokal, kata sandi sama dengan nama pengguna, misalnya `admin1` / `admin1`.
@@ -212,7 +212,7 @@ Vercel Cron 14.30 WIB ──► /api/cron/afternoon-sweep
 5. Pembeli **membayar** lewat QRIS simulasi. Dana ditahan di escrow.
 6. **Kurir** melihat antrean per tahap, mengantar, dan **mengonfirmasi serah terima**.
 7. Dana **cair** ke dompet pedagang. Semua kejadian penting tercatat di audit.
-8. **Pengelola dan admin** memantau laporan transaksi harian, penawaran, dan buku besar. Simulasi 24 jam tidak lagi ada di dasbor; masih bisa dijalankan lewat perintah Telegram `/dlh` dan rute API.
+8. **Pengelola dan admin** memantau ringkasan penjualan hari ini, riwayat harian, penawaran, dan buku besar. Simulasi 24 jam tidak lagi ada di dasbor; masih bisa dijalankan lewat perintah Telegram `/dlh` dan rute API.
 
 ---
 
@@ -429,8 +429,8 @@ Yang pertama dari data dan panduan lewat aturan; yang kedua dari Gemini untuk pe
 **Data siapa yang boleh dilihat tiap peran?**
 Pedagang hanya kiosnya, kurir hanya pesanan yang sudah dibayar, pembeli hanya miliknya dan katalog tier-nya, pengelola dan admin semua. Etalase publik (komoditas, harga, kios, berat) boleh dilihat semua, tanpa data dana atau akun.
 
-**Laporan harian di dasbor pengelola dihitung dari apa?**
-Dari pesanan yang sudah diserahterimakan, dikelompokkan per hari kalender Jakarta menurut tanggal serah terimanya. Penjualan hanya menghitung lot berbayar; donasi dan lot maggot gratis dicatat sebagai berat.
+**Ringkasan penjualan hari ini di dasbor pengelola dihitung dari apa?**
+Dari pesanan yang sudah diserahterimakan hari ini (zona Jakarta); dana ditahan diambil dari transaksi escrow yang belum cair. Riwayat tujuh hari di bawahnya memakai pesanan selesai, dikelompokkan per hari kalender Jakarta menurut tanggal serah terimanya. Penjualan hanya menghitung lot berbayar; donasi dan lot maggot gratis dicatat sebagai berat.
 
 **Kenapa simulasi 24 jam disebut bukan data nyata?**
 Memakai data sampel dan skenario tetap untuk menguji alur lima fase, bukan data langsung pasar. Sekarang hanya tersedia lewat Telegram `/dlh` dan API.
