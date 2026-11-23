@@ -1,12 +1,13 @@
 // Modul Registri Pemanggilan Alat Sub-Agen & Dekomposisi Kueri Bahasa Alami (PSR-18).
 // Bertanggung jawab:
 // 1. Mendaftarkan seluruh spesifikasi alat sub-agen ke dalam skema deklarasi fungsi resmi (FunctionDeclaration)
-// yang kompatibel dengan Google Gemini 2.0 Flash Tool Calling SDK.
+// yang kompatibel dengan Google Gemini Tool Calling SDK.
 // 2. Menghubungkan pengenal alat dengan eksekusi nyata pada modul sub-agen terkait (weatherAgent, pasarinCore, qualityGateAgent).
 // 3. Mendekomposisi pertanyaan bahasa alami manajer pasar menjadi rencana eksekusi alat berurutan (execution plan)
 // tanpa memanggil modul yang tidak dibutuhkan, dengan target latensi respons di bawah dua detik (< 1.500 ms).
 // Landasan Spesifikasi PRD §4.18, §16, dan §2942-2977.
 
+// Impor: data komoditas dan kios, agen cuaca, gerbang mutu, kalkulator armada, rumus inti peluruhan, dan tipe hasil orkestrasi.
 import { COMMODITIES } from "@/data/commodities";
 import { weatherAgent } from "@/lib/weatherAgent";
 import { qualityGateAgent } from "@/lib/qualityGateAgent";
@@ -34,6 +35,7 @@ import {
 // untuk seluruh sub-agen PASARIN sesuai standar Google Gemini Tool Calling (PSR-18 / PRD §4.18).
 export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
   // Alat 1: cuaca mikro stasiun pasar (sumber data cuaca).
+  // Deklarasi alat 1: tanpa parameter wajib; koordinat bawaan adalah Pasar Induk Kramat Jati dan forceRefresh melewati cache 15 menit.
   {
     name: "fetchOpenWeatherTelemetry",
     agentId: "Agent_3_WeatherAgent",
@@ -48,6 +50,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 2: skor peluruhan satu komoditas dengan kinetika Arrhenius-Q10.
+  // Deklarasi alat 2: hanya commodityId yang wajib; suhu, kelembapan, dan jam pajang memakai nilai bawaan los pasar (32,5 C, 75 persen, 10 jam).
   {
     name: "calculateDecayRate",
     agentId: "Agent_2_BiologicalKineticsAgent",
@@ -64,6 +67,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 3: penurunan jumlah pengunjung akibat hujan.
+  // Deklarasi alat 3: curah hujan dalam mm adalah satu-satunya masukan wajib; waktu hanya keterangan.
   {
     name: "calculateFootfallIndex",
     agentId: "Agent_5_MarketCrowdDynamicsAgent",
@@ -78,6 +82,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 4: proyeksi surplus gabungan dari susut biologis dan pembeli yang batal datang.
+  // Deklarasi alat 4: semua parameter opsional dengan nilai bawaan skenario sapuan sore (2.400 kg stok, hujan 12,5 mm, pukul 14.30).
   {
     name: "computeProjectedSurplus",
     agentId: "Agent_6_SpoilagePredictiveEngine",
@@ -92,6 +97,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 5: harga penyelamatan berdiskon dengan harga lantai modal pedagang.
+  // Deklarasi alat 5: komoditas wajib; jam dan hujan memengaruhi seberapa dalam diskon sore.
   {
     name: "computeInverseSurgePrice",
     agentId: "Agent_12_DynamicPricingAgent",
@@ -107,6 +113,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 6: gerbang mutu yang melarang pangan layak makan dialihkan ke pakan maggot.
+  // Deklarasi alat 6: gerbang mutu; commodityId dan requestedTier wajib karena keputusan lolos atau diblokir bergantung pada keduanya.
   {
     name: "verifyHumanGradeIntegrity",
     agentId: "Agent_10_QualityGateAgent",
@@ -123,6 +130,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 7: pilihan armada menurut tonase, memakai kalkulator armada (300 dan 1.000 kg).
+  // Deklarasi alat 7: hanya payloadKg yang wajib; jumlah tujuan hanya memengaruhi perkiraan biaya BBM.
   {
     name: "assignVehicleType",
     agentId: "Agent_9_FleetLogisticsAgent",
@@ -137,6 +145,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 8: estimasi emisi metana yang terhindar dari pembuangan ke TPA.
+  // Deklarasi alat 8: berat limbah organik yang dialihkan dari TPA adalah satu-satunya masukan.
   {
     name: "calculateMethaneAvoidance",
     agentId: "Agent_16_CarbonAccountingAgent",
@@ -150,6 +159,7 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
     },
   },
   // Alat 9: konversi satuan tradisional pasar (karung, peti, ikat) ke kg.
+  // Deklarasi alat 9: konversi satuan tradisional; nama kemasan dibatasi ke lima nilai enum.
   {
     name: "parseLocalMarketUnits",
     agentId: "Agent_17_TraditionalUnitAssistant",
@@ -178,6 +188,7 @@ export async function executeRegisteredTool(
 
   try {
     // Satu cabang per alat terdaftar; nama alat tak dikenal jatuh ke default di bawah.
+    // Satu cabang per nama alat; nama yang tidak terdaftar jatuh ke default di bawah dengan galat terstruktur.
     switch (toolName) {
       case "fetchOpenWeatherTelemetry": {
         const forceRefresh = Boolean(args.forceRefresh);
@@ -200,6 +211,7 @@ export async function executeRegisteredTool(
         const rh = Number(args.humidityPct ?? 75.0);
         const hours = Number(args.hoursOnDisplay ?? 10.0);
 
+        // Perhitungan sebenarnya dilakukan fungsi rumus inti; alat hanya membungkus hasilnya beserta penanda agen dan waktu.
         const decay = evaluateArrheniusDecay(commodity, temp, rh, hours);
         return {
           toolName,
@@ -211,6 +223,7 @@ export async function executeRegisteredTool(
         };
       }
 
+      // Hujan lebih dari 0 mm dianggap sedang hujan untuk model redaman pengunjung.
       case "calculateFootfallIndex": {
         const rainMm = Number(args.rainfallMm ?? 0.0);
         const footfall = calculateRainFootfallAttenuation(rainMm, rainMm > 0);
@@ -238,6 +251,7 @@ export async function executeRegisteredTool(
           arrivalHourDecimal: 4.0,
         }));
 
+        // Surplus komposit dihitung dengan suhu dan kelembapan acuan 32,5 C dan 75 persen; hujan dan jam datang dari argumen.
         const surplus = calculateCompositeMarketSurplus(stallInputs, 32.5, 75.0, rainMm, hour);
         return {
           toolName,
@@ -255,7 +269,9 @@ export async function executeRegisteredTool(
         const hour = Number(args.currentHourDecimal ?? 14.5);
         const rain = Number(args.rainfallMm ?? 0.0);
 
+        // Harga sore dihitung dari harga grosir komoditas, jam, dan hujan; hasilnya sudah dikunci harga lantai.
         const pricing = calculateInverseSurgePricing(commodity, hour, rain);
+        // Hasil alat armada: muatan, jenis kendaraan, kapasitas, jumlah unit, perkiraan biaya BBM, dan kalimat penugasan.
         return {
           toolName,
           agentId: "Agent_12_DynamicPricingAgent",
@@ -279,6 +295,7 @@ export async function executeRegisteredTool(
           vendorId,
         });
 
+        // Hasil alat karbon: metana yang terhindar dan CO2e, keduanya dari faktor emisi bersama di pasarinCore.
         return {
           toolName,
           agentId: "Agent_10_QualityGateAgent",
@@ -349,6 +366,7 @@ export async function executeRegisteredTool(
         const commId = String(args.commodityId || "kangkung").toLowerCase();
 
         // Standar konversi wadah tradisional Pasar Induk Kramat Jati
+        // Bobot per kemasan: karung 25 kg bawaan (35 kg untuk cabai, 40 kg untuk kol); jenis kemasan lain diatur di cabang berikutnya. Angka ini kebiasaan pasar, bukan standar resmi.
         let kgPerUnit = 25.0;
         if (unitName === "karung") {
           kgPerUnit = commId.includes("cabai") ? 35.0 : commId.includes("kol") ? 40.0 : 25.0;
@@ -362,6 +380,7 @@ export async function executeRegisteredTool(
 
         const totalKg = Number((qty * kgPerUnit).toFixed(1));
 
+        // Hasil konversi satuan: jumlah kemasan dikali bobot per kemasan menjadi kilogram.
         return {
           toolName,
           agentId: "Agent_17_TraditionalUnitAssistant",
@@ -377,6 +396,7 @@ export async function executeRegisteredTool(
         };
       }
 
+      // Alat tidak dikenal: kembalikan galat terstruktur (success false) agar pemanggil tidak menerima undefined.
       default:
         return {
           toolName,
@@ -405,6 +425,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
   const lower = query.toLowerCase().trim();
 
   // 1. Kueri Logistik Armada Transportasi (PRD §16: "Lusa itu perlu berapa mobil untuk ke sentra maggot atau ke UMKM?")
+  // Maksud logistics_fleet: kata kunci armada, mobil, truk, dan sejenisnya menjalankan alat cuaca, surplus, lalu pilihan armada.
   if (
     lower.includes("armada") ||
     lower.includes("mobil") ||
@@ -442,6 +463,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
   }
 
   // 2. Kueri Mikroklimat Cuaca & Kinetika Peluruhan Biologis
+  // Maksud climate_microclimate: kata kunci cuaca, hujan, atau suhu menjalankan alat cuaca, redaman pengunjung, lalu peluruhan.
   if (
     lower.includes("cuaca") ||
     lower.includes("hujan") ||
@@ -478,6 +500,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
   }
 
   // 3. Kueri Penetapan Harga Dinamis & Price Floor Modal Pedagang
+  // Maksud pricing_and_floor: kata kunci harga, diskon, atau margin menjalankan peluruhan, harga sore, lalu gerbang mutu.
   if (
     lower.includes("harga") ||
     lower.includes("diskon") ||
@@ -514,6 +537,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
   }
 
   // 4. Kueri Gerbang Mutu Etis & Pencegahan Moral Hazard
+  // Maksud quality_and_ethics: kata kunci mutu, busuk, atau layak menjalankan peluruhan lalu gerbang mutu.
   if (
     lower.includes("mutu") ||
     lower.includes("busuk") ||
@@ -523,6 +547,7 @@ export function decomposeManagerialQuery(query: string): QueryDecompositionPlan 
     lower.includes("moral hazard") ||
     lower.includes("invarian")
   ) {
+    // Maksud market_overview (bawaan): pertanyaan yang tidak cocok dengan pola lain menjalankan cuaca, surplus, dan metana sebagai ikhtisar.
     return {
       originalQuery: query,
       detectedIntent: "quality_and_ethics",
@@ -598,6 +623,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
     const toolExec = await executeRegisteredTool(stepConfig.toolName, stepConfig.arguments);
 
     // Pengamatan ditulis khusus per alat; alat lain memakai kalimat umum berisi durasi.
+    // Pengamatan ditulis menurut alat yang dijalankan; bila alat gagal, pengamatan memuat pesan galatnya.
     let observationText = "";
     if (toolExec.success && toolExec.data && typeof toolExec.data === "object") {
       const data = toolExec.data;
@@ -622,6 +648,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
       observationText = `Peringatan eksekusi alat: ${toolExec.error || "Data tidak tersedia"}`;
     }
 
+    // Setiap langkah dicatat sebagai pikiran, aksi, dan pengamatan untuk jejak penalaran.
     thoughtProcess.push({
       step: thoughtProcess.length + 1,
       agent: toolExec.agentId,
@@ -638,6 +665,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
   let executiveSummary = "";
   const recommendations: string[] = [];
 
+  // Ringkasan eksekutif heuristik adalah teks contoh tetap per maksud. Angka di dalamnya (misalnya 955 kg dan 526 kg) bukan hasil hitung dari data saat ini.
   if (plan.detectedIntent === "logistics_fleet") {
     executiveSummary =
       "Berdasarkan proyeksi susut surplus pasar sebesar 955 kg, dibutuhkan 1 unit Daihatsu GranMax Bak " +
@@ -671,6 +699,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
 
   const executionDurationMs = Date.now() - globalStartTime;
 
+  // Hasil akhir: pertanyaan, ringkasan, jejak penalaran, rekomendasi, dan waktu pembuatan.
   return {
     query,
     executiveSummary,

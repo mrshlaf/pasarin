@@ -2,7 +2,7 @@
 // Bertanggung jawab mengoordinasikan seluruh sub-agen otonom PASARIN:
 // 1. Menjalankan siklus otonom sapuan sore 14:30 WIB (Autonomous Afternoon Sweep).
 // 2. Memproses kueri bahasa alami manajerial pengelola pasar dengan penalaran ReAct berantai.
-// 3. Mengimplementasikan arsitektur Hybrid: Google Gemini 2.0 Flash (@google/genai)
+// 3. Mengimplementasikan arsitektur Hybrid: Google Gemini (@google/genai)
 // dengan fail-safe fallback otomatis ke mesin penalaran ReAct heuristik deterministik.
 // Landasan Spesifikasi PRD §4.1, §4.18.1, dan baris 2904-2939:
 // - Batas maksimal siklus penalaran dipatok 5 putaran (max 5 turns) untuk mencegah loop tak berujung.
@@ -202,7 +202,7 @@ export async function executeAutonomousOrchestration(options?: {
     `Tier 2 Dapur Sosial (${tier2Kg} kg, jendela reservasi 30 menit aktif), dan Tier 3 Sentra Maggot (${tier3Kg} kg). ` +
     `Ditugaskan ${totalFleetRequired} unit armada penjemputan dengan proteksi modal pedagang terkunci aman.`;
 
-  // Hubungkan ke Google Gemini 2.0 Flash live untuk sintesis orkestrator otonom jika API key tersedia
+  // Hubungkan ke Google Gemini live untuk sintesis orkestrator otonom jika API key tersedia
   const env = getEnv();
   const apiKey = env.GEMINI_API_KEY;
   // Model hanya dipanggil bila kunci valid (bukan placeholder), tidak dipaksa heuristik, dan hasilnya cukup panjang untuk dipakai.
@@ -275,7 +275,7 @@ export async function executeAutonomousOrchestration(options?: {
 }
 
 // Memproses kueri bahasa alami dari pengelola pasar menggunakan arsitektur ReAct Hybrid (PSR-17 / PSR-18).
-// Menghubungkan Google Gemini 2.0 Flash (@google/genai) saat API key tersedia dan valid,
+// Menghubungkan Google Gemini (@google/genai) saat API key tersedia dan valid,
 // serta secara cerdas beralih ke mesin penalaran ReAct heuristik deterministik jika layanan offline atau kuota habis.
 export async function processManagerialNaturalQuery(
   query: string,
@@ -287,7 +287,7 @@ export async function processManagerialNaturalQuery(
   const apiKey = env.GEMINI_API_KEY;
 
   // Jalur model: mengirim kueri dan memakai teks balasan sebagai ringkasan.
-  // 1. Coba eksekusi melalui Google Gemini 2.0 Flash Live API jika API key tersedia dan tidak dipaksa heuristik
+  // 1. Coba eksekusi melalui Google Gemini API jika API key tersedia dan tidak dipaksa heuristik
   if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
     try {
       const ai = new GoogleGenAI({ apiKey });
@@ -342,7 +342,7 @@ export async function processManagerialNaturalQuery(
         return queryResult;
       }
     } catch (apiError) {
-      console.warn("[GeminiOrchestrator] Gagal menghubungi Gemini 2.0 Flash API, beralih ke mesin heuristik:", apiError);
+      console.warn("[GeminiOrchestrator] Gagal menghubungi Gemini API, beralih ke mesin heuristik:", apiError);
     }
   }
   // 2. Mesin Penalaran ReAct Dekomposisi Terstruktur via Tool Calling Registry (PSR-18)

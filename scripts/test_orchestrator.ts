@@ -34,7 +34,7 @@ function assert(condition: boolean, testName: string, detail?: string) {
 
 // Menjalankan rangkaian pengujian integrasi ReAct Orchestrator PSR-17.
 async function runOrchestratorTests() {
-  console.log("\nPASARIN PSR-17 Gemini 2.0 Flash ReAct Orchestrator Test Suite");
+  console.log("\nPASARIN PSR-17 Gemini ReAct Orchestrator Test Suite");
 
   // Uji 1: Eksekusi mandiri alur sapuan otonom 14:30 WIB
   console.log("\n[Test 1] Eksekusi Mandiri Siklus Otonom Sapuan Sore 14:30 WIB");

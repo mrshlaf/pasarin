@@ -2,7 +2,7 @@
 // Menguji interoperabilitas end-to-end seluruh 17 agen otonom melintasi 5 tahapan sirkadian:
 // 1. Subuh (04:30 WIB): Penerimaan pasokan grosir 30 kios & 30 komoditas hortikultura.
 // 2. Terik Siang (12:00 WIB): Puncak suhu los (34°C) & akselerasi laju respirasi kinetika Arrhenius-Q10.
-// 3. Evaluasi Mutu (14:30 WIB): Pemicuan Cron Sweep, penalaran ReAct AI Gemini 2.0 Flash, & Dynamic Pricing.
+// 3. Evaluasi Mutu (14:30 WIB): Pemicuan Cron Sweep, penalaran ReAct AI Gemini, & Dynamic Pricing.
 // 4. Hujan Sore (15:30 WIB): Redaman pembeli 48%, alokasi prioritas 30m Dapur Sosial & klaim QRIS Escrow.
 // 5. Distribusi Armada (17:30 - 21:00 WIB): Penugasan logistik Viar/GranMax/Truk, konfirmasi serah terima, pelepasan escrow, & akuntansi emisi karbon.
 
@@ -152,7 +152,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
     temperatureC: 32.5,
     humidityPercent: 68,
     status: "COMPLETED",
-    actionSummary: "Agen ReAct Gemini 2.0 Flash memindai inventaris 30 kios dan menetapkan harga diskon salvaging modal.",
+    actionSummary: "Agen ReAct Gemini memindai inventaris 30 kios dan menetapkan harga diskon salvaging modal.",
     metrics: {
       aiReasoningTurns: orchestrationDossier.thoughtProcess?.length || 5,
       projectedSurplusKg,

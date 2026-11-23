@@ -6,7 +6,7 @@
 // 4. [SUITE 4: PSR-20] Inverse Surge Dynamic Pricing & Price Floor Modal Pedagang.
 // 5. [SUITE 5: PSR-19] Mesin Prediksi Surplus Komposit & Validasi Target Baseline 1.240 kg.
 // 6. [SUITE 6: PSR-21] Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1 (Zero Edible to Feed).
-// 7. [SUITE 7: PSR-17] Google Gemini 2.0 Flash ReAct Agent Core (Siklus Otonom 14:30 WIB & Max 5 Turns).
+// 7. [SUITE 7: PSR-17] Google Gemini ReAct Agent Core (Siklus Otonom 14:30 WIB & Max 5 Turns).
 // 8. [SUITE 8: PSR-18] Tool Calling Registry & Dekomposisi Kueri Bahasa Alami (< 1.500 ms).
 // 9. [SUITE 9: PSR-40] Autentikasi Pengguna Supabase Auth & Penegakan Isolasi Peran (Role Isolation).
 // 10. [SUITE 10: PSR-3 & 4] Arsitektur API Response Envelope, Validasi Skema Zod & Otorisasi Cron.
@@ -100,7 +100,7 @@ export interface MasterTestReport {
 
 // Menjalankan rangkaian uji otomatis 14 suite rekayasa perangkat lunak PASARIN secara terintegrasi (PSR-39).
 // Mengevaluasi 76 asersi pengujian unit mencakup telemetri cuaca, kinetika Arrhenius, redaman hujan,
-// dynamic pricing, prediksi surplus komposit, gerbang mutu etis, ReAct Gemini 2.0 Flash, tool calling,
+// dynamic pricing, prediksi surplus komposit, gerbang mutu etis, ReAct Gemini, tool calling,
 // otorisasi peran, Telegram webhook, integrasi master data, invarian sirkular, dan mesin pencocokan Haversine.
 export async function runMasterInClassTestSuite(options?: { silent?: boolean }): Promise<MasterTestReport> {
   const isSilent = Boolean(options?.silent);
@@ -375,7 +375,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   );
 
   // 7. Suite 7: PSR-17
-  startSuite("SUITE 7: PSR-17", "Google Gemini 2.0 Flash ReAct Agent Core");
+  startSuite("SUITE 7: PSR-17", "Google Gemini ReAct Agent Core");
   const orchestratorRun = await executeAutonomousOrchestration({
     executionMode: "scheduled_autonomous_cron",
     forceHeuristic: true,

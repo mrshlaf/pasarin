@@ -7,7 +7,7 @@
 // - Suite 4 (PSR-20): Inverse Surge Dynamic Pricing & Proteksi Price Floor Modal.
 // - Suite 5 (PSR-19): Prediksi Surplus Komposit & Validasi Baseline 1.240 kg.
 // - Suite 6 (PSR-21): Gerbang Mutu Etis, Anti-Moral Hazard & Invarian 1.
-// - Suite 7 (PSR-17): Google Gemini 2.0 Flash ReAct Agent Core (Maks 5 Putaran).
+// - Suite 7 (PSR-17): Google Gemini ReAct Agent Core (Maks 5 Putaran).
 // - Suite 8 (PSR-18): Tool Calling Registry & Dekomposisi Kueri Bahasa Alami.
 // - Suite 9 (PSR-40): Autentikasi Supabase Auth & Penegakan Isolasi 7 Peran.
 // - Suite 10 (PSR-3, 4, 24, 25): API Response Envelope & Telegram Inline Gateway.
