@@ -4,9 +4,10 @@
 
 // Impor: state React, ikon, konteks sesi dan pasar, serta komponen bersama.
 import { useState } from "react";
-import { Boxes, CalendarDays, Clock, Receipt, RefreshCw } from "lucide-react";
+import { Boxes, CalendarDays, Clock, FileBarChart, Receipt, RefreshCw } from "lucide-react";
 import { useAuth } from "@/lib/authContext";
 import { useMarketSimulation } from "@/lib/simulationStore";
+import { MarketDialog } from "@/components/common/MarketDialog";
 import { DecayExplainer } from "@/components/common/DecayExplainer";
 import { isDonation, isFreeMaggotOffer, isReadyForDelivery } from "@/types/market";
 import {
@@ -19,6 +20,8 @@ export function OversightDashboard() {
   // Akun yang masuk; dipakai untuk membatasi tombol evaluasi stok hanya untuk admin.
   const { user } = useAuth();
   const { offers, stockItems, stockHealth, estimatedUnsoldKg, transactions, busy, triggerCronSweepNow } = useMarketSimulation();
+  // Dialog laporan penjualan: dibuka lewat tombol Laporan penjualan.
+  const [reportOpen, setReportOpen] = useState(false);
   // Hasil sapuan manual terakhir untuk ditampilkan di bawah tombol.
   const [sweepResult, setSweepResult] = useState<{ success: boolean; message: string } | null>(null);
   // Daftar penawaran dipotong 12 baris sampai pengguna menekan Tampilkan semua.
@@ -97,6 +100,9 @@ export function OversightDashboard() {
                 <RefreshCw size={16} aria-hidden /> {busy ? "Memproses evaluasi…" : "Evaluasi stok sekarang"}
               </button>
             )}
+            <button className={marketSecondary + " justify-center"} type="button" onClick={() => setReportOpen(true)}>
+              <FileBarChart size={16} aria-hidden /> Laporan penjualan
+            </button>
           </div>
         </div>
         {/* Pesan hasil sapuan: hijau bila berhasil, merah bila gagal. */}
@@ -115,47 +121,6 @@ export function OversightDashboard() {
         { label: "Siap diantar", value: ready.length },
         { label: "Serah terima selesai", value: settled.length },
       ]} />
-
-      {/* Ringkasan penjualan hari ini: angka kunci, komoditas teratas, dan penyaluran per tujuan. */}
-      <MarketSection title="Ringkasan penjualan hari ini" description="Dari pesanan yang diserahterimakan hari ini (zona waktu Jakarta). Dana yang masih ditahan menunggu serah terima.">
-        <MarketMetrics items={[
-          { label: "Penjualan hari ini", value: rupiah(today.salesIdr), tone: today.salesIdr > 0 ? "brand" : undefined },
-          { label: "Pesanan selesai", value: today.orders },
-          { label: "Berat tersalur", value: kg(today.kg) },
-          { label: "Dana masih ditahan", value: rupiah(heldIdr) },
-        ]} />
-        {todayOrders.length === 0 ? (
-          <EmptyState icon={CalendarDays} title="Belum ada penjualan hari ini" description="Angka muncul setelah ada pesanan yang diserahterimakan hari ini." />
-        ) : (
-          <div className="mt-4 grid gap-5 md:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-semibold">Komoditas teratas</h3>
-              <ul>{topCommodities.map(([id, row]) => (
-                <LedgerRow key={id} title={commodityName(id)} amount={rupiah(row.salesIdr)} detail={kg(row.kg)} status={<StatusPill label="Terjual" tone="success" />} />
-              ))}</ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold">Penyaluran per tujuan</h3>
-              <LotFacts items={[
-                { label: "Warteg dan UMKM", value: kg(byTier.tier_1) },
-                { label: "Dapur sosial dan panti", value: kg(byTier.tier_2) },
-                { label: "Sentra maggot", value: kg(byTier.tier_3) },
-              ]} />
-            </div>
-          </div>
-        )}
-      </MarketSection>
-
-      {/* Riwayat harian: penjualan beberapa hari terakhir sebagai pembanding. */}
-      {dailyRows.length > 0 && (
-        <MarketSection title="Riwayat penjualan harian" description="Tujuh hari terakhir yang punya pesanan selesai.">
-          <ul>{dailyRows.map(([key, row]) => (
-            <LedgerRow key={key} title={dayLabel(key) + (key === todayKey ? " (hari ini)" : "")} amount={rupiah(row.salesIdr)}
-              detail={<>{row.orders} pesanan · {kg(row.kg)}{row.freeKg > 0 ? " · " + kg(row.freeKg) + " donasi atau gratis" : ""}</>}
-              status={<StatusPill label="Penjualan" tone="success" />} />
-          ))}</ul>
-        </MarketSection>
-      )}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
         <div className="col-start-1 row-start-1 grid min-w-0 gap-4">
@@ -231,6 +196,56 @@ export function OversightDashboard() {
         </div>
       </div>
 
+
+      {/* Dialog laporan penjualan: ringkasan hari ini, rincian, dan riwayat harian dari pesanan yang sudah diserahterimakan. */}
+      {reportOpen && (
+        <MarketDialog title="Laporan penjualan hari ini" onClose={() => setReportOpen(false)}>
+          <div className="grid gap-5">
+            <p className="rounded-xl bg-canvas p-3 text-sm leading-6 text-ink-muted">Dihitung dari pesanan yang diserahterimakan hari ini (zona waktu Jakarta). Donasi dan lot gratis dicatat sebagai berat, bukan rupiah. Dana ditahan menunggu serah terima.</p>
+            {/* Angka kunci hari ini. */}
+            <MarketMetrics items={[
+              { label: "Penjualan hari ini", value: rupiah(today.salesIdr), tone: today.salesIdr > 0 ? "brand" : undefined },
+              { label: "Pesanan selesai", value: today.orders },
+              { label: "Berat tersalur", value: kg(today.kg) },
+              { label: "Dana masih ditahan", value: rupiah(heldIdr) },
+            ]} />
+            {todayOrders.length === 0 ? (
+              <EmptyState icon={CalendarDays} title="Belum ada penjualan hari ini" description="Angka muncul setelah ada pesanan yang diserahterimakan hari ini." />
+            ) : (
+              <>
+                {/* Lima komoditas dengan berat terbanyak hari ini. */}
+                <section>
+                  <h3 className="font-semibold">Komoditas teratas</h3>
+                  <ul>{topCommodities.map(([id, row]) => (
+                    <LedgerRow key={id} title={commodityName(id)} amount={rupiah(row.salesIdr)} detail={kg(row.kg)} status={<StatusPill label="Terjual" tone="success" />} />
+                  ))}</ul>
+                </section>
+                {/* Berat yang disalurkan ke tiap tujuan. */}
+                <section>
+                  <h3 className="font-semibold">Penyaluran per tujuan</h3>
+                  <LotFacts items={[
+                    { label: "Warteg dan UMKM", value: kg(byTier.tier_1) },
+                    { label: "Dapur sosial dan panti", value: kg(byTier.tier_2) },
+                    { label: "Sentra maggot", value: kg(byTier.tier_3) },
+                  ]} />
+                </section>
+              </>
+            )}
+            {/* Penjualan beberapa hari terakhir sebagai pembanding. */}
+            {dailyRows.length > 0 && (
+              <section>
+                <h3 className="font-semibold">Riwayat penjualan harian</h3>
+                <ul>{dailyRows.map(([key, row]) => (
+                  <LedgerRow key={key} title={dayLabel(key) + (key === todayKey ? " (hari ini)" : "")} amount={rupiah(row.salesIdr)}
+                    detail={<>{row.orders} pesanan · {kg(row.kg)}{row.freeKg > 0 ? " · " + kg(row.freeKg) + " donasi atau gratis" : ""}</>}
+                    status={<StatusPill label="Penjualan" tone="success" />} />
+                ))}</ul>
+              </section>
+            )}
+            <button type="button" className={marketSecondary + " w-full justify-center"} onClick={() => setReportOpen(false)}>Tutup laporan</button>
+          </div>
+        </MarketDialog>
+      )}
     </div>
   );
 }

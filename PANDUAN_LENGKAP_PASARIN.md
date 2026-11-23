@@ -38,7 +38,7 @@ Ada 7 peran. Tiap peran hanya melihat data yang menjadi haknya.
 | Dapur sosial dan panti | `social_kitchen` | Katalog Tier 2 (jual murah atau donasi), klaim |
 | Sentra maggot | `maggot` | Katalog Tier 3, biomassa gratis |
 | Kurir | `logistics` | Antrean antar tiga tahap, konfirmasi serah terima |
-| Pengelola pasar | `manager` | Ringkasan penjualan hari ini (penjualan, pesanan selesai, berat, dana ditahan, komoditas teratas, penyaluran per tujuan) dan riwayat harian, pantauan seluruh penawaran, buku besar |
+| Pengelola pasar | `manager` | Tombol Laporan penjualan yang membuka ringkasan hari ini (penjualan, pesanan selesai, berat, dana ditahan, komoditas teratas, penyaluran per tujuan) dan riwayat harian, pantauan seluruh penawaran, buku besar |
 | Admin | `admin` | Semua milik pengelola, ditambah tombol evaluasi stok dan penyemaian data |
 
 Akun demo: 30 pedagang, 100 Warteg, 3 dapur sosial, 2 maggot, 5 kurir, 1 pengelola, 1 admin (total 142). Di mode lokal, kata sandi sama dengan nama pengguna, misalnya `admin1` / `admin1`.
@@ -212,7 +212,7 @@ Vercel Cron 14.30 WIB ──► /api/cron/afternoon-sweep
 5. Pembeli **membayar** lewat QRIS simulasi. Dana ditahan di escrow.
 6. **Kurir** melihat antrean per tahap, mengantar, dan **mengonfirmasi serah terima**.
 7. Dana **cair** ke dompet pedagang. Semua kejadian penting tercatat di audit.
-8. **Pengelola dan admin** memantau ringkasan penjualan hari ini, riwayat harian, penawaran, dan buku besar. Simulasi 24 jam tidak lagi ada di dasbor; masih bisa dijalankan lewat perintah Telegram `/dlh` dan rute API.
+8. **Pengelola dan admin** membuka tombol Laporan penjualan (ringkasan hari ini dan riwayat harian), penawaran, dan buku besar. Simulasi 24 jam tidak lagi ada di dasbor; masih bisa dijalankan lewat perintah Telegram `/dlh` dan rute API.
 
 ---
 
