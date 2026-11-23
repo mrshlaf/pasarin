@@ -172,6 +172,8 @@ curl -X POST https://pasarin.vercel.app/api/admin/seed \
   -H "content-type: application/json" -d "{}"
 ```
 
+Cara singkat dari komputer lokal: `PASARIN_URL=https://pasarin.vercel.app PASARIN_SEED_SECRET=... npm run seed:remote`. Skrip memanggil endpoint di atas lalu memeriksa bahwa Tier 1, 2, dan 3 sama-sama punya lot aktif. Lakukan ini bila data demo sudah menua: skor susut naik seiring waktu, sehingga lot lama lama-kelamaan semuanya pindah ke Tier 3.
+
 Endpoint seed membuat 142 akun Supabase, 180 lot stok, 90 penawaran, dan contoh transaksi. Di localhost, admin dapat memicu endpoint yang sama tanpa secret setelah masuk sebagai `admin1`.
 
 ```sh

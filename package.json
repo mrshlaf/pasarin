@@ -11,6 +11,7 @@
     "test:db": "tsx scripts/test_supabase_connection.ts",
     "db:migrate": "tsx scripts/migrate_and_seed.ts",
     "seed:cloud": "tsx scripts/seed_cloud_market.ts",
+    "seed:remote": "tsx scripts/reseed_remote.ts",
     "test": "tsx scripts/run_all_tests.ts",
     "test:unit": "tsx scripts/run_unit_tests.ts",
     "test:matchmaking": "tsx scripts/test_matchmaking_engine.ts",

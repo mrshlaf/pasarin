@@ -418,6 +418,16 @@ Konfigurasi di `.env.local` (lihat `.env.example`): kunci Supabase, `GEMINI_API_
 
 ---
 
+### Mengisi ulang data demo di Vercel
+
+```bash
+PASARIN_URL=https://pasarin.vercel.app PASARIN_SEED_SECRET=... npm run seed:remote
+```
+
+Seed membuat 30 kios x 6 lot dengan penawaran aktif di ketiga tier (sekitar 28 Tier 1, 27 Tier 2, 28 Tier 3) ditambah contoh pesanan di tiap status. Skor susut naik seiring waktu, jadi lot demo lama makin banyak yang pindah ke Tier 3; seed ulang mengembalikan sebarannya.
+
+---
+
 ## 11. Pertanyaan yang sering muncul
 
 **Skor susut itu AI?**
