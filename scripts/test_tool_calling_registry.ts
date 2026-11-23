@@ -163,7 +163,7 @@ async function runToolCallingRegistryTests() {
   const fleetRes = await executeRegisteredTool("assignVehicleType", { payloadKg: 650 });
   // Memvalidasi alat alokasi armada mengembalikan jenis GranMax untuk muatan 650 kg
   assert(
-    fleetRes.success && toolData(fleetRes.data).vehicleType === "pickup_granmax",
+    fleetRes.success && toolData(fleetRes.data).vehicleType === "granmax_pickup",
     "Eksekusi alat 'assignVehicleType' mengalokasikan GranMax Bak untuk muatan 650 kg",
     `Vehicle: ${toolData(fleetRes.data).vehicleType}`
   );

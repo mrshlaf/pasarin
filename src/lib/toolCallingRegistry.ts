@@ -10,6 +10,7 @@
 import { COMMODITIES } from "@/data/commodities";
 import { weatherAgent } from "@/lib/weatherAgent";
 import { qualityGateAgent } from "@/lib/qualityGateAgent";
+import { calculateFleetAllocation } from "@/lib/fleetCargoCalculator";
 import {
   FOOD_WASTE_CO2E_KG_PER_KG,
   FOOD_WASTE_METHANE_KG_PER_KG,
@@ -121,11 +122,11 @@ export const PASARIN_TOOL_DECLARATIONS: ToolFunctionDeclaration[] = [
       required: ["commodityId", "requestedTier"],
     },
   },
-  // Alat 7: pilihan armada menurut tonase. Ambang registri ini 300 dan 800 kg; kalkulator armada memakai 300 dan 1.000 kg.
+  // Alat 7: pilihan armada menurut tonase, memakai kalkulator armada (300 dan 1.000 kg).
   {
     name: "assignVehicleType",
     agentId: "Agent_9_FleetLogisticsAgent",
-    description: "Mengalokasikan armada angkut optimal (Viar Roda Tiga <=300kg, GranMax Bak <=800kg, Truk Colt Diesel >800kg) berdasarkan tonase surplus.",
+    description: "Mengalokasikan armada angkut optimal (Viar Roda Tiga <=300kg, GranMax Bak <=1.000kg, Truk Isuzu >1.000kg) berdasarkan tonase surplus.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -288,32 +289,16 @@ export async function executeRegisteredTool(
         };
       }
 
-      // Muatan hingga 300 kg memakai Viar, hingga 800 kg GranMax, di atasnya truk Colt (2.500 kg per truk).
+      // Armada dipilih lewat kalkulator armada: hingga 300 kg Viar, hingga 1.000 kg GranMax, di atasnya Isuzu (4.000 kg per truk).
       case "assignVehicleType": {
         const payloadKg = Number(args.payloadKg ?? 500.0);
         const destinations = Number(args.destinationsCount ?? 3);
-
-        let vehicleType: "viar_three_wheel" | "pickup_granmax" | "colt_diesel_truck";
-        let vehicleCapacityKg: number;
-        let vehicleDescription: string;
-        let unitsRequired: number;
-
-        if (payloadKg <= 300.0) {
-          vehicleType = "viar_three_wheel";
-          vehicleCapacityKg = 300;
-          unitsRequired = 1;
-          vehicleDescription = "1 unit Viar Roda Tiga (daya angkut 300 kg, fleksibel melintasi gang sempit).";
-        } else if (payloadKg <= 800.0) {
-          vehicleType = "pickup_granmax";
-          vehicleCapacityKg = 800;
-          unitsRequired = 1;
-          vehicleDescription = "1 unit Daihatsu GranMax Bak (daya angkut 800 kg, ideal untuk rute Warteg & Panti).";
-        } else {
-          vehicleType = "colt_diesel_truck";
-          vehicleCapacityKg = 2500;
-          unitsRequired = Math.ceil(payloadKg / 2500);
-          vehicleDescription = `${unitsRequired} unit Truk Colt Diesel (daya angkut 2.500 kg per truk untuk pasokan massal).`;
-        }
+        // Satu sumber kebenaran: kalkulator armada. Ambangnya 300 kg (Viar), 1.000 kg (GranMax), di atasnya Isuzu 4.000 kg per truk.
+        const allocation = calculateFleetAllocation(payloadKg);
+        const vehicleType = allocation.vehicleType;
+        const vehicleCapacityKg = allocation.vehicleSpec.maxCapacityKg;
+        const unitsRequired = allocation.unitsRequired;
+        const vehicleDescription = allocation.dispatchDescription;
 
         const estimatedFuelCostIdr = Math.round(destinations * 18000 + (payloadKg / 100) * 5000);
 
@@ -656,7 +641,7 @@ export async function executeDecomposedManagerialQuery(query: string): Promise<O
   if (plan.detectedIntent === "logistics_fleet") {
     executiveSummary =
       "Berdasarkan proyeksi susut surplus pasar sebesar 955 kg, dibutuhkan 1 unit Daihatsu GranMax Bak " +
-      "(kapasitas 800 kg) untuk mendistribusikan 526 kg ke rute Warteg UMKM (Tier 1), serta 1 unit Viar Roda Tiga " +
+      "(kapasitas 1.000 kg) untuk mendistribusikan 526 kg ke rute Warteg UMKM (Tier 1), serta 1 unit Viar Roda Tiga " +
       "(kapasitas 300 kg) dengan 2 ritasi untuk mengangkut 429 kg afkir ke Sentra Budidaya Maggot BSF (Tier 3).";
     recommendations.push(
       "Berangkatkan armada GranMax pukul 15:30 WIB agar pasokan tiba sebelum jam masak sore Warteg.",

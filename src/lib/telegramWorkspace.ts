@@ -62,7 +62,7 @@ function offerLine(offer: RescueOffer, isCourier = false) {
     : weight.format(offer.quantityKg) + " kg · " + (isFreeMaggotOffer(offer) ? "Gratis pakan maggot" : isDonation(offer) ? "Donasi gratis" : money.format(offer.totalAmountIdr));
 
   if (isCourier) {
-    const buyer = CIRCULAR_BUYERS.find((b) => b.id === offer.claimedById || b.name === offer.claimedBy || (offer.claimedBy && b.name.includes(offer.claimedBy)));
+    const buyer = CIRCULAR_BUYERS.find((b) => b.id === offer.claimedById || b.name === offer.claimedBy);
     const destination = buyer
       ? "\n   Tujuan: " + buyer.name + "\n   Alamat: " + buyer.address + "\n   Kontak: " + buyer.ownerName + " (" + buyer.phone + ")"
       : (offer.claimedBy ? "\n   Tujuan: " + offer.claimedBy : "");

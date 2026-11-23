@@ -302,11 +302,11 @@ export function LogisticsDashboard() {
         ) : (
           <ul className="grid gap-3">
             {filteredQueue.map((offer) => {
+              // Pembeli dicocokkan lewat ID atau nama persis; pencocokan sebagian nama bisa salah orang.
               const buyer = CIRCULAR_BUYERS.find(
                 (b) =>
                   b.name === offer.claimedBy ||
-                  b.id === offer.claimedById ||
-                  (offer.claimedBy && b.name.includes(offer.claimedBy))
+                  b.id === offer.claimedById
               );
               const cardVehicle = getOfferVehicleBadge(offer.targetTier);
               const lotNumber = stockById.get(offer.stockId)?.lotNumber;
