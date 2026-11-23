@@ -2,6 +2,7 @@
 // Menghitung kecocokan geografis dan kapasitas serap mitra pembeli sirkular
 // berdasarkan jarak radius (haversine) dan kompatibilitas komoditas.
 
+// Impor: tipe Next, zod, pembungkus respons API, dan mesin pencocokan.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
@@ -41,6 +42,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     }
     const matchmakingResult: MatchmakingResult = findMatchesForOffer(offer.data, { maxRadiusKm });
 
+    // Hasil pencocokan satu penawaran dikembalikan; galat dibungkus menjadi respons 500.
     return successResponse(matchmakingResult, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memproses pencocokan pembeli sirkular";
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const batchResults = batchMatchOffers(offers);
 
+    // Hasil batch: jumlah penawaran yang diproses dan hasil tiap penawaran.
     return successResponse(
       {
         totalOffersProcessed: batchResults.length,

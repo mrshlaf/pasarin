@@ -3,6 +3,7 @@
 // menguji kepatuhan terhadap Invarian 1 (Zero Edible Food to Feed),
 // serta mencatat upaya manipulasi moral hazard ke audit trail sistem.
 
+// Impor: tipe Next, zod, pembungkus respons API, dan agen gerbang mutu.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
@@ -51,6 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     };
     const evaluationResult = await verifyHumanGradeIntegrity(payload);
 
+    // Hasil gerbang mutu dikembalikan apa adanya; galat dibungkus menjadi respons 500.
     return successResponse(evaluationResult, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal mengevaluasi gerbang kendali mutu";
@@ -70,6 +72,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return errorResponse("Parameter 'commodityId' wajib disertakan", 400);
     }
 
+    // Versi GET untuk uji cepat: komoditas, jam pajang (bawaan 4 jam), tier (bawaan tier_3), dan ID pedagang diambil dari query string.
     const hoursOnDisplay = Number(searchParams.get("hoursOnDisplay") ?? "4.0");
     const requestedTier = (searchParams.get("requestedTier") ?? "tier_3") as CircularRescueTier;
     const vendorId = searchParams.get("vendorId") ?? "vendor_kramat_01";
@@ -77,6 +80,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const humidityPercent = searchParams.has("humidityPercent") ? Number(searchParams.get("humidityPercent")) : undefined;
     const chlorophyllRatio = searchParams.has("chlorophyllRatio") ? Number(searchParams.get("chlorophyllRatio")) : undefined;
 
+    // Query string divalidasi dengan skema yang sama seperti POST, jadi kedua metode memakai aturan identik.
     const input = qualityGatePayloadSchema.safeParse({
       commodityId,
       hoursOnDisplay,
@@ -90,6 +94,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // GET tanpa autentikasi hanya pratinjau, jadi insiden tidak dicatat agar tidak bisa dipakai menodai reputasi kios.
     const evaluationResult = await verifyHumanGradeIntegrity(input.data, { recordIncident: false });
 
+    // Hasil gerbang mutu dikembalikan; galat dibungkus menjadi respons 500.
     return successResponse(evaluationResult, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Gagal memproses validasi mutu GET";

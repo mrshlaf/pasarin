@@ -8,6 +8,7 @@
 // 3. Invarian 3 (30-Minute Social Reservation Window): Sayur bernutrisi tinggi di Tier 2
 // dikunci selama 30 menit khusus untuk dapur sosial sebelum dapat diakses pihak lain.
 
+// Impor: katalog komoditas, rumus peluruhan dan klasifikasi, log audit, dan tipe hasil gerbang mutu.
 import { COMMODITIES, Commodity } from "@/data/commodities";
 import { classifyProduceCondition, evaluateArrheniusDecay } from "@/lib/pasarinCore";
 import { recordAuditLog } from "@/lib/audit";
@@ -81,6 +82,7 @@ export async function verifyHumanGradeIntegrity(
   const isDivertingToFeed = requestedTier === "tier_3";
   const isMoralHazardViolation = isHumanConsumable && isDivertingToFeed;
 
+  // Pelanggaran moral hazard: bahan masih layak dimakan (skor di bawah 0,85) tetapi diminta masuk Tier 3 maggot. Penawaran diblokir dan dicatat.
   if (isMoralHazardViolation) {
     const violationReason =
       `PELANGGARAN MORAL HAZARD: Komoditas ${commodity.localName || commodity.name} ` +
@@ -110,6 +112,7 @@ export async function verifyHumanGradeIntegrity(
       },
     });
 
+    // Hasil diblokir: layak konsumsi manusia tetapi diminta ke maggot, lengkap dengan alasan, ID audit, dan penalti reputasi.
     return {
       gateStatus: "blocked",
       isHumanConsumable: true,
@@ -133,6 +136,7 @@ export async function verifyHumanGradeIntegrity(
   // Hanya Tier 2 yang mendapat jendela reservasi 30 menit.
   const socialReservationWindowMinutes = requestedTier === "tier_2" ? SOCIAL_RESERVATION_WINDOW_MINUTES : 0;
 
+  // Hasil lolos: alokasi tier tidak melanggar aturan mutu.
   return {
     gateStatus: "passed",
     isHumanConsumable,
@@ -161,7 +165,9 @@ export function evaluateProduceQuality(
   // Diblokir hanya bila layak makan dan diajukan ke Tier 3.
   const isBlocked = isHumanConsumable && requestedTier === "tier_3";
 
+  // Diblokir: bahan layak manusia tidak boleh dialihkan ke Tier 3.
   if (isBlocked) {
+    // Lolos: alokasi memenuhi batas mutu biologis dan etika redistribusi.
     return {
       isBlocked: true,
       isHumanConsumable: true,
@@ -169,6 +175,7 @@ export function evaluateProduceQuality(
     };
   }
 
+  // Hasil visual: persen kehilangan klorofil, skor susut visual, dan perkiraan kondisi.
   return {
     isBlocked: false,
     isHumanConsumable,

@@ -113,6 +113,7 @@ function writeLocalState(state: ServerState) {
   const file = stateFile();
   const temporary = file + "." + randomUUID();
   fs.writeFileSync(temporary, JSON.stringify(state), { mode: 0o600 });
+  // Prompt analisis: data ringkas pasar dan permintaan dua kalimat (status dan rute prioritas). Model tidak diminta menghitung angka.
   try {
     fs.renameSync(temporary, file);
   } finally {
@@ -568,6 +569,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
       }
     );
 
+    // Respons dibaca dari kandidat pertama; teks kosong atau galat berarti ringkasan heuristik dipakai.
     if (response.ok) {
       const json = await response.json();
       const text: string = json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
@@ -581,6 +583,7 @@ REKOMENDASI: [isi 1 kalimat instruksi]`;
         if (summaryMatch && summaryMatch[1].trim()) summary = summaryMatch[1].trim();
         if (recMatch && recMatch[1].trim()) recommendation = recMatch[1].trim();
 
+        // Hasil Gemini disimpan di cache dengan kunci dan masa berlaku, lalu dikembalikan dengan sumber gemini.
         const geminiResult = {
           summary,
           recommendation,
@@ -658,6 +661,7 @@ export async function readPublicMarketOverview() {
   const topCommodities = [...commodities].map(([name, kg]) => ({ name, kg }))
     .sort((a, b) => b.kg - a.kg || a.name.localeCompare(b.name, "id")).slice(0, 5);
 
+  // Berat dan jumlah lot per tier diambil dari rekap lane di atas.
   const wartegKg = lanes.tier_1.kg;
   const wartegLots = lanes.tier_1.lots;
   const socialKg = lanes.tier_2.kg;

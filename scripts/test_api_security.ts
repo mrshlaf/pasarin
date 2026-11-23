@@ -8,6 +8,7 @@
 // 6. Paritas fitur Telegram Bot dengan web workspace.
 // 7. Isolasi sesi uji lokal agar tidak bocor ke lingkungan produksi.
 
+// Impor: assert ketat, utilitas berkas, dan modul yang diuji.
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -273,6 +274,7 @@ async function run() {
     assert.equal(eligible.distributionMode, mode, "Mode distribusi wajib sesuai");
     assert.equal((await claim(request({ offerId: eligible.id, quantityKg: 2, donated: true }, role))).status, 422, "Parameter donated ilegal wajib ditolak");
 
+    // Klaim sebagian (2 kg) oleh mitra sosial atau maggot harus sukses.
     const placement = { offerId: eligible.id, quantityKg: 2, requestId: "partial-" + eligible.id };
     const reserved = await claim(request(placement, role));
     assert.equal(reserved.status, 200, "Klaim sebagian oleh mitra sosial/maggot wajib sukses");
@@ -283,6 +285,7 @@ async function run() {
     assert.equal((await retry.json()).data.offer.id, order.id, "Idempotensi klaim dengan requestId sama wajib mengembalikan pesanan identik");
     assert.equal((await view(role)).offers.find((item: RescueOffer) => item.id === eligible.id).quantityKg, 4, "Sisa kuantitas katalog wajib berkurang menjadi 4 kg");
 
+    // Mode jual: serah terima sebelum dibayar ditolak (409), lalu pembayaran sah, baru serah terima diterima.
     if (mode === "sale") {
       assert.equal((await update(request({ action: "delivery", offerId: order.id }, "logistics"))).status, 409, "Pengantaran sebelum dibayar wajib ditolak");
       assert.equal((await update(request({ action: "payment", offerId: order.id }, role))).status, 200, "Pembayaran wajib sukses");
@@ -346,6 +349,7 @@ async function run() {
   // Memvalidasi konfirmasi pedagang menimbang sisa fisik 57 kg sukses HTTP 200
   assert.equal((await update(request({ ...approval, confirmation: { confirmedKg: 57, mode: "sale" } }, "vendor"))).status, 200, "Konfirmasi timbang 57 kg wajib sukses HTTP 200");
 
+  // Setelah usulan disetujui, sisa stok fisik di lapak harus terkoreksi sesuai berat yang dikonfirmasi pedagang.
   const afterApproval = await view("vendor");
   assert.equal(afterApproval.stocks[0].remainingKg, 57, "Sisa stok fisik di lapak terkoreksi menjadi 57 kg");
   const listing = (await view("social_kitchen")).offers.find((item: RescueOffer) => item.id === proposal.id);

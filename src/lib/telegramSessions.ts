@@ -3,6 +3,7 @@
 // pembatasan laju percobaan login (Rate Limiting 10x per 15 menit),
 // persistensi multisesi akun terpisah per obrolan, serta pemilihan sesi aktif secara atomik.
 
+// Impor: HMAC dan acak dari Node, klien Supabase, data akun, akses basis data, dan fungsi autentikasi.
 import { createHmac, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { accountProfile, resolveLoginEmail, type AuthUser } from "@/data/accounts";

@@ -39,6 +39,7 @@ export function RealtimeWibClock({
 
       setTimeStr(showSeconds ? `${hours}.${minutes}.${seconds}` : `${hours}.${minutes}`);
 
+      // Tanggal ditulis dengan nama hari dan bulan singkat berbahasa Indonesia, memakai zona WIB.
       if (showDate) {
         const days = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
         const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -55,7 +56,9 @@ export function RealtimeWibClock({
     return () => clearInterval(interval);
   }, [showSeconds, showDate]);
 
+  // Sebelum jam pertama dihitung di klien, tampilan kosong dipakai agar render server dan klien sama.
   if (!timeStr) {
+    // Tampilan jam dengan ikon; tabular-nums menjaga lebar angka tetap saat detik berganti.
     return (
       <span className={`inline-flex items-center gap-1.5 tabular-nums text-ink-muted ${className}`}>
         <Clock size={13} aria-hidden />

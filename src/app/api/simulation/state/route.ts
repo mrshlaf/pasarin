@@ -2,6 +2,7 @@
 // Menyediakan sinkronisasi snapshot inventaris, penawaran, telemetri cuaca, dan buku besar,
 // serta memproses aksi mutasi terotorisasi (pencatatan stok, publikasi, pembayaran, dan serah terima).
 
+// Impor: tipe Next, zod, pembungkus respons API, otorisasi, dan fungsi perubahan data pasar.
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse, successResponse, validateJsonBody } from "@/lib/api-response";
@@ -31,6 +32,7 @@ const actions = z.discriminatedUnion("action", [
 export async function GET(req: NextRequest) {
   const auth = await requireApiRole(req);
   if (auth.response) return auth.response;
+  // Tiap aksi dibatasi peran (stok, terbit, keputusan: pedagang; bayar: Warteg dan dapur sosial; antar: kurir) lalu diarahkan ke fungsi server yang sesuai.
   try {
     return successResponse(await readMarketSnapshot(auth.user));
   } catch (error) {
@@ -78,6 +80,7 @@ export async function POST(req: NextRequest) {
         break;
     }
 
+    // Aksi yang gagal membawa kode status dari server; aksi sukses mengembalikan pesan dan state terbaru milik peran ini.
     if (!result.success) return errorResponse(result.message, result.status);
     return successResponse({
       message: result.message,

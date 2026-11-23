@@ -4,6 +4,7 @@
 // 2. Isolasi Peran 3-Tier (Tier 1: Warteg/UMKM, Tier 2: Dapur Sosial/Panti, Tier 3: Sentra Maggot BSF).
 // 3. Proteksi Kuota Serap Harian (Capacity Overload Guard) dan pemeringkatan berbasis fungsi objektif terbobot.
 
+// Impor: kecepatan rata-rata kota dari kalkulator armada, data mitra pembeli, dan konstanta pencocokan.
 import { URBAN_AVERAGE_SPEED_KMH } from "@/lib/fleetCargoCalculator";
 import {
   CircularBuyer,
@@ -156,6 +157,7 @@ export function findMatchesForOffer(
     let isEligible = true;
     let ineligibilityReason: string | undefined;
 
+    // Radius diperiksa lebih dulu, baru kapasitas; salah satu gagal berarti mitra tidak layak dan alasannya dicatat.
     if (distanceKm > maxRadiusKm) {
       isEligible = false;
       ineligibilityReason = `Jarak lokasi (${distanceKm} km) melebihi batas radius maksimal ${maxRadiusKm} km`;
@@ -201,6 +203,7 @@ export function findMatchesForOffer(
     // Waktu angkut = jarak / kecepatan rata-rata x 60 menit + 5 menit muat (kecepatan sama dengan kalkulator armada). Contoh: 2,2 km pada 20 km/jam = 6,6 + 5 = sekitar 12 menit.
     const estimatedTransitMinutes = Math.round((distanceKm / URBAN_AVERAGE_SPEED_KMH) * 60 + 5.0);
 
+    // Hasil per mitra: skor total, sub-skor, jarak, perkiraan waktu angkut, kelayakan, dan alasan bila tidak layak.
     matchScores.push({
       buyerId: buyer.id,
       buyerName: buyer.name,
@@ -239,6 +242,7 @@ export function findMatchesForOffer(
   const endTime = performance.now();
   const matchmakingDurationMs = Number((endTime - startTime).toFixed(2));
 
+  // Hasil akhir: mitra terbaik, daftar mitra terurut, jumlah layak, dan lama proses.
   return {
     offerId: offer.id,
     commodityId: offer.commodityId,

@@ -2,6 +2,7 @@
 // Menyediakan endpoint HTTP GET (evaluasi tunggal/katalog lengkap via query params)
 // dan POST (evaluasi muatan inventaris kustom kios pedagang).
 
+// Impor: tipe Next, zod untuk validasi, pembungkus respons API, dan fungsi evaluasi peluruhan.
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { successResponse, errorResponse, validateJsonBody } from "@/lib/api-response";
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       return errorResponse("Parameter jam pajang, suhu, atau kelembapan tidak valid.", 400);
     }
 
+    // Mode satu komoditas: bila commodityId diberikan, hanya komoditas itu yang dievaluasi.
     if (commodityId && commodityId.trim().length > 0) {
       const singleEvaluation: DecayEvaluationResult | null = evaluateProduceById(
         commodityId,
@@ -55,6 +57,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         humidityPercent
       );
 
+      // ID tidak ada di katalog: kembalikan galat 404 yang menyebut ID tersebut.
       if (!singleEvaluation) {
         return errorResponse(
           `Komoditas dengan ID '${commodityId}' tidak ditemukan dalam katalog 30 komoditas pasar`,
@@ -72,6 +75,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       humidityPercent
     );
 
+    // Mode batch (tanpa commodityId): evaluasi seluruh katalog pada kondisi yang sama. Galat tak terduga dibungkus menjadi respons 500.
     return successResponse(batchEvaluations, 200);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan internal kalkulasi kinetika";
@@ -96,6 +100,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // Jam pajang per item menimpa nilai global bila disertakan.
       const itemHours = typeof item === "object" && item.hoursElapsed !== undefined ? item.hoursElapsed : hoursElapsed;
 
+      // Tiap item batch dievaluasi dengan jam pajangnya sendiri; ID yang tidak dikenal dilewati.
       const evalResult = evaluateProduceById(commId, itemHours, temperatureC, humidityPercent);
       if (evalResult) {
         results.push(evalResult);
@@ -104,6 +109,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
     }
 
+    // Hasil batch: jumlah yang berhasil dievaluasi dan daftar hasilnya.
     return successResponse(
       {
         totalEvaluated: results.length,

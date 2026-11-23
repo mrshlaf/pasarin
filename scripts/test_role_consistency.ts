@@ -3,6 +3,7 @@
 // tombol saran asisten selalu terjawab, dan alur jual-bayar-antar menjaga invarian buku besar
 // (status pembayaran pesanan selaras dengan catatan escrow) dari sudut pandang setiap peran.
 
+// Impor: assert ketat, utilitas berkas sementara, dan jalur untuk state uji terpisah.
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -94,6 +95,7 @@ async function run() {
     console.log(`  ✅ [PASS] ${message}`);
   };
 
+  // Modul dimuat dinamis setelah state uji disiapkan agar membaca berkas uji, bukan data nyata.
   try {
     const { buildMarketSeedState } = await import("../src/lib/marketSeed");
     const { getServerSimulationState } = await import("../src/lib/serverSimulationState");
@@ -156,6 +158,7 @@ async function run() {
       assertLedgerInvariants(await getServerSimulationState(), label);
       check(true, `${label}: invarian buku besar (escrow ⇔ status bayar, saldo, kepemilikan) terpenuhi`);
 
+      // Setiap pertanyaan saran per peran harus dijawab dan jawabannya diperiksa konsistensi dengan snapshot peran itu.
       for (const [username, prompts] of Object.entries(SUGGESTIONS)) {
         for (const prompt of prompts) {
           const answer = await ask(username, prompt);
@@ -177,6 +180,7 @@ async function run() {
       check(numbers(await ask("sosial1", "Apa donasi yang tersedia?"))[0] === donationListings.length,
         `${label}: sosial1 jumlah donasi asisten = katalog filter Donasi (${donationListings.length})`);
 
+      // Pedagang: angka jawaban "perlu ditimbang" harus sama dengan jumlah lot yang belum ditimbang di snapshot.
       const vendor = await snapshot("pasar1");
       const needsWeighing = vendor.stocks.filter((stock) => stock.remainingKg > 0 && !stock.verifiedAt).length;
       check(numbers(await ask("pasar1", "Apa yang perlu ditimbang?"))[0] === needsWeighing,
@@ -200,11 +204,13 @@ async function run() {
         earnings.includes("akumulasi seluruh dana yang sudah cair"),
         `${label}: pendapatan hari ini (Rp${todayIdr.toLocaleString("id-ID")}) terpisah dari saldo akumulasi`);
 
+      // Kurir: angka jawaban antrean harus sama dengan jumlah pesanan siap antar di snapshot.
       const courier = await snapshot("kurir1");
       const queue = courier.offers.filter(isReadyForDelivery).length;
       check(numbers(await ask("kurir1", "Apa yang siap diantar?"))[0] === queue, `${label}: kurir1 antrean asisten = antrean dashboard (${queue})`);
       check(courier.offers.every((offer) => offer.paymentStatus !== "unpaid"), `${label}: kurir tidak menerima lot yang belum diklaim/dibayar`);
 
+      // Pengelola dan admin: angka siap antar di jawaban harus sama dengan data pasar penuh.
       for (const username of ["pengelola1", "admin1"]) {
         const view = await snapshot(username);
         const ready = view.offers.filter(isReadyForDelivery).length;
@@ -301,6 +307,7 @@ async function run() {
   }
 }
 
+// Galat apa pun mengakhiri proses dengan kode 1 setelah pesan gagal dicetak.
 run().catch((error) => {
   console.error("\n❌ [FAIL]", error instanceof Error ? error.message : error);
   process.exit(1);

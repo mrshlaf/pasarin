@@ -263,6 +263,7 @@ export async function executeRegisteredTool(
         };
       }
 
+      // Harga sore: komoditas dicari di katalog (bawaan kangkung); jam dan hujan memengaruhi diskon, harga lantai tetap berlaku.
       case "computeInverseSurgePrice": {
         const commodityId = String(args.commodityId || "kangkung").trim().toLowerCase();
         const commodity = COMMODITIES.find((c) => c.id.toLowerCase() === commodityId) || COMMODITIES[0];
@@ -282,12 +283,14 @@ export async function executeRegisteredTool(
         };
       }
 
+      // Gerbang mutu lewat alat: komoditas, jam pajang (bawaan 4 jam), dan tier yang diminta diteruskan ke agen mutu.
       case "verifyHumanGradeIntegrity": {
         const commodityId = String(args.commodityId || "bayam");
         const hours = Number(args.hoursOnDisplay ?? 4.0);
         const requestedTier = (args.requestedTier as CircularRescueTier) || "tier_3";
         const vendorId = String(args.vendorId || "vendor_kramat_01");
 
+        // Agen mutu dipanggil dengan komoditas, jam pajang, tier, dan pedagang; pelanggaran dicatat ke audit oleh agen itu sendiri.
         const qgResult = await qualityGateAgent.verifyHumanGradeIntegrity({
           commodityId,
           hoursOnDisplay: hours,
@@ -296,6 +299,7 @@ export async function executeRegisteredTool(
         });
 
         // Hasil alat karbon: metana yang terhindar dan CO2e, keduanya dari faktor emisi bersama di pasarinCore.
+        // Hasil alat armada: muatan, jenis kendaraan, kapasitas, jumlah unit, perkiraan biaya BBM, dan kalimat penugasan.
         return {
           toolName,
           agentId: "Agent_10_QualityGateAgent",
@@ -319,6 +323,7 @@ export async function executeRegisteredTool(
 
         const estimatedFuelCostIdr = Math.round(destinations * 18000 + (payloadKg / 100) * 5000);
 
+        // Hasil alat karbon: metana yang terhindar dan CO2e dari faktor emisi bersama di pasarinCore.
         return {
           toolName,
           agentId: "Agent_9_FleetLogisticsAgent",

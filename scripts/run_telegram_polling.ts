@@ -10,6 +10,7 @@
 // - /surplus  : Katalog penawaran penyelamatan pangan aktif.
 // - /pasok    : Pencatatan pasokan baru oleh pedagang kios.
 
+// Impor: berkas, jalur, dan fungsi gateway serta perintah Telegram.
 import fs from "node:fs";
 import path from "node:path";
 import {
@@ -89,6 +90,7 @@ async function startPolling() {
     name: "Pengelola Pasar (Telegram)",
   };
 
+  // Loop polling: ambil pembaruan baru dari Telegram selama penanda running aktif.
   while (running) {
     try {
       const updatesRes = await apiCall("getUpdates", {
@@ -132,6 +134,7 @@ async function startPolling() {
               replyMarkup: reply.replyMarkup,
             });
 
+            // Hasil kirim dicatat ke konsol dengan latensi; kegagalan dicatat terpisah.
             if (sent.success) {
               console.log(`[TERKIRIM] Berhasil dikirim ke Telegram (${sent.latencyMs}ms)\n`);
             } else {
@@ -156,6 +159,7 @@ async function startPolling() {
             }
             const [action, id, ...args] = parts;
 
+            // Tombol inline: menu membuka perintah, tombol lain memakai aksi pada ID yang diberikan.
             let reply;
             if (action === "menu" && id) {
               reply = await handleTelegramCommand(["/" + id, ...args].join(" "), chatId, activeUser);
@@ -163,6 +167,7 @@ async function startPolling() {
               reply = await handleTelegramAction(action, id, activeUser, args);
             }
 
+            // Indikator muat tombol ditutup; tombol usang diberi pesan Sesi usang.
             await answerTelegramCallbackQuery(cb.id, reply.actionTaken === "stale_button" ? "Sesi usang" : "");
             if (reply.responseText) {
               await dispatchTelegramMessage(chatId, reply.responseText, {

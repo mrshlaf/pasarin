@@ -125,6 +125,7 @@ export function generateBankIndonesiaQrisPayload(
   const crcValue = calculateQrisCrc16(payloadToCrc);
   const fullQrisPayload = payloadToCrc + crcValue;
 
+  // Hasil pembuatan: payload lengkap, referensi bersih, nominal, dan data merchant yang dipakai.
   return {
     qrisPayload: fullQrisPayload,
     transactionReference: cleanRef,
@@ -153,6 +154,7 @@ export function validateQrisPayloadStructure(payload: string): {
   const declaredCrc = payload.substring(payload.length - 4).toUpperCase();
   const computedCrc = calculateQrisCrc16(payloadWithoutCrc);
 
+  // CRC tidak cocok berarti payload diubah atau rusak; payload ditolak dengan nilai deklarasi dan hasil hitung.
   if (declaredCrc !== computedCrc) {
     return {
       valid: false,
@@ -172,6 +174,7 @@ export function validateQrisPayloadStructure(payload: string): {
     const value = payload.substring(offset + 4, offset + 4 + len);
     offset = offset + 4 + len;
 
+    // Tag 54 memuat nominal, tag 59 nama merchant; tag lain dilewati.
     if (tag === "54") {
       extractedAmount = Number(value);
     } else if (tag === "59") {
@@ -199,6 +202,7 @@ export function transitionEscrowPaymentStatus(
     return { success: false, newStatus: currentStatus, reason: "Hanya pesanan berstatus 'unpaid' yang dapat dibayar ke escrow." };
   }
 
+  // Pencairan ke pedagang: hanya dari dana yang sedang ditahan di escrow.
   if (action === "release_to_vendor") {
     if (currentStatus === "held_in_escrow") {
       return { success: true, newStatus: "released_to_vendor" };
@@ -206,8 +210,10 @@ export function transitionEscrowPaymentStatus(
     return { success: false, newStatus: currentStatus, reason: "Hanya dana tertahan di 'held_in_escrow' yang dapat dicairkan ke pedagang." };
   }
 
+  // Pengembalian dana: hanya dari dana yang sedang ditahan di escrow.
   if (action === "refund") {
     if (currentStatus === "held_in_escrow") {
+      // Pencairan sukses: jumlah yang dikreditkan sama dengan nominal dan status menjadi released_to_vendor.
       return { success: true, newStatus: "refunded" };
     }
     return { success: false, newStatus: currentStatus, reason: "Hanya dana di escrow yang dapat dikembalikan ke pembeli." };

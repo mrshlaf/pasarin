@@ -8,6 +8,7 @@
 // 6. Kecepatan pemrosesan kueri kompleks diuji di bawah 2.000 ms (target ideal 1.500 ms).
 // 7. Penanganan galat jika dipanggil alat yang tidak terdaftar dalam registri.
 
+// Impor: registri alat, deklarasi, dan fungsi perencanaan serta eksekusi.
 import {
   toolCallingRegistry,
   PASARIN_TOOL_DECLARATIONS,
@@ -50,6 +51,7 @@ async function runToolCallingRegistryTests() {
     `Total Terdaftar: ${PASARIN_TOOL_DECLARATIONS.length} alat`
   );
 
+  // Daftar nama alat yang wajib ada di registri; uji gagal bila ada yang hilang.
   const expectedToolNames = [
     "fetchOpenWeatherTelemetry",
     "calculateDecayRate",
@@ -216,6 +218,7 @@ async function runToolCallingRegistryTests() {
   // Rekapitulasi hasil uji
   console.log(`\nHasil pengujian akhir PSR-18: ${passedCount} lulus, ${failedCount} gagal\n`);
 
+  // Kode keluar 1 bila ada uji gagal, agar CI menandainya.
   if (failedCount > 0) {
     process.exitCode = 1;
   } else {

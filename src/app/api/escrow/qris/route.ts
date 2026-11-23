@@ -2,6 +2,7 @@
 // POST: Menghasilkan string payload QRIS dinamis berstandar EMVCo TLV dengan CRC16.
 // PUT: Memproses simulasi pelunasan pembayaran ke escrow atau pelepasan dana PoD kurir.
 
+// Impor: tipe Next, pemeriksaan peran, dan fungsi QRIS serta escrow.
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiRole } from "@/lib/apiAuth";
 import {
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       merchantId?: string;
     };
 
+    // Nominal wajib berupa angka positif; selain itu ditolak dengan pesan yang jelas.
     if (!body || typeof body.amountIdr !== "number" || body.amountIdr <= 0) {
       return NextResponse.json(
         { ok: false, error: "Nominal tagihan pembayaran (amountIdr) wajib diisi dengan angka positif." },
@@ -52,6 +54,7 @@ export async function POST(req: NextRequest) {
       merchantName: body.merchantName || "PASARIN Kramat Jati",
     });
 
+    // Respons sukses membawa payload QRIS simulasi dan referensi transaksi.
     return NextResponse.json({
       ok: true,
       data: qrisResult,
@@ -80,6 +83,7 @@ export async function PUT(req: NextRequest) {
     };
 
     if (!body?.action) {
+      // Respons transisi escrow: apakah berhasil, status baru, dan pesan.
       return NextResponse.json({ ok: false, error: "Parameter 'action' wajib disertakan." }, { status: 400 });
     }
 

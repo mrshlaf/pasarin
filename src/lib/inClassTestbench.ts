@@ -15,6 +15,7 @@
 // 13. [SUITE 13: PSR-22] Mesin Pencocokan Sirkular 3-Tier, Formula Haversine, & Proteksi Kapasitas.
 // 14. [SUITE 14: PSR-26] Kanal Siaran Peringatan Instan Telegram & Penguncian Konkurensi Atomik.
 
+// Impor: modul yang diuji tiap suite (data, cuaca, kinetika, harga, gerbang mutu, orkestrator, armada, QRIS, pencocokan).
 import { COMMODITIES } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 import { weatherAgent } from "@/lib/weatherAgent";
@@ -109,6 +110,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   let failedTests = 0;
   const suiteSummaries: MasterTestReport["suites"] = [];
 
+  // Penghitung per suite; nilai direset tiap startSuite dan dirangkum saat suite berganti.
   let currentSuitePassed = 0;
   let currentSuiteFailed = 0;
   let currentSuiteId = "";
@@ -128,6 +130,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     currentSuiteName = name;
     currentSuitePassed = 0;
     currentSuiteFailed = 0;
+    // Banner hanya dicetak bila tidak silent.
     if (!isSilent) {
       console.log(`\n\x1b[36m▶ [${id}] ${name}\x1b[0m`);
     }
@@ -300,6 +303,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
   // [TC-U05] Memvalidasi klasifikasi urgensi: sisa waktu >= 12 jam masuk Urgency Level 1 (Aman)
   assert(calculateUrgencyLevel(15.0) === 1, "TC-U05", "Sisa waktu >= 12 jam masuk Urgency Level 1 (Aman)");
 
+  // Data sintetis 30 kios (6 komoditas bergantian) untuk menguji agregasi surplus komposit.
   const synthetic30Stalls: KioskStockInput[] = [];
   const commIds = ["kangkung", "bayam", "sawi_hijau", "cabai_merah_keriting", "tomat_merah", "kol_kubis"];
   for (let i = 1; i <= 30; i++) {
@@ -634,6 +638,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     "Klaim Maggot Ditolak Mutlak"
   );
 
+  // Daftar penawaran tier 2 contoh untuk menguji jendela prioritas.
   const expiredT2List = [
     {
       ...sampleT2Offer,
@@ -880,6 +885,7 @@ export async function runMasterInClassTestSuite(options?: { silent?: boolean }):
     }
   }
 
+  // Laporan akhir: judul, total uji, lulus, gagal, dan ringkasan tiap suite.
   return {
     suiteTitle: "PASARIN In-Class Automated Unit Testing Suite (PSR-39)",
     totalAssertions: totalTests,

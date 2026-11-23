@@ -4,6 +4,7 @@
 // - Algoritma pencarian biner (binary search) untuk menghitung durasi paparan jam fisik yang tepat sesuai target DecayScore.
 // - Penawaran dan transaksi riwayat realistis untuk antrean kerja seluruh peran (Warteg, Dapur Sosial, Maggot, Kurir).
 
+// Impor: komoditas, kios, akun pasar, dan tipe data pasar.
 import { COMMODITIES, type Commodity } from "@/data/commodities";
 import { KIOSKS } from "@/data/kiosks";
 import { MARKET_ACCOUNTS, localActorId } from "@/data/marketAccounts";
@@ -51,6 +52,7 @@ function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
     ? COMMODITIES.filter((c) => c.category === primaryCategory)
     : COMMODITIES;
 
+  // Pemilihan komoditas per kios deterministik: indeks kios x 7 ditambah langkah x 11, modulo jumlah pool; data contoh sama tiap penyemaian.
   let cursor = 0;
   while (selected.length < STAGES.length && cursor < categoryPool.length * 2) {
     const candidate = categoryPool[(kioskIndex * 7 + cursor * 11) % categoryPool.length];
@@ -58,6 +60,7 @@ function selectCommodities(kiosk: (typeof KIOSKS)[number], kioskIndex: number) {
     cursor++;
   }
 
+  // Bila pool kategori kurang, sisanya diisi dari seluruh katalog dengan pola yang sama.
   cursor = 0;
   while (selected.length < STAGES.length) {
     const candidate = COMMODITIES[(kioskIndex * 7 + cursor * 11) % COMMODITIES.length];

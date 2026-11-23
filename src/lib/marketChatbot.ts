@@ -457,17 +457,19 @@ export async function answerDashboardQuestion(user: ChatUser, question: string, 
 }
 
 // Chat menampilkan teks biasa, jadi format Markdown dari model diubah menjadi teks yang rapi.
+// Angka desimal diseragamkan ke koma Indonesia (162.8 menjadi 162,8) agar semua jawaban memakai satu gaya.
 export function plainText(text: string) {
   return text
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/^#+\s*/gm, "")
     .replace(/^\s*[*-]\s+/gm, "• ")
     .replace(/\n{3,}/g, "\n\n")
+    // Pecahan 1-2 digit atau 4+ digit diubah; tepat 3 digit (2.500) dibiarkan karena itu pemisah ribuan rupiah.
+    .replace(/(?<![\d.])(\d+)\.(\d{1,2}|\d{4,})(?![\d.])/g, "$1,$2")
     .trim();
 }
 
 // Instruksi model untuk pertanyaan terbuka: hanya memakai data yang diberikan, menolak data pribadi pihak lain, dan menjawab teks polos.
-// Instruksi sistem untuk pertanyaan terbuka: batasi model pada aturan dan data yang diberikan, tanpa menebak angka.
 export const OPEN_QUESTION_INSTRUCTION = [
   "Kamu Asisten PASARIN, platform penyaluran surplus sayur dan buah Pasar Induk Kramat Jati.",
   "Jawab pertanyaan pengguna dalam bahasa Indonesia yang alami, langsung ke inti, dan ringkas (maksimal sekitar 8 kalimat atau daftar pendek).",

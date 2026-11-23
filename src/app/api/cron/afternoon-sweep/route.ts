@@ -2,6 +2,7 @@
 // Memicu pemindaian 30 kios pedagang los basah Kramat Jati pada titik kritis pergantian ritme pasar.
 // Dilindungi oleh validasi Bearer secret token.
 
+// Impor: tipe Next, pembungkus respons API, konfigurasi, orkestrator, dan log audit.
 import { NextRequest, NextResponse } from "next/server";
 import { successResponse, errorResponse } from "@/lib/api-response";
 import { getEnv } from "@/lib/env";
@@ -63,6 +64,7 @@ async function executeAfternoonSweep(): Promise<AfternoonSweepResult> {
     durationMs,
   });
 
+  // Hasil sapuan dibungkus sebagai catatan kejadian audit: ID, subsistem, jenis aksi, jadwal 14.30 WIB, dan hasil.
   return {
     eventId: auditResult.eventId,
     subsystem: "autonomous_cron_sweeper",
@@ -96,6 +98,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
   }
 
+  // Memicu sapuan sore; hasil dikembalikan sebagai respons sukses, galat sebagai 500.
   try {
     const sweepResult = await executeAfternoonSweep();
     return successResponse(sweepResult, 200);
@@ -112,6 +115,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return errorResponse("Akses ditolak: Token otentikasi cron tidak valid", 401);
   }
 
+  // Metode lain memanggil sapuan yang sama sehingga pemicu cron dan manual berperilaku identik.
   try {
     const sweepResult = await executeAfternoonSweep();
     return successResponse(sweepResult, 200);

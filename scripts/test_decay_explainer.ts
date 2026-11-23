@@ -2,6 +2,7 @@
 // Memastikan rincian rumus sama dengan skor dasbor, jawaban model di-cache, batas harian dan masa jeda 429 membuat
 // sistem beralih ke template tanpa AI, dan rute hanya melayani lot milik akun yang berhak.
 
+// Impor: assert ketat, utilitas berkas sementara, dan jalur untuk membuat state uji terpisah.
 import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -53,11 +54,13 @@ async function run() {
     return { data: { user }, error: null };
   };
 
+  // Modul dimuat dinamis setelah env uji diatur, supaya state dan kunci uji dibaca dengan benar.
   try {
     const { evaluateArrheniusDecay, explainArrheniusDecay } = await import("../src/lib/pasarinCore");
     const { decayExplanationSteps, explainDecay, ruleExplanation } = await import("../src/lib/decayExplainer");
     const budget = await import("../src/lib/aiBudget");
 
+    // Uji 1: untuk semua komoditas dan beberapa kondisi (suhu, RH, jam), rincian penjelasan harus sama dengan skor yang dipakai dasbor.
     console.log("[Test 1] Rincian rumus sama dengan skor dasbor");
     for (const commodity of COMMODITIES) {
       for (const [temperature, humidity, hours] of [[25, 80, 2], [32.5, 75, 8], [36, 60, 14], [30, 95, 30]] as const) {
@@ -85,12 +88,14 @@ async function run() {
     check(decayExplanationSteps(hot).length === 4 && !decayExplanationSteps(hot).some((step) => /sebelum dibatasi|setara/i.test(step.label)), "empat langkah singkat ditampilkan tanpa rumus mentah");
     check(ruleExplanation(hot).includes(`${Math.round(hot.decayScore * 100)}/100`), "kalimat template memuat skor yang sama dengan dasbor");
 
+    // Uji 2: tanpa kunci Gemini, penjelasan memakai templat rumus dan tidak ada panggilan model.
     console.log("\n[Test 2] Tanpa kunci Gemini memakai template");
     budget.resetAiBudget();
     modelCalls = 0;
     const noKey = await explainDecay(hot);
     check(noKey.source === "rumus" && modelCalls === 0, "tanpa GEMINI_API_KEY tidak ada panggilan model dan sumbernya rumus");
 
+    // Uji 3: jawaban model di-cache sehingga panggilan kedua tidak memanggil model; batas harian 2 panggilan ditegakkan.
     console.log("\n[Test 3] Jawaban model di-cache dan batas harian berlaku");
     process.env.GEMINI_API_KEY = "test-key-1234567890";
     process.env.AI_DAILY_CALL_LIMIT = "2";
@@ -109,6 +114,7 @@ async function run() {
     check(modelCalls === 2 && limited.source === "rumus", "setelah batas harian (2) tercapai, sistem memakai template tanpa memanggil model");
     check(budget.aiBudgetStatus().used === 2 && budget.aiBudgetStatus().limit === 2, "hitungan harian tercatat");
 
+    // Uji 4: respons 429 dari model memulai masa jeda sehingga panggilan berikutnya langsung memakai templat.
     console.log("\n[Test 4] Kuota 429 memulai masa jeda");
     process.env.AI_DAILY_CALL_LIMIT = "50";
     budget.resetAiBudget();
@@ -122,6 +128,7 @@ async function run() {
     mode = "ok";
     budget.resetAiBudget();
 
+    // Uji 5: rute penjelasan hanya melayani lot yang boleh dilihat peran itu (lot orang lain menghasilkan 404).
     console.log("\n[Test 5] Rute hanya melayani lot yang berhak");
     const { buildMarketSeedState } = await import("../src/lib/marketSeed");
     writeFileSync(stateFile, JSON.stringify(buildMarketSeedState()));
@@ -157,6 +164,7 @@ async function run() {
     const missing = await call("stk_tidak_ada", "pengelola1");
     check(missing.status === 404, "lot yang tidak ada dijawab 404");
 
+    // Ringkasan hasil dicetak; fetch asli dipulihkan di blok finally agar uji lain tidak terpengaruh.
     console.log(`\nHasil pengujian penjelasan skor: ${passed} lulus, 0 gagal`);
   } finally {
     globalThis.fetch = originalFetch;
@@ -168,6 +176,7 @@ async function run() {
   }
 }
 
+// Galat tak tertangkap mengakhiri proses dengan kode 1 agar CI menandai uji gagal.
 run().catch((error) => {
   console.error(error);
   process.exit(1);
