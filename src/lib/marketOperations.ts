@@ -2,8 +2,6 @@
 // Menghitung metrik rantai pasok harian (pasokan masuk, pengantaran, pesanan tertahan, stok berisiko layu)
 // serta mengintegrasikan model Google Gemini untuk sintesis laporan manajerial berbasis fakta lapangan.
 
-import { GoogleGenAI } from "@google/genai";
-import { getEnv } from "@/lib/env";
 import { getServerSimulationState, evaluateMarketStock } from "@/lib/serverSimulationState";
 import { getHyperlocalMarketWeather } from "@/lib/weatherAgent";
 import { isReadyForDelivery } from "@/types/market";
@@ -54,41 +52,4 @@ export async function getMarketOperations() {
     weatherSource: weather.source,
     weatherEstimated: weather.isEstimated ?? false,
   };
-}
-
-// Menjawab pertanyaan operasional manajerial pengelola pasar menggunakan data fisik terverifikasi.
-// Menggunakan Google Gemini API untuk merangkum wawasan bahasa alami secara padat,
-// dengan mekanisme fail-safe fallback ke format sintesis heuristik deterministik jika API tidak tersedia.
-export async function answerMarketQuestion(question: string, forceHeuristic = false) {
-  const metrics = await getMarketOperations();
-  // Ringkasan deterministik; dipakai langsung bila model tidak tersedia.
-  const summary = [
-    "Ringkasan " + metrics.date + " WIB.",
-    metrics.arrivalsToday + " pasokan masuk dan " + metrics.deliveriesToday + " pengantaran selesai hari ini.",
-    metrics.activeOffers + " penawaran tersedia, " + metrics.unpaid + " pesanan menunggu bayar, dan " + metrics.ready + " siap diantar.",
-    metrics.workstreams.length + " alur perlu ditangani" + (metrics.workstreams.length ? " · " + metrics.workstreams.join(", ") : "") + ".",
-  ].join(" ");
-  // Tanpa kunci Gemini atau saat diminta heuristik, jawaban memakai ringkasan data saja.
-  const key = getEnv().GEMINI_API_KEY;
-  if (!key || forceHeuristic) return { summary, source: "data_pasar", metrics };
-
-  try {
-    const ai = new GoogleGenAI({ apiKey: key });
-    const result = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
-      // Model hanya menerima pertanyaan dan metrik, bukan data mentah pasar.
-      contents: JSON.stringify({ question, metrics }),
-      config: {
-        systemInstruction: "Jawab singkat dalam bahasa Indonesia. Gunakan hanya fakta dan angka dari metrics. Jelaskan bahwa stok berisiko adalah hasil estimasi. Jika data tidak menjawab pertanyaan, sebutkan batasnya. Jangan mengusulkan atau mengeksekusi mutasi apa pun.",
-        // Jawaban dibatasi pendek; timeout 10 detik agar halaman tidak menggantung.
-        maxOutputTokens: 450,
-        abortSignal: AbortSignal.timeout(10000),
-      },
-    });
-    if (result.text?.trim()) return { summary: result.text.trim(), source: "gemini", metrics };
-  // Galat model hanya dicatat namanya; jatuh ke ringkasan data.
-  } catch (error) {
-    console.warn("Gemini market summary unavailable:", error instanceof Error ? error.name : "unknown");
-  }
-  return { summary, source: "data_pasar", metrics };
 }

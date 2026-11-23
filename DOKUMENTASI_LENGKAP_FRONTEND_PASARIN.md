@@ -99,7 +99,7 @@ Modul bersama ini menghindari format dan pola tampilan berbeda antarperan:
 - `MarketMetrics` menerima `MarketMetric[]` dan menyesuaikan kolom dengan jumlah metrik serta lebar layar.
 - `StatusPill`, `Tone`, `TierChip`, dan `TIER_LABELS` menyajikan status dan tier dengan teks, bukan warna saja.
 - `DecayMeter` membatasi skor tampilan pada 0 sampai 100, menyediakan semantik `role="meter"`, dan memberi label zona mutu. Komponen ini memvisualisasikan skor yang diterima, bukan menjalankan model Arrhenius sendiri.
-- `EmptyState`, `MarketRow`, dan `LotFacts` menyediakan keadaan kosong, baris responsif, serta pasangan label/nilai.
+- `EmptyState`, `LedgerRow`, dan `LotFacts` menyediakan keadaan kosong, baris riwayat, serta pasangan label/nilai.
 - `commodityName`, `kioskInfo`, `kioskLabel`, dan `offerTitle` menyelesaikan identitas komoditas/kios/penawaran dari data terkait.
 - `rupiah`, `kg`, dan pembantu waktu memformat angka untuk tampilan Indonesia. `marketButton`, `marketSecondary`, dan `marketDanger` menyediakan kelas tombol bersama.
 - `orderStatus` diekspor ulang dari `src/lib/orderStatus`, bukan didefinisikan sebagai logika status terpisah di modul ini.

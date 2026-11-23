@@ -202,24 +202,6 @@ export function LedgerRow({ title, detail, amount, status }: {
   );
 }
 
-// Komponen baris daftar pasokan atau penawaran yang responsif pada layar ponsel maupun desktop.
-export function MarketRow({ title, detail, status, children }: {
-  title: string; detail: string; status?: string; children?: ReactNode;
-}) {
-  return (
-    <li className="grid min-w-0 gap-3 border-b border-line py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-      <div className="min-w-0">
-        <p className="break-words font-semibold">{title}</p>
-        <p className="mt-1 break-words text-sm leading-6 text-ink-muted">{detail}</p>
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
-        {status && <StatusPill label={status} />}
-        {children}
-      </div>
-    </li>
-  );
-}
-
 // Menghasilkan judul penawaran terstandarisasi yang memuat nama komoditas dan berat kilogram.
 export function offerTitle(offer: RescueOffer) {
   return commodityName(offer.commodityId) + ", " + kg(offer.quantityKg);
@@ -304,5 +286,3 @@ export function dateLabel(value?: string) {
 export const marketButton = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-strong disabled:opacity-60";
 // Kelas tombol sekunder bergaris untuk aksi pendamping.
 export const marketSecondary = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-transparent px-4 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft disabled:opacity-60";
-// Kelas tombol tanpa garis dan tanpa latar untuk aksi ringan.
-export const marketGhost = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-brand transition-colors hover:bg-brand-soft disabled:opacity-60";

@@ -96,11 +96,6 @@ export const MARKET_ACCOUNTS: MarketAccount[] = [
 
 // Pencarian akun menurut username.
 export const MARKET_ACCOUNT_BY_USERNAME = new Map(MARKET_ACCOUNTS.map((account) => [account.username, account]));
-// Pencarian akun pedagang menurut ID kios.
-export const MARKET_ACCOUNT_BY_VENDOR_ID = new Map(
-  MARKET_ACCOUNTS.filter((account) => account.vendorId).map((account) => [account.vendorId as string, account]),
-);
-
 // Menghasilkan identifier aktor sesi simulasi lokal dengan awalan stabil agar klaim terisolasi per akun.
 export function localActorId(username: string) {
   return `local:${username}`;

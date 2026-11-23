@@ -1,11 +1,15 @@
 // Endpoint Uji Coba Simulasi 24-Jam Metabolisme Pasar (PSR-31).
 // GET & POST: Menjalankan skenario hulu-ke-hilir 5 tahapan sirkadian pasar tradisional.
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireApiRole } from "@/lib/apiAuth";
 import { run24HourMarketMetabolismTrial } from "@/lib/marketMetabolismSimulator";
 
 // Menjalankan uji coba simulasi metabolisme pasar 24 jam melintasi 5 fase sirkadian.
-export async function GET() {
+// Hanya pengelola dan admin yang boleh menjalankannya; simulasi memakai orkestrator dan tidak layak dibuka untuk umum.
+export async function GET(req: NextRequest) {
+  const auth = await requireApiRole(req, ["manager", "admin"]);
+  if (auth.response) return auth.response;
   try {
     const trialReport = await run24HourMarketMetabolismTrial();
     return NextResponse.json({
@@ -26,6 +30,6 @@ export async function GET() {
 
 // Memicu eksekusi simulasi metabolisme pasar 24 jam via HTTP POST.
 // Sama persis dengan GET; disediakan untuk klien yang memicu simulasi sebagai aksi.
-export async function POST() {
-  return GET();
+export async function POST(req: NextRequest) {
+  return GET(req);
 }

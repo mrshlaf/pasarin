@@ -21,11 +21,6 @@ export interface ApiPagination {
   hasPrev: boolean;
 }
 
-// Respons API berhalaman: daftar data beserta metadata halaman.
-export interface PaginatedApiResponse<T = unknown> extends ApiResponse<T[]> {
-  pagination: ApiPagination;
-}
-
 // Struktur payload diagnostik status kesehatan layanan dan konektivitas basis data (PSR-3).
 export interface HealthCheckData {
   status: "healthy" | "degraded" | "unhealthy";
@@ -38,13 +33,6 @@ export interface HealthCheckData {
     database: "connected" | "configured" | "unconfigured" | "error";
     memoryUsageMB: number;
   };
-}
-
-// Isi permintaan untuk memicu sapuan agen sore (cron 14.30 WIB).
-export interface AgentSweepTriggerPayload {
-  cronSecret?: string;
-  forcedTrigger?: boolean;
-  targetKiosksCount?: number;
 }
 
 // Struktur catatan audit sistem untuk persistensi ke tabel system_audit_trail (PSR-4).
@@ -131,14 +119,6 @@ export interface DecayEvaluationResult {
   baseWholesalePriceIdr: number;
   priceFloorIdr: number;
   calculatedAt: string;
-}
-
-// Isi permintaan perhitungan peluruhan: komoditas, cuaca, dan lama pajang.
-export interface CalculateDecayRequestPayload {
-  commodityId: string;
-  hoursElapsed: number;
-  temperatureC?: number;
-  humidityPercent?: number;
 }
 
 // Hasil evaluasi kehilangan klorofil visual melalui MobileNetV3 visual classifier (PSR-21 / Agent 10).

@@ -6,7 +6,6 @@ import { Commodity } from "@/data/commodities";
 import {
   evaluateProduceDecay,
   evaluateProduceById,
-  getAllCommodityEvaluations,
 } from "@/lib/pasarinCore";
 import { DecayEvaluationResult, ProduceCondition, CircularRescueTier } from "@/types/api";
 
@@ -69,34 +68,3 @@ export function calculateDecay(
 
 // Mengevaluasi peluruhan biologis komoditas berdasarkan pengidentifikasi unik string komoditas (PSR-14).
 export { evaluateProduceById };
-
-// Mengevaluasi seluruh 30 komoditas katalog pasar dan memetakannya ke dalam kamus (Record) berbasis ID komoditas.
-// Mempermudah lookup O(1) status mutu komoditas pada dashboard inventaris pedagang.
-export function calculateBatchDecay(
-  temperatureC: number,
-  humidityPercent: number,
-  hoursElapsed: number
-): Record<string, DecayEvaluation> {
-  // Seluruh komoditas dievaluasi sekali dengan kondisi lingkungan yang sama.
-  const evaluations = getAllCommodityEvaluations(hoursElapsed, temperatureC, humidityPercent);
-  const result: Record<string, DecayEvaluation> = {};
-
-  // Indeks per ID komoditas supaya komponen bisa mencari tanpa perulangan.
-  for (const evalResult of evaluations) {
-    result[evalResult.commodityId] = {
-      commodityId: evalResult.commodityId,
-      temperatureC: evalResult.temperatureC,
-      humidityPercent: evalResult.humidityPercent,
-      hoursElapsed: evalResult.hoursElapsed,
-      decayScore: evalResult.decayScore,
-      condition: evalResult.condition,
-      recommendedTier: evalResult.recommendedTier,
-      tierLabel: evalResult.tierLabel,
-      hoursRemaining: evalResult.hoursRemaining,
-      salvageDiscount: evalResult.salvageDiscountPercent / 100,
-      estimatedSalvagePrice: evalResult.estimatedSalvagePriceIdr,
-    };
-  }
-
-  return result;
-}

@@ -117,7 +117,7 @@ export async function run24HourMarketMetabolismTrial(): Promise<MetabolismTrialR
   // Fase 2: Puncak Suhu Los Terik Siang (12:00 WIB)
   // Berapa kios yang komoditas contohnya sudah melewati skor 0,35 pada suhu puncak.
   let highDecayStallsCount = 0;
-  KIOSKS.forEach((kiosk, idx) => {
+  KIOSKS.forEach((_, idx) => {
     const c = COMMODITIES[idx % COMMODITIES.length];
     const evalRes = calculateDecay(c, 34.0, 62, 7.5);
     if (evalRes.decayScore >= 0.35) highDecayStallsCount++;

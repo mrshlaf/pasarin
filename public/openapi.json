@@ -717,7 +717,10 @@
     "/api/simulation/metabolism-trial": {
       "get": {
         "summary": "Jalankan simulasi 24 jam dari data contoh",
+        "security": [{ "SupabaseBearer": [] }],
         "responses": {
+          "401": { "description": "Kredensial tidak valid" },
+          "403": { "description": "Peran tidak diizinkan; hanya pengelola dan admin" },
           "200": {
             "description": "Berhasil"
           }
@@ -725,7 +728,10 @@
       },
       "post": {
         "summary": "Jalankan simulasi 24 jam dari data contoh",
+        "security": [{ "SupabaseBearer": [] }],
         "responses": {
+          "401": { "description": "Kredensial tidak valid" },
+          "403": { "description": "Peran tidak diizinkan; hanya pengelola dan admin" },
           "200": {
             "description": "Berhasil"
           }
@@ -817,6 +823,88 @@
                 },
                 "required": [
                   "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/assistant": {
+      "post": {
+        "summary": "Tanya asisten publik (hanya data etalase, tanpa data akun)",
+        "responses": {
+          "200": {
+            "description": "Jawaban, sumber (data_pasar atau gemini), dan saran pertanyaan lanjutan"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          },
+          "429": {
+            "description": "Terlalu banyak pertanyaan; batas 12 per 5 menit per alamat IP"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "query"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/market/explain-decay": {
+      "post": {
+        "summary": "Jelaskan skor susut satu lot (langkah rumus dan kalimat penjelasan)",
+        "responses": {
+          "200": {
+            "description": "Empat langkah perhitungan, kalimat penjelasan, dan sumbernya (gemini atau rumus)"
+          },
+          "400": {
+            "description": "Format permintaan tidak valid"
+          },
+          "401": {
+            "description": "Kredensial tidak valid"
+          },
+          "404": {
+            "description": "Lot tidak terlihat oleh peran ini atau belum bisa dievaluasi"
+          },
+          "429": {
+            "description": "Terlalu banyak permintaan; batas 20 per 5 menit per akun"
+          }
+        },
+        "security": [
+          {
+            "SupabaseBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "stockId": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "stockId"
                 ]
               }
             }
