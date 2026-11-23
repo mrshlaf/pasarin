@@ -39,12 +39,15 @@ const MAX_RELATIVE_SPEED = 5.0;
 // Pengali laju akibat kelembapan: udara terlalu kering mempercepat kehilangan air, udara jenuh (di atas 85 persen) memicu bakteri.
 // Kering: 1 + (80 - RH)/100 x (sensitivitas x 0,15). Lembap: 1 + (RH - 85)/100 x (0,015 x 10). Di antara 80 dan 85 persen: 1.
 function humidityRateFactor(relativeHumidityPercent: number, sensitivity: number) {
+  // RH di bawah batas kritis: udara kering mempercepat layu; makin kering makin besar faktornya, diskalakan oleh sensitivitas komoditas.
   if (relativeHumidityPercent < CRITICAL_RELATIVE_HUMIDITY_PERCENT) {
     return 1.0 + ((CRITICAL_RELATIVE_HUMIDITY_PERCENT - relativeHumidityPercent) / 100.0) * (sensitivity * 0.15);
   }
+  // RH di atas 85 persen: udara lembap mempercepat pembusukan (jamur dan bakteri); tambahan sebanding dengan kelebihan RH di atas 85.
   if (relativeHumidityPercent > 85.0) {
     return 1.0 + ((relativeHumidityPercent - 85.0) / 100.0) * (HUMIDITY_PENALTY_COEFFICIENT * 10.0);
   }
+  // RH di antara batas kritis dan 85 persen dianggap netral: faktor 1, tidak mengubah kecepatan.
   return 1.0;
 }
 
@@ -53,10 +56,14 @@ function humidityRateFactor(relativeHumidityPercent: number, sensitivity: number
 // Rumus: Q10^((T - 32,5)/10) x faktorKelembapan(RH) / faktorKelembapan(75). Q10 dan sensitivitas kelembapan diambil dari data komoditas.
 // Contoh: Q10 2,5 pada 27 C: 2,5^(-0,55) = 0,60, jadi peluruhan 40 persen lebih lambat dan umur simpan sekitar 1,7 kali lebih panjang.
 export function relativeDecaySpeed(commodity: Commodity, temperatureCelsius: number, relativeHumidityPercent: number) {
+  // Q10 komoditas dipakai bila valid (lebih dari 0); bila tidak, pakai nilai bawaan global.
   const q10 = commodity.q10Coefficient > 0 ? commodity.q10Coefficient : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
+  // Bagian suhu: Q10 dipangkatkan (selisih suhu dari 32,5 C dibagi 10). Tiap kenaikan 10 C, kecepatan naik sebesar Q10 kali.
   const thermal = Math.pow(q10, (temperatureCelsius - REFERENCE_TEMPERATURE_C) / 10.0);
   const sensitivity = commodity.humiditySensitivityFactor;
+  // Bagian kelembapan: faktor pada RH aktual dibagi faktor pada RH acuan 75 persen, supaya kondisi acuan bernilai tepat 1.
   const humidity = humidityRateFactor(relativeHumidityPercent, sensitivity) / humidityRateFactor(REFERENCE_HUMIDITY_PERCENT, sensitivity);
+  // Hasil dibatasi antara kecepatan minimum dan maksimum (0,2 sampai 5 kali) agar suhu ekstrem tidak menghasilkan angka tak masuk akal.
   return Math.min(MAX_RELATIVE_SPEED, Math.max(MIN_RELATIVE_SPEED, thermal * humidity));
 }
 
@@ -68,6 +75,7 @@ export function classifyProduceCondition(decayScore: number): {
   tierLabel: string;
   baseDiscountPercent: number;
 } {
+  // Skor di bawah 0,35: masih segar prima, dijual eceran biasa tanpa diskon penyelamatan.
   if (decayScore < 0.35) {
     return {
       condition: "segar_prima",
@@ -77,9 +85,11 @@ export function classifyProduceCondition(decayScore: number): {
     };
   }
 
+  // Skor 0,35 sampai di bawah 0,65: layu ringan, jalur Tier 1 (Warteg dan UMKM kuliner).
   if (decayScore < 0.65) {
     // Diskon bertingkat proporsional inverse surge (50% - 70%)
     // Diskon tier 1 naik linear 50 sampai 70 persen sesuai posisi skor antara 0,35 dan 0,65.
+    // Posisi skor di dalam fase ini dari 0 sampai 1. Contoh: skor 0,50 memberi (0,50 - 0,35) / 0,30 = 0,5, jadi diskon 50 + 10 = 60 persen.
     const surgeStep = (decayScore - 0.35) / 0.3;
     const discount = 50 + Math.round(surgeStep * 20);
     return {
@@ -90,7 +100,9 @@ export function classifyProduceCondition(decayScore: number): {
     };
   }
 
+  // Skor 0,65 sampai di bawah 0,85: layu sedang, jalur Tier 2 (dapur sosial dan panti) dengan subsidi 85 persen.
   if (decayScore < 0.85) {
+    // Skor 0,85 ke atas: tidak layak konsumsi manusia, jalur Tier 3 (maggot dan kompos), bukan pangan.
     return {
       condition: "layu_sedang",
       recommendedTier: "tier_2",
@@ -116,6 +128,7 @@ export function evaluateProduceDecay(
   hoursElapsed: number
 ): DecayEvaluationResult {
   const arrhenius = evaluateArrheniusDecay(commodity, temperatureC, humidityPercent, hoursElapsed);
+  // Harga grosir komoditas adalah dasar semua diskon; harga lantai dan diskon dihitung per fase di bawah ini.
   const basePrice = commodity.baseWholesalePricePerKg;
 
   let baseDiscountPercent = 0;
@@ -147,6 +160,7 @@ export function evaluateProduceDecay(
     estimatedSalvagePriceIdr = 0;
   }
 
+  // Hasil akhir evaluasi: identitas komoditas, kondisi cuaca masukan, skor, tier, sisa jam, diskon, dan harga penyelamatan.
   return {
     commodityId: commodity.id,
     commodityName: commodity.localName || commodity.name,
@@ -177,6 +191,7 @@ export function evaluateProduceById(
   temperatureC = 32.5,
   humidityPercent = 75
 ): DecayEvaluationResult | null {
+  // Nama komoditas dibersihkan (spasi dan huruf besar) sebelum dicari di katalog; ID tak dikenal mengembalikan null.
   const normalizedId = commodityId.trim().toLowerCase();
   const commodity = COMMODITIES.find((c) => c.id.toLowerCase() === normalizedId);
 
@@ -254,9 +269,12 @@ export function calculateArrheniusRateConstant(
   const k_baseline = 0.045;
   // Q10 komoditas tidak dipakai langsung: nilai positif apa pun diganti 2,2 per 13°C (kalibrasi ~2,2x pada 33°C vs 20°C).
   // Koreksi kelembapan hanya menambah laju di atas 80% RH.
+  // Rumus laju lama untuk konstanta k: Q10 efektif 2,2 per 13 C. Hanya dipakai untuk rateConstantK dan faktor percepatan; skor memakai relativeDecaySpeed.
   const effectiveQ10 = q10 > 0 ? 2.2 : ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
   const tempDelta = temperatureCelsius - BASELINE_TEMP_CELSIUS;
+  // Rasio termal: Q10 efektif dipangkatkan (selisih suhu dari suhu dasar dibagi 13).
   const thermalRatio = Math.pow(effectiveQ10, tempDelta / 13.0);
+  // Koreksi kelembapan: 1 + beta x (RH di atas batas kritis); makin lembap makin cepat.
   const humidityDelta = Math.max(0, relativeHumidityPercent - CRITICAL_HUMIDITY_PERCENT);
   const humidityCorrection = 1.0 + BETA_HUMIDITY_COEFFICIENT * humidityDelta;
   return k_baseline * thermalRatio * humidityCorrection;
@@ -269,6 +287,7 @@ export function evaluateArrheniusDecay(
   relativeHumidityPercent: number,
   hoursElapsed: number
 ): ArrheniusDecayResult {
+  // Q10 komoditas dibaca dari data; bila kosong memakai nilai bawaan.
   const q10 = commodity.q10Coefficient || ARRHENIUS_CONSTANTS.THERMAL_QUOTIENT_Q10;
   const rateK = calculateArrheniusRateConstant(temperatureCelsius, relativeHumidityPercent, q10);
 
@@ -290,19 +309,23 @@ export function evaluateArrheniusDecay(
   let recommendedTier: RescueTier;
   let tierLabel: string;
 
+  // Skor di bawah 0,35: segar prima.
   if (decayScore < 0.35) {
     condition = "segar_prima";
     recommendedTier = "fresh";
     tierLabel = "Segar Prima (Pasar Eceran Subuh)";
   } else if (decayScore < 0.65) {
+    // Skor di bawah 0,65: layu ringan, Tier 1.
     condition = "layu_ringan";
     recommendedTier = "tier_1";
     tierLabel = "Tier 1: Warteg & Katering UMKM (Diskon 50% - 70%)";
   } else if (decayScore < 0.85) {
+    // Skor di bawah 0,85: layu sedang, Tier 2.
     condition = "layu_sedang";
     recommendedTier = "tier_2";
     tierLabel = "Tier 2: Dapur Sosial & Panti (Tebus Murah / Pangan Darurat)";
   } else {
+    // Skor 0,85 ke atas: tidak layak, Tier 3. Ambang yang sama dipakai classifyProduceCondition.
     condition = "tidak_layak";
     recommendedTier = "tier_3";
     tierLabel = "Tier 3: Sentra Budidaya Maggot BSF & Kompos Organik";
@@ -319,6 +342,7 @@ export function evaluateArrheniusDecay(
 
   const isEdibleForHumans = decayScore < 0.85;
 
+  // Hasil lengkap: skor, kondisi, tier, sisa jam, dan penanda layak konsumsi manusia (skor di bawah 0,85).
   return {
     commodityId: commodity.id,
     commodityName: commodity.localName,
@@ -367,6 +391,7 @@ export function explainArrheniusDecay(
 ): DecayBreakdown {
   const relativeSpeed = relativeDecaySpeed(commodity, temperatureCelsius, relativeHumidityPercent);
   const horizonHours = commodity.decayTidakLayakHour || commodity.standardShelfLifeHours || 16.0;
+  // Paparan = jam pajang dibagi batas jam. Contoh: 8 jam dari batas 16 jam = 0,5.
   const exposure = hoursElapsed / horizonHours;
   const rawScore = Math.pow(exposure * relativeSpeed, 1.15) * 0.82;
   const result = evaluateArrheniusDecay(commodity, temperatureCelsius, relativeHumidityPercent, hoursElapsed);
@@ -414,15 +439,20 @@ export function calculateRainFootfallAttenuation(
   // Besar penurunan 15, 28, 48, dan maksimal 80 persen adalah asumsi awal; belum diukur di Pasar Induk Kramat Jati.
   let footfallDropPercentage = 0.0;
 
+  // Tanpa hujan: pengunjung tidak turun.
   if (rainfallMm <= 0.0 && !isRaining) {
     footfallDropPercentage = 0.0;
   } else if (rainfallMm <= 2.0) {
+    // Gerimis (sampai 2 mm): pengunjung turun 15 persen.
     footfallDropPercentage = 15.0;
   } else if (rainfallMm <= 5.0) {
+    // Hujan ringan (sampai 5 mm): turun 28 persen.
     footfallDropPercentage = 28.0;
   } else if (rainfallMm <= 10.0) {
-    footfallDropPercentage = 48.0 * (rainfallMm / 10.0);
+    // Hujan sedang (5 sampai 10 mm): naik lurus sampai 48 persen di 10 mm, dengan lantai 28 persen supaya tidak turun saat melewati 5 mm. Contoh: 7,5 mm memberi 36 persen.
+    footfallDropPercentage = Math.max(28.0, 48.0 * (rainfallMm / 10.0));
   } else {
+    // Hujan deras (di atas 10 mm): 48 persen ditambah 1,6 persen per mm tambahan (tambahan dibatasi 20 mm), maksimum 80 persen. Contoh: 15 mm memberi 48 + 8 = 56 persen.
     const extraRain = Math.min(20.0, rainfallMm - 10.0);
     footfallDropPercentage = Math.min(80.0, 48.0 + extraRain * 1.6);
   }
@@ -432,6 +462,7 @@ export function calculateRainFootfallAttenuation(
   const footfallIndex = Number((1.0 - footfallDropPercentage / 100.0).toFixed(3));
   const surplusMultiplier = Number((1.0 + (footfallDropPercentage / 100.0) * 0.95).toFixed(3));
 
+  // Teks kondisi lorong menurut besar penurunan pengunjung: 48 persen ke atas, 20 persen ke atas, dan normal.
   let aisleAccessibilityDescription: string;
   if (footfallDropPercentage >= 48.0) {
     aisleAccessibilityDescription = "Lorong sangat becek & tergenang air; arus pengunjung anjlok drastis (~48%+). Serapan retail terhenti.";
@@ -441,6 +472,7 @@ export function calculateRainFootfallAttenuation(
     aisleAccessibilityDescription = "Kondisi lorong normal & kering; arus pembeli retail berjalan lancar tanpa hambatan.";
   }
 
+  // Hasil: curah hujan, status hujan dan becek, penurunan pengunjung, indeks, pengali surplus, dan deskripsi lorong.
   return {
     rainfallMm,
     isRaining,
@@ -512,6 +544,7 @@ export function calculateInverseSurgePricing(
   const discountDecimal = (P_morning - offeredSalvagePrice) / P_morning;
   const appliedDiscountPercent = Math.round(discountDecimal * 100);
 
+  // Mekanisme harga yang dipakai: harga lantai mengunci, hujan deras mempercepat diskon, selain itu inverse surge normal.
   let pricingMechanism: "inverse_surge_normal" | "inverse_surge_rain_accelerated" | "price_floor_locked";
   if (priceFloorEnforced) {
     pricingMechanism = "price_floor_locked";
@@ -521,6 +554,7 @@ export function calculateInverseSurgePricing(
     pricingMechanism = "inverse_surge_normal";
   }
 
+  // Hasil harga: harga pagi, harga lantai, harga tawar, diskon, mekanisme, dan sasaran Warteg dan UMKM.
   return {
     commodityId: commodity.id,
     commodityName: commodity.localName,
@@ -584,6 +618,7 @@ export interface CompositeMarketSurplusSummary {
 // Mengklasifikasikan skala urgensi penyelamatan pangan (Level 1 - 5) berdasarkan sisa jam simpan aman (PSR-19).
 // Skala 5 merepresentasikan status darurat kritis (< 4 jam tersisa) yang memerlukan prioritas penjemputan armada.
 export function calculateUrgencyLevel(hoursRemaining: number): UrgencyLevel {
+  // Tingkat urgensi 1 sampai 5 dari sisa jam: kurang dari 4 jam = 5, 6 = 4, 8 = 3, 12 = 2, selebihnya 1.
   if (hoursRemaining < 4.0) return 5;
   if (hoursRemaining < 6.0) return 4;
   if (hoursRemaining < 8.0) return 3;
@@ -619,6 +654,7 @@ export function calculateCompositeMarketSurplus(
 } {
   const footfall = calculateRainFootfallAttenuation(rainfallMm);
 
+  // Penampung hasil per kios dan penjumlah total stok, surplus, alokasi per tier, dan jumlah barang darurat.
   const items: StallSurplusPrediction[] = [];
   let totalMarketStockKg = 0;
   let totalPredictedSurplusKg = 0;
@@ -633,6 +669,7 @@ export function calculateCompositeMarketSurplus(
     totalMarketStockKg += item.initialStockKg;
 
     // Lama pajang minimal 1 jam agar pasokan yang baru datang tetap dievaluasi.
+    // Lama pajang dihitung dari jam saat ini dikurangi jam datang, minimal 1 jam.
     const hoursElapsed = Math.max(1.0, currentHourDecimal - item.arrivalHourDecimal);
     const decayResult = evaluateArrheniusDecay(
       commodity,
@@ -652,6 +689,7 @@ export function calculateCompositeMarketSurplus(
 
     const pricing = calculateInverseSurgePricing(commodity, currentHourDecimal, rainfallMm);
 
+    // Alokasi berat surplus ke tier sesuai kondisi; kondisi segar tidak dialokasikan ke tier penyelamatan.
     let allocatedTier: RescueTier = decayResult.recommendedTier;
     if (decayResult.condition === 'layu_ringan') {
       tier1WartegAllocatedKg += estimatedSurplusKg;
@@ -663,6 +701,7 @@ export function calculateCompositeMarketSurplus(
       allocatedTier = 'fresh';
     }
 
+    // Baris hasil per kios: stok awal, surplus, skor, sisa jam, urgensi, tier, dan harga penyelamatan.
     items.push({
       kioskId: item.kioskId,
       commodityId: item.commodityId,
@@ -684,6 +723,7 @@ export function calculateCompositeMarketSurplus(
 
   const uniqueKiosks = new Set(stallItems.map((i) => i.kioskId)).size;
 
+  // Ringkasan agregat: jumlah kios, total stok, total surplus, alokasi tiap tier, dan dampak cuaca.
   return {
     items,
     summary: {
@@ -708,6 +748,7 @@ export function validateQualityGateMoralHazard(
 ): { isPermitted: boolean; violationReason?: string } {
   const isHumanEdible = decayScore < 0.85;
 
+  // Pelanggaran Invarian 1: bahan yang masih layak dimakan manusia (skor di bawah 0,85) dilarang dialihkan ke maggot.
   if (isHumanEdible && requestedTier === 'tier_3') {
     return {
       isPermitted: false,

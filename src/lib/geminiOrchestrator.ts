@@ -9,6 +9,7 @@
 // - Format penalaran baku: Thought -> Action -> Observation -> Final Answer.
 // - Pencatatan komprehensif ke basis data jejak audit (system_audit_trail).
 
+// Impor: klien Gemini, konfigurasi, agen cuaca dan mutu, rumus inti, log audit, kalkulator armada, dan registri alat.
 import { GoogleGenAI } from "@google/genai";
 import { getEnv } from "@/lib/env";
 import { weatherAgent } from "@/lib/weatherAgent";
@@ -69,6 +70,7 @@ function buildStallStockInputs(): KioskStockInput[] {
     const secondaryComm = COMMODITIES[(idx + 5) % COMMODITIES.length];
 
     // Lot 1: Stok subuh reguler (04:00 WIB)
+    // Lot pertama tiap kios: 45 kg datang pukul 04.00 (stok subuh). Angka ini sampel simulasi, bukan stok nyata.
     inputs.push({
       kioskId: kiosk.id,
       kioskName: kiosk.name,
@@ -106,6 +108,7 @@ export async function executeAutonomousOrchestration(options?: {
   const thoughtProcess: ReActStep[] = [];
 
   // Inisialisasi putaran ReAct untuk pencatatan jejak audit siklus otonom
+  // Langkah 1 jejak ReAct: orkestrator memulai siklus sapuan sore.
   thoughtProcess.push({
     step: 1,
     agent: "OrchestratorAgent",
@@ -123,6 +126,7 @@ export async function executeAutonomousOrchestration(options?: {
   const effectiveRainfallMm = Math.max(12.5, weather.rainfallMm);
   const footfall = calculateRainFootfallAttenuation(effectiveRainfallMm, true);
 
+  // Langkah 2: agen cuaca membaca suhu, kelembapan, dan hujan terkini (atau cadangan Open-Meteo atau estimasi bila sensor tidak tersedia).
   thoughtProcess.push({
     step: 2,
     agent: "WeatherAgent",
@@ -134,6 +138,7 @@ export async function executeAutonomousOrchestration(options?: {
 
   // Agregasi inventaris 30 kios dan proyeksi surplus komposit menggunakan pemodelan kinetika Arrhenius
   // Stok 30 kios disimulasikan, lalu surplus komposit dihitung dengan suhu, kelembapan, hujan, dan jam sapuan 14.5.
+  // Surplus komposit dihitung untuk seluruh sampel stok kios pada pukul 14.30 (14,5 jam desimal) dengan cuaca terkini.
   const stallInputs = buildStallStockInputs();
   const compositeSurplus = calculateCompositeMarketSurplus(
     stallInputs,
@@ -142,6 +147,7 @@ export async function executeAutonomousOrchestration(options?: {
     effectiveRainfallMm,
     14.5
   );
+  // Langkah 4: gerbang mutu memeriksa Invarian 1, yaitu bahan layak manusia (skor di bawah 0,85) tidak boleh ke maggot.
   thoughtProcess.push({
     step: 3,
     agent: "SpoilagePredictiveEngine",
@@ -161,6 +167,7 @@ export async function executeAutonomousOrchestration(options?: {
     }
   });
 
+  // Langkah 5: alokasi armada dan pencocokan. Berat tiap tier diambil dari hasil surplus komposit.
   thoughtProcess.push({
     step: 4,
     agent: "QualityGateAgent",
@@ -206,6 +213,7 @@ export async function executeAutonomousOrchestration(options?: {
   const env = getEnv();
   const apiKey = env.GEMINI_API_KEY;
   // Model hanya dipanggil bila kunci valid (bukan placeholder), tidak dipaksa heuristik, dan hasilnya cukup panjang untuk dipakai.
+  // Gemini dipanggil hanya bila kunci asli ada (bukan placeholder), mode heuristik tidak dipaksa, dan hasilnya cukup panjang; selain itu ringkasan heuristik tetap dipakai.
   if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
     try {
       const ai = new GoogleGenAI({ apiKey });
@@ -220,6 +228,7 @@ export async function executeAutonomousOrchestration(options?: {
         `- Notifikasi Telegram Kios: ${telegramNotificationsDispatched} lapak tersiarkan\n\n` +
         `Sebagai Agent 1: Central Orchestrator, berikan sintesis ringkasan eksekutif padat dalam Bahasa Indonesia teknis (2-3 kalimat) mengenai status pengawalan surplus sore ini dan instruksi armada.`;
 
+      // Model dibaca dari GEMINI_MODEL; bila kosong memakai gemini-3.5-flash-lite. Gagal atau jawaban terlalu pendek berarti ringkasan heuristik tetap dipakai.
       const response = await ai.models.generateContent({
         model: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite",
         contents: prompt,
@@ -234,6 +243,7 @@ export async function executeAutonomousOrchestration(options?: {
 
   // Rekam riwayat siklus orkestrasi ke audit trail sistem
   // Audit dilewati pada pratinjau (recordResult false) supaya simulasi tidak mengotori catatan.
+  // Catatan audit hanya ditulis bila recordResult tidak dimatikan, supaya pratinjau tidak mengotori jejak audit.
   const auditRecord = options?.recordResult === false ? undefined : await recordAuditLog({
     subsystem: "ORCHESTRATOR",
     action_type: "AUTONOMOUS_SWEEP_EXECUTED",
@@ -252,6 +262,7 @@ export async function executeAutonomousOrchestration(options?: {
     },
   });
 
+  // Hasil siklus: mode eksekusi (Gemini atau heuristik), surplus, kios terpindai, notifikasi, armada, alokasi tier, dan ringkasan.
   const result: OrchestratorRunResult = {
     executionMode,
     surplusDetectedKg: compositeSurplus.summary.totalPredictedSurplusKg,
@@ -288,6 +299,7 @@ export async function processManagerialNaturalQuery(
 
   // Jalur model: mengirim kueri dan memakai teks balasan sebagai ringkasan.
   // 1. Coba eksekusi melalui Google Gemini API jika API key tersedia dan tidak dipaksa heuristik
+  // Jalur kueri: Gemini dipanggil hanya dengan kunci asli dan tanpa paksaan heuristik; jawabannya diminta berbentuk alur ReAct ringkas.
   if (apiKey && !options?.forceHeuristic && !apiKey.includes("your-gemini") && apiKey.length > 10) {
     try {
       const ai = new GoogleGenAI({ apiKey });
@@ -305,11 +317,12 @@ export async function processManagerialNaturalQuery(
 
       const responseText = response.text || "";
 
+      // Jawaban model dipakai hanya bila lebih dari 20 karakter; langkah-langkah di bawah adalah kerangka tetap, bukan hasil penalaran model.
       if (responseText.length > 20) {
         const thoughtProcess: ReActStep[] = [
           {
             step: 1,
-            agent: "Gemini2.0FlashOrchestrator",
+            agent: "GeminiOrchestrator",
             thought: `Menerima dan mendekonstruksi kueri pengelola pasar: "${cleanQuery}".`,
             action: "parseQueryIntent()",
             observation: "Entitas teridentifikasi: kebutuhan armada logistik dan alokasi surplus komoditas.",
@@ -335,6 +348,7 @@ export async function processManagerialNaturalQuery(
         };
 
         // Riwayat kueri disimpan di memori, maksimal 20 terakhir.
+        // Riwayat kueri disimpan di memori proses (maksimal 20 terbaru) dan hilang saat server dimulai ulang.
         if (options?.recordResult !== false) {
           latestQueryHistory.unshift(queryResult);
           if (latestQueryHistory.length > 20) latestQueryHistory.pop();
@@ -348,6 +362,7 @@ export async function processManagerialNaturalQuery(
   // 2. Mesin Penalaran ReAct Dekomposisi Terstruktur via Tool Calling Registry (PSR-18)
   const queryResult = await executeDecomposedManagerialQuery(cleanQuery);
 
+  // Catatan audit kueri pengelola; dilewati pada pratinjau.
   if (options?.recordResult === false) return queryResult;
   await recordAuditLog({
     subsystem: "ORCHESTRATOR",
@@ -367,6 +382,7 @@ export async function processManagerialNaturalQuery(
 }
 
 // Objek fasad Agent 1: Central Orchestrator & Coordinator Agent (PSR-17).
+// Fasad Agent 1: satu objek yang membuka fungsi orkestrasi, riwayat, registri alat, deklarasi alat, batas putaran ReAct, dan prompt sistem.
 export const geminiOrchestrator = {
   name: "GeminiOrchestratorAgent",
   role: "Central Orchestrator & Multi-Agent ReAct Coordinator",

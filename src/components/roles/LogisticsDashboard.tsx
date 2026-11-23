@@ -5,6 +5,7 @@
 
 "use client";
 
+// Impor: state React, ikon, data pembeli sirkular, kalkulator armada, tipe pasar, dan komponen dasbor bersama.
 import { useState } from "react";
 import {
   Clock,
@@ -53,6 +54,7 @@ type DispatchPhase = "all" | "tier_1" | "tier_2" | "tier_3";
 const DISPATCH_PHASES = [
   {
     // Tab gabungan: seluruh antrean tanpa ambang muatan.
+    // Tahap "Semua": menampilkan seluruh antrean tanpa filter tier.
     id: "all" as const,
     label: "Semua Tahap",
     shortLabel: "Semua",
@@ -65,6 +67,7 @@ const DISPATCH_PHASES = [
   },
   {
     // Tahap 1: Warteg, berangkat 15.30; kloter dianggap cukup bila muatan mencapai 200 kg.
+    // Tahap 1 (tier_1): rute ke Warteg dan UMKM kuliner, dari lot layu ringan.
     id: "tier_1" as const,
     label: "Tahap 1: Warteg",
     shortLabel: "Tahap 1: Warteg",
@@ -79,6 +82,7 @@ const DISPATCH_PHASES = [
   },
   {
     // Tahap 2: dapur sosial, berangkat 17.30; ambang 75 kg.
+    // Tahap 2 (tier_2): rute ke dapur sosial dan panti, dari lot layu sedang.
     id: "tier_2" as const,
     label: "Tahap 2: Dapur Sosial",
     shortLabel: "Tahap 2: Dapur Sosial",
@@ -93,6 +97,7 @@ const DISPATCH_PHASES = [
   },
   {
     // Tahap 3: sentra maggot, berangkat 19.00; ambang 150 kg.
+    // Tahap 3 (tier_3): rute ke sentra maggot, lot gratis non-pangan.
     id: "tier_3" as const,
     label: "Tahap 3: Sentra Maggot",
     shortLabel: "Tahap 3: Maggot",
@@ -193,6 +198,7 @@ export function LogisticsDashboard() {
   return (
     <div className="grid min-w-0 gap-6">
       {/* Kartu pembuka: tahap aktif, jendela waktu, armada, pengemudi, dan muatan. */}
+      {/* Kartu judul tahap aktif: ikon, nama tahap, kendaraan, dan pengemudi yang ditugaskan. */}
       <section className="rounded-2xl border border-line bg-surface p-4 sm:p-6">
         <div className="flex items-start gap-3 sm:gap-4">
           <span aria-hidden className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand">
@@ -224,6 +230,7 @@ export function LogisticsDashboard() {
           </div>
         </dl>
         {/* Indikator ambang muatan kloter; tidak ada untuk tab Semua. */}
+        {/* Informasi ambang muatan dan jam berangkat; hanya tampil bila tahap tertentu dipilih. */}
         {activePhase !== "all" && "thresholdKg" in currentPhaseConfig && (
           <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-canvas p-3 text-sm">
             <span className="flex items-center gap-2"><Clock size={16} aria-hidden /> Rencana berangkat {currentPhaseConfig.departureClock}</span>
@@ -238,6 +245,7 @@ export function LogisticsDashboard() {
       </section>
 
       {/* Tabs Pemilih Tahapan Sirkular */}
+      {/* Tab tahap pengantaran; tiap tab menampilkan jumlah pesanan pada tahap itu. */}
       <nav aria-label="Tahapan pengantaran logistik" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {DISPATCH_PHASES.map((phase) => {
           const count = phase.id === "all"
@@ -274,6 +282,7 @@ export function LogisticsDashboard() {
 
       {/* Metrik Terfilter Sesuai Tahap */}
       {/* Angka ringkas antrean, muatan, dan dana tertahan. */}
+      {/* Ringkasan angka: siap diantar, muatan menunggu antar (kg), dana ditahan, dan pesanan selesai. */}
       <MarketMetrics
         items={[
           { label: "Siap diantar", value: filteredQueue.length },
@@ -284,6 +293,7 @@ export function LogisticsDashboard() {
       />
 
       {/* Daftar Antrean Pengantaran */}
+      {/* Antrean pesanan siap antar untuk tahap yang dipilih. */}
       <MarketSection
         variant="plain"
         title={`Antrean ${activePhase === "all" ? "Semua Tahap" : currentPhaseConfig.shortLabel}`}
@@ -331,6 +341,7 @@ export function LogisticsDashboard() {
                         <p className="mt-1 text-[13px] text-ink-muted">{lotNumber}</p>
                       )}
 
+                      {/* Rute pesanan: dari kios asal ke penerima, dengan ikon tiap titik. */}
                       <div className="mt-2.5 grid gap-0 text-[13px]">
                         <p className="flex min-w-0 items-center gap-2">
                           <span
@@ -367,6 +378,7 @@ export function LogisticsDashboard() {
                       </div>
 
                       {/* Mutu lot saat ini agar kurir tahu urgensi pengantaran. */}
+                      {/* Perkiraan mutu lot saat ini bila datanya tersedia. */}
                       {stockHealth[offer.stockId] && (
                         <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
                           <Clock size={13} aria-hidden className="text-brand shrink-0" />
@@ -385,6 +397,7 @@ export function LogisticsDashboard() {
                       {stockHealth[offer.stockId] && <DecayExplainer stockId={offer.stockId} />}
                     </div>
 
+                    {/* Nilai pesanan: label Gratis (maggot), label Donasi, atau total rupiah bila berbayar. */}
                     {isFreeMaggotOffer(offer) ? (
                       <StatusPill label="Gratis" tone="success" />
                     ) : isDonation(offer) ? (
@@ -395,6 +408,7 @@ export function LogisticsDashboard() {
                   </div>
 
                   {/* Tombol serah terima hanya untuk kurir; peninjau hanya melihat antrean. */}
+                  {/* Tombol serah terima hanya untuk akun kurir; pengelola dan admin hanya memantau. */}
                   {user?.role === "logistics" && (
                     <button
                       type="button"
@@ -416,6 +430,7 @@ export function LogisticsDashboard() {
       </MarketSection>
 
       {/* Riwayat Pengantaran */}
+      {/* Riwayat pengantaran yang sudah selesai pada tahap ini. */}
       <MarketSection title={`Riwayat Selesai ${activePhase === "all" ? "" : `(${currentPhaseConfig.shortLabel})`}`}>
         {filteredCompleted.length === 0 ? (
           <EmptyState
@@ -441,6 +456,7 @@ export function LogisticsDashboard() {
       </MarketSection>
 
       {/* Riwayat Transaksi & Serah Terima (Escrow Release Ledger) */}
+      {/* Buku besar pembayaran terkait pengantaran: ditahan, dicairkan, atau dikembalikan. */}
       <MarketSection
         title="Riwayat transaksi & serah terima"
         description="Buku besar pembayaran: dana ditahan, disalurkan setelah serah terima, atau dikembalikan. Catatan ini mencakup semua tahap."
@@ -464,6 +480,7 @@ export function LogisticsDashboard() {
 
       {/* Modal Dialog Konfirmasi Serah Terima */}
       {/* Dialog konfirmasi serah terima; mencairkan dana escrow ke pedagang. */}
+      {/* Dialog konfirmasi serah terima; dana escrow cair setelah konfirmasi. */}
       {selected && (
         <MarketDialog title="Konfirmasi serah terima" onClose={() => setSelected(null)}>
           <div className="grid gap-1 border-y border-line py-3.5 text-sm">
